@@ -1,0 +1,16 @@
+{
+  "skill.mining": "Mining",
+  "skill.gathering": "Gathering",
+  "skill.attack": "Attack",
+  "skill.defense": "Defence",
+  "skill.building": "Building",
+  "skill.farming": "Farming",
+  "skill.agility": "Agility",
+  "skill.magic": "Magic",
+  "container.skills": "Skills",
+  "overlay.message.use": "You can't use this item yet!",
+  "overlay.message.craft": "You can't craft this item yet!",
+  "overlay.message.attack": "You can't attack this entity yet!",
+  "tooltip.requirements": "Requirements",
+  "key.skills": "Open Skills"
+}

@@ -1,0 +1,14 @@
+{
+  "skill.mining": "Rakšana",
+  "skill.gathering": "Vākšana",
+  "skill.attack": "Uzbrukšana",
+  "skill.defense": "Aizsardzība",
+  "skill.building": "Būvēšana",
+  "skill.farming": "Zemkopība",
+  "skill.agility": "Veiklība",
+  "skill.magic": "Maģija",
+  "container.skills": "Prasmes",
+  "overlay.message.use": "To vēl nevarat izmantot!",
+  "tooltip.requirements": "Prasības",
+  "key.skills": "Atvērt Prasmes"
+}

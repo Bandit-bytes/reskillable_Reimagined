@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "net.bandit.reskillable.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "refmap": "reskillable.refmap.json",
+  "mixins": [
+    "CraftingContainerMixin"
+  ],
+  "client": [
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "skill.mining": "Добыча",
+  "skill.gathering": "Сбор",
+  "skill.attack": "Атака",
+  "skill.defense": "Защита",
+  "skill.building": "Строительство",
+  "skill.farming": "Земледелие",
+  "skill.agility": "Ловкость",
+  "skill.magic": "Магия",
+  "container.skills": "Навыки",
+  "overlay.message.use": "Предмет недоступен!",
+  "tooltip.requirements": "Требования",
+  "key.skills": "Открыть Навыки"
+}
