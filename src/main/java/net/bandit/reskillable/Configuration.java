@@ -105,7 +105,7 @@ public class Configuration {
         DEATH_RESET = builder.define("deathSkillReset", false);
 
         builder.comment("Toggle the visibility of the tab buttons in the inventory.");
-        SHOW_TAB_BUTTONS = builder.define("showTabButtons", true); // Default: true
+        SHOW_TAB_BUTTONS = builder.define("showTabButtons", true);
 
         builder.comment("Starting cost of upgrading to level 2, in experience points.");
         STARTING_COST = builder.defineInRange("startingCost", 7, 0, 1000);
@@ -169,7 +169,7 @@ public class Configuration {
                     multipleRequirements[j] = new Requirement(Skill.valueOf(req[0].toUpperCase()), Integer.parseInt(req[1]));
                 }
 
-                requirements[i] = multipleRequirements[0]; // If multiple requirements, choose the first one for now
+                requirements[i] = multipleRequirements[0];
             }
 
             locks.put(entry.getKey(), requirements);
@@ -218,8 +218,6 @@ public class Configuration {
         }
     }
 
-    // Get Properties
-
     public static boolean getDisableWool() {
         return disableWool;
     }
@@ -231,19 +229,14 @@ public class Configuration {
         return deathReset;
     }
 
-    public static int getStartCost() {
-        return startingCost; // Base XP cost for level 1 -> 2
-    }
 
     public static double getXpScalingMultiplier() {
-        return xpScalingMultiplier; // Scaling multiplier (e.g., 1.2 for 20% increase per level)
+        return xpScalingMultiplier;
     }
     public static int calculateCostForLevel(int level) {
         if (level < 1) {
             throw new IllegalArgumentException("Level must be 1 or greater");
         }
-
-        // Define total XP costs for levels 1 to 50
         int[] totalXpCosts = {
                 7, 16, 27, 40, 55, 72, 91, 112, 135, 160,
                 187, 216, 247, 280, 315, 352, 394, 441, 493, 550,
@@ -251,26 +244,18 @@ public class Configuration {
                 1507, 1628, 1758, 1897, 2045, 2202, 2368, 2543, 2727, 2920,
                 3122, 3333, 3553, 3782, 4020, 4267, 4523, 4788, 5062, 5345
         };
+        double multiplier = getXpScalingMultiplier();
 
-        // Add XP multiplier
-        double multiplier = getXpScalingMultiplier(); // Assuming this method retrieves the multiplier
-
-        // If level is within the defined table, use the predefined values
         if (level <= 50) {
             return (int) Math.ceil(totalXpCosts[level - 1] * multiplier);
         }
-
-        // For levels beyond 50, calculate the cost dynamically
-        // Example: exponential growth or linear growth
-        int baseCost = totalXpCosts[49]; // Cost for level 50
-        int additionalCostPerLevel = 300; // Incremental cost per level after 50 (adjust as needed)
+        int baseCost = totalXpCosts[49];
+        int additionalCostPerLevel = 300;
         int extraLevels = level - 50;
         int dynamicCost = baseCost + (extraLevels * additionalCostPerLevel);
 
         return (int) Math.ceil(dynamicCost * multiplier);
     }
-
-
     public static int getMaxLevel() {
         return maximumLevel;
     }
@@ -346,11 +331,11 @@ public class Configuration {
 
         double multiplier = getXpScalingMultiplier();
         if (level <= 16) {
-            return (int) Math.ceil((level * (level + 1)) / 2 * 2 + 7 * level * multiplier); // Linear growth
+            return (int) Math.ceil((level * (level + 1)) / 2 * 2 + 7 * level * multiplier);
         } else if (level <= 31) {
-            return (int) Math.ceil((2.5 * level * level - 40.5 * level + 360) * multiplier); // Moderate growth
+            return (int) Math.ceil((2.5 * level * level - 40.5 * level + 360) * multiplier);
         } else {
-            return (int) Math.ceil((4.5 * level * level - 162.5 * level + 2220) * multiplier); // Steep growth
+            return (int) Math.ceil((4.5 * level * level - 162.5 * level + 2220) * multiplier);
         }
     }
 

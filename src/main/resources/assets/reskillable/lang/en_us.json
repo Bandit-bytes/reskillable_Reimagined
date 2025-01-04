@@ -16,7 +16,8 @@
   "key.reskillable.category": "Reskillable",
   "key.rereskillable.open_skills": "Open Skills",
   "key.categories.rereskillable": "Reskillable",
-  "tooltip.rereskillable.skill_cost": "Cost: %s XP",
   "tooltip.rereskillable.skill_cost_available": "Cost: §a%s XP §fCan level Up",
-  "tooltip.rereskillable.skill_cost_unavailable": "Cost: §c%s XP §fNot Enough"
+  "tooltip.rereskillable.skill_cost_unavailable": "Cost: §c%s XP §fNot Enough",
+  "tooltip.rereskillable.total_xp": "Your total XP: §a%s",
+  "tooltip.rereskillable.skill_cost": "XP: %s / Cost: %s"
 }

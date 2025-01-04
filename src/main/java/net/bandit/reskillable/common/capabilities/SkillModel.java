@@ -4,6 +4,7 @@ import net.bandit.reskillable.Configuration;
 import net.bandit.reskillable.common.commands.skills.Requirement;
 import net.bandit.reskillable.common.commands.skills.RequirementType;
 import net.bandit.reskillable.common.commands.skills.Skill;
+import net.bandit.reskillable.common.network.SyncToClient;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
@@ -14,10 +15,15 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.Block;
 import net.minecraftforge.common.util.INBTSerializable;
 
+
 public class SkillModel implements INBTSerializable<CompoundTag> {
-    public int[] skillLevels = new int[]{1, 1, 1, 1, 1, 1, 1, 1};
-    private int[] skillExperience = new int[]{0, 0, 0, 0, 0, 0, 0, 0};
     private static final int DEFAULT_SKILL_COUNT = 8;
+    private int[] skillLevels = new int[DEFAULT_SKILL_COUNT];
+    private int[] skillExperience = new int[DEFAULT_SKILL_COUNT];
+
+    public SkillModel() {
+        resetSkills(); // Initialize default skill values
+    }
 
     // Get Skill Level
     public int getSkillLevel(Skill skill) {
@@ -30,11 +36,12 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
     }
 
     // Increase Skill Level
-    public void increaseSkillLevel(Skill skill) {
+    public void increaseSkillLevel(Skill skill, Player player) {
         int currentLevel = skillLevels[skill.index];
         if (currentLevel < Configuration.getMaxLevel()) {
             skillLevels[skill.index]++;
-            skillExperience[skill.index] = 0; // Reset XP for the new level
+            skillExperience[skill.index] = 0;
+            syncSkills(player);
         }
     }
 
@@ -50,8 +57,7 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
         int xp = skillExperience[skill.index];
 
         while (level < Configuration.getMaxLevel() && xp >= Configuration.calculateExperienceCost(level)) {
-            int cost = Configuration.calculateExperienceCost(level);
-            xp -= cost;
+            xp -= Configuration.calculateExperienceCost(level);
             level++;
         }
 
@@ -59,22 +65,13 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
         skillLevels[skill.index] = level;
     }
 
+    // Check if a Player Has Sufficient XP
     public boolean hasSufficientXP(Player player, Skill skill) {
-        int currentLevel = getSkillLevel(skill);
-        int xpCost = Configuration.calculateExperienceCost(currentLevel);
-
-        if (player.isCreative()) {
-            return true; // Creative players always have sufficient XP
-        }
-
-        if (player.level().isClientSide) {
-            return true; // Avoid logic execution on client
-        }
+        if (player.isCreative() || player.level().isClientSide) return true;
 
         int totalXP = calculateTotalXPFromPlayer(player);
-        return totalXP >= xpCost;
+        return totalXP >= Configuration.calculateExperienceCost(getSkillLevel(skill));
     }
-
 
     // Calculate Total XP for a Player
     private int calculateTotalXPFromPlayer(Player player) {
@@ -83,66 +80,51 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
         return Configuration.getCumulativeXpForLevel(level) + progress;
     }
 
-    // Can Use Item
+    // Can Use Item/Block/Entity
     public boolean canUseItem(Player player, ItemStack item) {
         return canUse(player, item.getItem().builtInRegistryHolder().key().location());
     }
 
-    // Can Use Block
     public boolean canUseBlock(Player player, Block block) {
         return canUse(player, block.builtInRegistryHolder().key().location());
     }
 
-    // Can Use Entity
     public boolean canUseEntity(Player player, Entity entity) {
         return canUse(player, entity.getType().builtInRegistryHolder().key().location());
     }
 
-    // Check if Player Can Use
     private boolean canUse(Player player, ResourceLocation resource) {
         return checkRequirements(player, resource, RequirementType.USE);
     }
+
+    // Check Requirements for Use/Attack/Craft
     private boolean checkRequirements(Player player, ResourceLocation resource, RequirementType type) {
         Requirement[] requirements = type.getRequirements(resource);
-        if (requirements != null) {
-            for (Requirement requirement : requirements) {
-                if (getSkillLevel(requirement.skill) < requirement.level) {
-                    if (player instanceof ServerPlayer serverPlayer) {
-                        String message = switch (type) {
-                            case ATTACK -> "You are not strong enough to attack this creature.";
-                            case CRAFT -> "You are not skilled enough to craft this item.";
-                            case USE -> "You are not skilled enough to use this item.";
-                        };
-                        serverPlayer.sendSystemMessage(Component.literal(message));
-                    }
-                    return false;
-                }
+        if (requirements == null) return true;
+
+        for (Requirement requirement : requirements) {
+            if (getSkillLevel(requirement.skill) < requirement.level) {
+                sendSkillRequirementMessage(player, type);
+                return false;
             }
         }
         return true;
     }
 
-    // Get Player Skills
-    public static SkillModel get(Player player) {
-        return player.getCapability(SkillCapability.INSTANCE).orElseThrow(() ->
-                new IllegalArgumentException("Player " + player.getName().getContents() + " does not have a Skill Model!")
-        );
+    private void sendSkillRequirementMessage(Player player, RequirementType type) {
+        String message = switch (type) {
+            case ATTACK -> "You are not strong enough to attack this creature.";
+            case CRAFT -> "You are not skilled enough to craft this item.";
+            case USE -> "You are not skilled enough to use this item.";
+        };
+
+        // Display the message to the player's chat
+        player.displayClientMessage(Component.literal(message), true);
     }
 
-//    // Serialize and Deserialize
-//    @Override
-//    public CompoundTag serializeNBT() {
-//        CompoundTag compound = new CompoundTag();
-//        compound.putIntArray("skillLevels", skillLevels);
-//        compound.putIntArray("skillExperience", skillExperience);
-//        return compound;
-//    }
-//
-//    @Override
-//    public void deserializeNBT(CompoundTag nbt) {
-//        skillLevels = nbt.getIntArray("skillLevels");
-//        skillExperience = nbt.getIntArray("skillExperience");
-//    }
+    public static SkillModel get(Player player) {
+        return player.getCapability(SkillCapability.INSTANCE).orElse(null);
+    }
 
     // Additional Can-Use Methods
     public boolean canCraftItem(Player player, ItemStack stack) {
@@ -154,10 +136,19 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
         ResourceLocation resource = target.getType().builtInRegistryHolder().key().location();
         return checkRequirements(player, resource, RequirementType.ATTACK);
     }
+
+    // Prevent Resets by Logging and Syncing
+    public void syncSkills(Player player) {
+        if (player instanceof ServerPlayer) {
+            SyncToClient.send(player);
+        }
+    }
+
+
     public void resetSkills() {
         for (int i = 0; i < DEFAULT_SKILL_COUNT; i++) {
-            this.skillLevels[i] = 1;
-            this.skillExperience[i] = 0;
+            skillLevels[i] = 1;
+            skillExperience[i] = 0;
         }
     }
 
@@ -181,16 +172,10 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
 
         if (loadedLevels.length == DEFAULT_SKILL_COUNT) {
             skillLevels = loadedLevels;
-        } else {
-            resetSkills();
         }
 
         if (loadedExperience.length == DEFAULT_SKILL_COUNT) {
             skillExperience = loadedExperience;
-        } else {
-            skillExperience = new int[DEFAULT_SKILL_COUNT];
         }
     }
-
-
 }

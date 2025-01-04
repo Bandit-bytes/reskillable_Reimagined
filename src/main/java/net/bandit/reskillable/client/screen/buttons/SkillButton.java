@@ -7,6 +7,7 @@ import net.bandit.reskillable.common.capabilities.SkillModel;
 import net.bandit.reskillable.common.commands.skills.Skill;
 import net.bandit.reskillable.Configuration;
 import net.bandit.reskillable.common.network.RequestLevelUp;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -92,33 +93,37 @@ public class SkillButton extends Button {
             int cost = Configuration.calculateCostForLevel(level);
             int playerTotalXP = getPlayerTotalXP(clientPlayer);
 
-            // Determine tooltip text based on player's XP
-            String tooltipText;
+            // Create components for the tooltip
+            Component xpComponent;
             if (playerTotalXP >= cost) {
-                tooltipText = Component.translatable("tooltip.rereskillable.skill_cost_available", cost).getString();
+                xpComponent = Component.literal(String.valueOf(playerTotalXP)).withStyle(ChatFormatting.GREEN);
             } else {
-                tooltipText = Component.translatable("tooltip.rereskillable.skill_cost_unavailable", cost).getString();
+                xpComponent = Component.literal(String.valueOf(playerTotalXP)).withStyle(ChatFormatting.RED);
             }
 
+            Component costComponent = Component.literal(String.valueOf(cost));
+            Component tooltip = Component.translatable("tooltip.rereskillable.skill_cost", xpComponent, costComponent);
+
             // Render the tooltip
-            guiGraphics.renderTooltip(minecraft.font, Component.literal(tooltipText), mouseX, mouseY);
+            guiGraphics.renderTooltip(Minecraft.getInstance().font, tooltip, mouseX, mouseY);
         }
     }
 
-    private int getPlayerTotalXP(Player player) {
-        int level = player.experienceLevel;
-        float progress = player.experienceProgress;
+// Method to calculate player's total XP
+        private int getPlayerTotalXP (Player player){
+            int level = player.experienceLevel;
+            float progress = player.experienceProgress;
 
-        if (level <= 16) {
-            return (level * level) + (6 * level) + Math.round(progress * (2 * level + 7));
-        } else if (level <= 31) {
-            return (int) (2.5 * level * level - 40.5 * level + 360) + Math.round(progress * (5 * level - 38));
-        } else {
-            return (int) (4.5 * level * level - 162.5 * level + 2220) + Math.round(progress * (9 * level - 158));
+            if (level <= 16) {
+                return (level * level) + (6 * level) + Math.round(progress * (2 * level + 7));
+            } else if (level <= 31) {
+                return (int) (2.5 * level * level - 40.5 * level + 360) + Math.round(progress * (5 * level - 38));
+            } else {
+                return (int) (4.5 * level * level - 162.5 * level + 2220) + Math.round(progress * (9 * level - 158));
+            }
         }
-    }
 
-    @Override
+        @Override
     public void updateWidgetNarration(@NotNull NarrationElementOutput output) {
         defaultButtonNarrationText(output);
     }

@@ -54,7 +54,7 @@ public class RequestLevelUp {
             int cost = Configuration.calculateCostForLevel(currentLevel);
 
             if (player.isCreative()) {
-                skillModel.increaseSkillLevel(skill);
+                skillModel.increaseSkillLevel(skill, player);
                 SyncToClient.send(player);
                 return;
             }
@@ -63,7 +63,7 @@ public class RequestLevelUp {
 
             if (playerTotalXp >= cost) {
                 deductXp(player, cost);
-                skillModel.increaseSkillLevel(skill);
+                skillModel.increaseSkillLevel(skill, player);
                 SyncToClient.send(player);
             } else {
                 player.sendSystemMessage(Component.literal("Not enough XP to level up this skill."));
