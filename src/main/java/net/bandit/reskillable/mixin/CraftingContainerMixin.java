@@ -26,17 +26,21 @@ public class CraftingContainerMixin {
         if (!level.isClientSide) {
             ServerPlayer serverPlayer = (ServerPlayer) player;
             ItemStack craftResult = ItemStack.EMPTY;
-            Optional<CraftingRecipe> optional = Objects.requireNonNull(level.getServer()).getRecipeManager().getRecipeFor(RecipeType.CRAFTING, craftingContainer, level);
+
+            Optional<CraftingRecipe> optional = Objects.requireNonNull(level.getServer())
+                    .getRecipeManager()
+                    .getRecipeFor(RecipeType.CRAFTING, craftingContainer, level);
 
             if (optional.isPresent()) {
                 CraftingRecipe craftingRecipe = optional.get();
                 craftResult = craftingRecipe.assemble(craftingContainer, level.registryAccess());
             }
-
             if (!craftResult.isEmpty() && !SkillModel.get(serverPlayer).canCraftItem(serverPlayer, craftResult)) {
                 ci.cancel();
                 resultContainer.setItem(0, ItemStack.EMPTY);
-                containerMenu.slotsChanged(craftingContainer);
+
+                // No need to call slotsChanged to avoid recursion
+                return;
             }
         }
     }

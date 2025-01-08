@@ -148,31 +148,34 @@ public class Configuration {
     private static Map<String, Requirement[]> parseSkillLocks(Map<String, List<String>> data) {
         Map<String, Requirement[]> locks = new HashMap<>();
 
+        if (data == null) {
+            System.err.println("No data found for skill locks.");
+            return locks;
+        }
+
         for (Map.Entry<String, List<String>> entry : data.entrySet()) {
-            List<String> rawRequirements = entry.getValue();
-            Requirement[] requirements = new Requirement[rawRequirements.size()];
+            try {
+                List<String> rawRequirements = entry.getValue();
+                Requirement[] requirements = new Requirement[rawRequirements.size()];
 
-            for (int i = 0; i < rawRequirements.size(); i++) {
-                String[] skills = rawRequirements.get(i).split(", ");
-                Requirement[] multipleRequirements = new Requirement[skills.length];
-
-                for (int j = 0; j < skills.length; j++) {
-                    String[] req = skills[j].split(":");
-
-                    for (String alias : SKILL_ALIAS.get()) {
-                        String[] aliasInfo = alias.split("=");
-                        if (req[0].equalsIgnoreCase(aliasInfo[0])) {
-                            req[0] = aliasInfo[1];
-                        }
+                for (int i = 0; i < rawRequirements.size(); i++) {
+                    String[] reqParts = rawRequirements.get(i).split(":");
+                    if (reqParts.length != 2) {
+                        System.err.println("Invalid requirement format: " + rawRequirements.get(i));
+                        continue;
                     }
 
-                    multipleRequirements[j] = new Requirement(Skill.valueOf(req[0].toUpperCase()), Integer.parseInt(req[1]));
+                    String skillName = reqParts[0].toUpperCase();
+                    int level = Integer.parseInt(reqParts[1]);
+
+                    requirements[i] = new Requirement(Skill.valueOf(skillName), level);
                 }
 
-                requirements[i] = multipleRequirements[0];
+                locks.put(entry.getKey(), requirements);
+            } catch (Exception e) {
+                System.err.println("Error parsing skill lock for key: " + entry.getKey());
+                e.printStackTrace();
             }
-
-            locks.put(entry.getKey(), requirements);
         }
 
         return locks;
@@ -189,16 +192,20 @@ public class Configuration {
         }
         try (FileReader reader = new FileReader(file)) {
             JsonObject jsonObject = JsonParser.parseReader(reader).getAsJsonObject();
+
+            // Validate that keys exist
+            if (!jsonObject.has("skillLocks")) {
+                System.err.println("Missing 'skillLocks' key in JSON: " + filename);
+                return new HashMap<>();
+            }
+
             Type mapType = new TypeToken<Map<String, Map<String, List<String>>>>() {
             }.getType();
-            Map<String, Map<String, List<String>>> data = new Gson().fromJson(jsonObject, mapType);
-            System.out.println("Loaded data from " + filename + ": " + data);
-            return data;
+            return new Gson().fromJson(jsonObject, mapType);
         } catch (Exception e) {
             e.printStackTrace();
             return new HashMap<>();
         }
-
     }
 
     private static boolean createDefaultJsonFile(File file, String content) {

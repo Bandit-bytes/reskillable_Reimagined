@@ -61,7 +61,6 @@ public class Reskillable {
             MinecraftForge.EVENT_BUS.register(new CuriosCompat());
         }
     }
-
     private void initCaps(RegisterCapabilitiesEvent event) {
         event.register(SkillModel.class);
     }
