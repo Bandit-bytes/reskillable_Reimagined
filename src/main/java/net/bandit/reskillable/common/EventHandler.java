@@ -143,19 +143,22 @@ public class EventHandler {
             event.addCapability(new ResourceLocation("reskillable", "cap_skills"), provider);
         }
     }
-
     @SubscribeEvent
     public void onPlayerClone(PlayerEvent.Clone event) {
-        if (!event.getEntity().level().isClientSide()) {
-            UUID playerUUID = event.getOriginal().getUUID();
-            SkillModel skillModel = SkillModel.get(event.getEntity());
-            if (skillModel != null) {
-                SkillModel lastSkills = lastDiedPlayerSkillsMap.getOrDefault(playerUUID, SkillModel.get(event.getOriginal()));
-                if (lastSkills != null) {
-                    skillModel.cloneFrom(lastSkills);
-                }
-            }
+        Player original = event.getOriginal();
+        Player clone = event.getEntity();
+        original.reviveCaps();
+        SkillModel originalModel = SkillModel.get(original);
+        SkillModel cloneModel = SkillModel.get(clone);
+
+        if (originalModel != null && cloneModel != null) {
+            cloneModel.cloneFrom(originalModel);
+//            System.out.println("Skills cloned for player: " + clone.getName().getString());
+            cloneModel.syncSkills(clone);
+        } else {
+//            System.out.println("SkillModel missing during player clone event for player: " + clone.getName().getString());
         }
+        original.invalidateCaps();
     }
 
     @SubscribeEvent
@@ -165,31 +168,34 @@ public class EventHandler {
             SyncToClient.send(event.getEntity());
         }
     }
-
-
     @SubscribeEvent
     public void onPlayerRespawn(PlayerEvent.PlayerRespawnEvent event) {
         Player player = event.getEntity();
+
         if (!player.level().isClientSide()) {
-            // Allow time for the player to fully respawn before syncing
-            player.getServer().execute(() -> {
-                SkillModel skillModel = SkillModel.get(player);
-                if (skillModel == null) {
-//                    System.out.println("SkillModel temporarily missing for player: " + player.getName().getContents());
-                    return; // Avoid proceeding with logic that requires the SkillModel
-                }
-                // Sync the SkillModel with the client
+            SkillModel skillModel = SkillModel.get(player);
+
+            if (skillModel != null) {
                 SyncToClient.send(player);
-//                System.out.println("Skills successfully synced for player: " + player.getName().getContents());
-            });
+//                System.out.println("Skills synced on respawn for player: " + player.getName().getString());
+            } else {
+//                System.out.println("SkillModel missing during respawn for player: " + player.getName().getString());
+            }
         }
     }
-
-
     @SubscribeEvent
     public void onChangeDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
-        if (!event.getEntity().level().isClientSide()) {
-            SyncToClient.send(event.getEntity());
+        Player player = event.getEntity();
+
+        if (!player.level().isClientSide()) {
+            SkillModel skillModel = SkillModel.get(player);
+            if (skillModel != null) {
+                skillModel.syncSkills(player);
+//                System.out.println("Skills synced on dimension change for player: " + player.getName().getString());
+            } else {
+//                System.out.println("SkillModel missing during dimension change for player: " + player.getName().getString());
+            }
         }
     }
+
 }

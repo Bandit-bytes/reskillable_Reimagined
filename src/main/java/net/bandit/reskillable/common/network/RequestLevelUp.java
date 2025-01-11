@@ -136,5 +136,4 @@ public class RequestLevelUp {
         return Configuration.calculateExperienceCost(level);
     }
 
-
 }

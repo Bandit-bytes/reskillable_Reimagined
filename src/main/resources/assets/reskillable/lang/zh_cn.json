@@ -1,0 +1,23 @@
+{
+  "skill.mining": "采矿",
+  "skill.gathering": "收集",
+  "skill.attack": "攻击",
+  "skill.defense": "防御",
+  "skill.building": "建造",
+  "skill.farming": "农业",
+  "skill.agility": "敏捷",
+  "skill.magic": "魔法",
+  "container.skills": "技能",
+  "overlay.message.use": "你还不能使用此物品！",
+  "overlay.message.craft": "你还不能制作此物品！",
+  "overlay.message.attack": "你还不能攻击这个生物！",
+  "tooltip.requirements": "技能要求",
+  "key.skills": "打开技能",
+  "key.reskillable.category": "可重新分配技能",
+  "key.rereskillable.open_skills": "打开技能",
+  "key.categories.rereskillable": "可重新分配技能",
+  "tooltip.rereskillable.skill_cost_available": "消耗: §a%s XP §f可以升级",
+  "tooltip.rereskillable.skill_cost_unavailable": "消耗: §c%s XP §f不足",
+  "tooltip.rereskillable.total_xp": "你的总 XP: §a%s",
+  "tooltip.rereskillable.skill_cost": "XP: %s / 消耗: %s"
+}
