@@ -32,6 +32,11 @@ public class RequestLevelUp {
             if (player == null) {
                 return;
             }
+            // Check if skill leveling is enabled
+            if (!Configuration.isSkillLevelingEnabled()) {
+                player.sendSystemMessage(Component.literal("Skill leveling is currently disabled on this server."));
+                return;
+            }
 
             SkillModel skillModel = SkillModel.get(player);
             if (skillModel == null) {

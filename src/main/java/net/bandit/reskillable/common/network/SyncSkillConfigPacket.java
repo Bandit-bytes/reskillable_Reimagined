@@ -15,34 +15,43 @@ import net.minecraftforge.network.PacketDistributor;
 
 import java.io.*;
 import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
 public class SyncSkillConfigPacket {
     private static final Logger LOGGER = Logger.getLogger(SyncSkillConfigPacket.class.getName());
+    private static final int CHUNK_SIZE = 100; // Number of entries per chunk
     private final Map<String, Requirement[]> skillLocks;
     private final Map<String, Requirement[]> craftSkillLocks;
     private final Map<String, Requirement[]> attackSkillLocks;
+    private final boolean isFinalChunk;
 
-    public SyncSkillConfigPacket(Map<String, Requirement[]> skillLocks, Map<String, Requirement[]> craftSkillLocks, Map<String, Requirement[]> attackSkillLocks) {
+    public SyncSkillConfigPacket(Map<String, Requirement[]> skillLocks,
+                                 Map<String, Requirement[]> craftSkillLocks,
+                                 Map<String, Requirement[]> attackSkillLocks,
+                                 boolean isFinalChunk) {
         this.skillLocks = skillLocks;
         this.craftSkillLocks = craftSkillLocks;
         this.attackSkillLocks = attackSkillLocks;
+        this.isFinalChunk = isFinalChunk;
     }
 
     public SyncSkillConfigPacket(FriendlyByteBuf buf) {
         Gson gson = new Gson();
         try {
-            // Use the correct type for deserialization
             Type mapType = new TypeToken<Map<String, Requirement[]>>() {}.getType();
 
             this.skillLocks = gson.fromJson(decompress(buf.readByteArray()), mapType);
             this.craftSkillLocks = gson.fromJson(decompress(buf.readByteArray()), mapType);
             this.attackSkillLocks = gson.fromJson(decompress(buf.readByteArray()), mapType);
+            this.isFinalChunk = buf.readBoolean();
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Failed to deserialize SyncSkillConfigPacket", e);
             throw new IllegalArgumentException("Malformed packet data", e);
@@ -52,26 +61,33 @@ public class SyncSkillConfigPacket {
     public void toBytes(FriendlyByteBuf buf) {
         Gson gson = new Gson();
         try {
-            // Serialize maps into JSON strings
             buf.writeByteArray(compress(gson.toJson(skillLocks)));
             buf.writeByteArray(compress(gson.toJson(craftSkillLocks)));
             buf.writeByteArray(compress(gson.toJson(attackSkillLocks)));
+            buf.writeBoolean(isFinalChunk);
         } catch (IOException e) {
             LOGGER.log(Level.SEVERE, "Failed to serialize SyncSkillConfigPacket", e);
             throw new RuntimeException("Failed to compress packet data", e);
         }
     }
 
-
     public static void handle(SyncSkillConfigPacket msg, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
-            if (ctx.get().getDirection().getReceptionSide().isClient()) {
-                Configuration.setSkillLocks(msg.skillLocks);
-                Configuration.setCraftSkillLocks(msg.craftSkillLocks);
-                Configuration.setAttackSkillLocks(msg.attackSkillLocks);
-                refreshClientUI();
-            } else {
-                LOGGER.warning("Received SyncSkillConfigPacket on server. Ignoring.");
+            try {
+                if (ctx.get().getDirection().getReceptionSide().isClient()) {
+                    Configuration.setSkillLocks(msg.skillLocks);
+                    Configuration.setCraftSkillLocks(msg.craftSkillLocks);
+                    Configuration.setAttackSkillLocks(msg.attackSkillLocks);
+
+                    if (msg.isFinalChunk) {
+                        refreshClientUI();
+                        LOGGER.info("All skill configuration chunks received and applied.");
+                    }
+                } else {
+                    LOGGER.warning("Received SyncSkillConfigPacket on server. Ignoring.");
+                }
+            } catch (Exception e) {
+                LOGGER.log(Level.SEVERE, "Error updating skill locks", e);
             }
         });
         ctx.get().setPacketHandled(true);
@@ -93,18 +109,27 @@ public class SyncSkillConfigPacket {
             Map<String, Requirement[]> attackSkillLocks = Configuration.getAttackSkillLocks();
 
             if (skillLocks == null || craftSkillLocks == null || attackSkillLocks == null) {
-                System.err.println("Skill locks or craft/attack locks are null, not sending packet.");
+                LOGGER.warning("Skill locks or craft/attack locks are null, not sending packet.");
                 return;
             }
 
-            SyncSkillConfigPacket packet = new SyncSkillConfigPacket(skillLocks, craftSkillLocks, attackSkillLocks);
-            Reskillable.NETWORK.send(PacketDistributor.ALL.noArg(), packet);
-            LOGGER.info("Sent SyncSkillConfigPacket to all clients.");
+            List<Map.Entry<String, Requirement[]>> entries = new ArrayList<>(skillLocks.entrySet());
+            for (int i = 0; i < entries.size(); i += CHUNK_SIZE) {
+                Map<String, Requirement[]> chunk = entries.stream()
+                        .skip(i)
+                        .limit(CHUNK_SIZE)
+                        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+                boolean isFinalChunk = (i + CHUNK_SIZE) >= entries.size();
+                SyncSkillConfigPacket packet = new SyncSkillConfigPacket(chunk, craftSkillLocks, attackSkillLocks, isFinalChunk);
+                Reskillable.NETWORK.send(PacketDistributor.ALL.noArg(), packet);
+
+                LOGGER.info("Sent chunk " + (i / CHUNK_SIZE + 1) + " to all clients.");
+            }
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Failed to send SyncSkillConfigPacket", e);
         }
     }
-
 
     // Compression helper methods
     private static byte[] compress(String data) throws IOException {

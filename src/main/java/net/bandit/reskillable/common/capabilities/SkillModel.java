@@ -97,19 +97,28 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
         return checkRequirements(player, resource, RequirementType.USE);
     }
 
-    // Check Requirements for Use/Attack/Craft
     private boolean checkRequirements(Player player, ResourceLocation resource, RequirementType type) {
         Requirement[] requirements = type.getRequirements(resource);
-        if (requirements == null) return true;
+        if (requirements == null) {
+//            System.out.println("No requirements found for " + resource + " in " + type);
+            return true;
+        }
+
+//        System.out.println("Requirements for " + resource + ":");
+        for (Requirement requirement : requirements) {
+//            System.out.println("- Skill: " + requirement.skill.name() + ", Level: " + requirement.level);
+        }
 
         for (Requirement requirement : requirements) {
             if (getSkillLevel(requirement.skill) < requirement.level) {
+//                System.out.println("Player does not meet requirement: " + requirement.skill.name() + " level " + requirement.level);
                 sendSkillRequirementMessage(player, type);
                 return false;
             }
         }
         return true;
     }
+
 
     private void sendSkillRequirementMessage(Player player, RequirementType type) {
         String message = switch (type) {

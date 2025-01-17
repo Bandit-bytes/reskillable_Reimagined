@@ -1,17 +1,20 @@
 package net.bandit.reskillable;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
 import net.bandit.reskillable.common.commands.skills.Requirement;
 import net.bandit.reskillable.common.commands.skills.Skill;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.*;
 import net.minecraftforge.common.ForgeConfigSpec;
 import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.loading.FMLPaths;
+import net.minecraftforge.registries.ForgeRegistries;
 
 import java.io.File;
 import java.io.FileReader;
@@ -35,6 +38,7 @@ public class Configuration {
     private static final ForgeConfigSpec.IntValue MAXIMUM_LEVEL;
     private static final ForgeConfigSpec.DoubleValue XP_SCALING_MULTIPLIER;
     private static final ForgeConfigSpec.ConfigValue<List<? extends String>> SKILL_ALIAS;
+    private static final ForgeConfigSpec.BooleanValue ENABLE_SKILL_LEVELING;
 
     private static boolean disableWool;
     private static boolean showTabButtons;
@@ -42,6 +46,7 @@ public class Configuration {
     private static int startingCost;
     private static int maximumLevel;
     private static double xpScalingMultiplier;
+    private static boolean enableSkillLeveling;
     private static Map<String, Requirement[]> skillLocks = new HashMap<>();
     private static Map<String, Requirement[]> craftSkillLocks = new HashMap<>();
     private static Map<String, Requirement[]> attackSkillLocks = new HashMap<>();
@@ -120,6 +125,10 @@ public class Configuration {
                 "Useful if you're using a resource pack to change the names of skills, this config doesn't affect gameplay, just accepted values in other configs so it's easier to think about",
                 "Format: key=value",
                 "Valid values: attack, defense, mining, gathering, farming, building, agility, magic");
+
+        ENABLE_SKILL_LEVELING = builder.comment("Enable or disable skill leveling via GUI or selection. If disabled, skill levels must be granted by commands.")
+                .define("enableSkillLeveling", true);
+
         SKILL_ALIAS = builder.defineList("skillAliases", List.of("defense=defense"), obj -> true);
 
         CONFIG_SPEC = builder.build();
@@ -135,14 +144,32 @@ public class Configuration {
 //        costIncrease = COST_INCREASE.get();
         xpScalingMultiplier = XP_SCALING_MULTIPLIER.get();
         maximumLevel = MAXIMUM_LEVEL.get();
+        enableSkillLeveling = ENABLE_SKILL_LEVELING.get();
 
-        Map<String, Map<String, List<String>>> skillData = loadJsonConfig(FMLPaths.CONFIGDIR.get().resolve("reskillable/skill_locks.json").toString(), DEFAULT_SKILL_LOCKS);
-        Map<String, Map<String, List<String>>> craftData = loadJsonConfig(FMLPaths.CONFIGDIR.get().resolve("reskillable/craft_skill_locks.json").toString(), DEFAULT_CRAFT_SKILL_LOCKS);
-        Map<String, Map<String, List<String>>> attackData = loadJsonConfig(FMLPaths.CONFIGDIR.get().resolve("reskillable/attack_skill_locks.json").toString(), DEFAULT_ATTACK_SKILL_LOCKS);
+        Map<String, Map<String, List<String>>> skillData = loadJsonConfig(
+                FMLPaths.CONFIGDIR.get().resolve("reskillable/skill_locks.json").toString(),
+                DEFAULT_SKILL_LOCKS,
+                "skillLocks"
+        );
+
+        Map<String, Map<String, List<String>>> craftData = loadJsonConfig(
+                FMLPaths.CONFIGDIR.get().resolve("reskillable/craft_skill_locks.json").toString(),
+                DEFAULT_CRAFT_SKILL_LOCKS,
+                "craftSkillLocks"
+        );
+
+        Map<String, Map<String, List<String>>> attackData = loadJsonConfig(
+                FMLPaths.CONFIGDIR.get().resolve("reskillable/attack_skill_locks.json").toString(),
+                DEFAULT_ATTACK_SKILL_LOCKS,
+                "attackSkillLocks"
+        );
 
         skillLocks = parseSkillLocks(skillData.get("skillLocks"));
         craftSkillLocks = parseSkillLocks(craftData.get("craftSkillLocks"));
         attackSkillLocks = parseSkillLocks(attackData.get("attackSkillLocks"));
+    }
+    public static boolean isSkillLevelingEnabled() {
+        return enableSkillLeveling;
     }
 
     private static Map<String, Requirement[]> parseSkillLocks(Map<String, List<String>> data) {
@@ -154,6 +181,7 @@ public class Configuration {
         }
 
         for (Map.Entry<String, List<String>> entry : data.entrySet()) {
+            System.out.println("Parsing attack lock for: " + entry.getKey());
             try {
                 List<String> rawRequirements = entry.getValue();
                 Requirement[] requirements = new Requirement[rawRequirements.size()];
@@ -180,9 +208,9 @@ public class Configuration {
 
         return locks;
     }
-
-    private static Map<String, Map<String, List<String>>> loadJsonConfig(String filename, String defaultContent) {
+    private static Map<String, Map<String, List<String>>> loadJsonConfig(String filename, String defaultContent, String expectedKey) {
         File file = new File(filename);
+
         if (!file.exists()) {
             if (createDefaultJsonFile(file, defaultContent)) {
                 System.out.println("Default file created: " + filename);
@@ -190,19 +218,21 @@ public class Configuration {
                 System.err.println("Failed to create default file: " + filename);
             }
         }
+
         try (FileReader reader = new FileReader(file)) {
             JsonObject jsonObject = JsonParser.parseReader(reader).getAsJsonObject();
 
-            // Validate that keys exist
-            if (!jsonObject.has("skillLocks")) {
-                System.err.println("Missing 'skillLocks' key in JSON: " + filename);
+            // Validate that the expected key exists
+            if (!jsonObject.has(expectedKey)) {
+                System.err.println("Missing '" + expectedKey + "' key in JSON: " + filename);
                 return new HashMap<>();
             }
 
-            Type mapType = new TypeToken<Map<String, Map<String, List<String>>>>() {
-            }.getType();
+            // Parse the JSON as a map
+            Type mapType = new TypeToken<Map<String, Map<String, List<String>>>>() {}.getType();
             return new Gson().fromJson(jsonObject, mapType);
         } catch (Exception e) {
+            System.err.println("Error loading JSON from file: " + filename);
             e.printStackTrace();
             return new HashMap<>();
         }
@@ -224,6 +254,7 @@ public class Configuration {
             return false;
         }
     }
+
 
     public static boolean getDisableWool() {
         return disableWool;
@@ -286,9 +317,11 @@ public class Configuration {
     public static Map<String, Requirement[]> getSkillLocks() {
         return skillLocks;
     }
-
     public static void setSkillLocks(Map<String, Requirement[]> newSkillLocks) {
-        skillLocks = newSkillLocks;
+        if (skillLocks == null) {
+            skillLocks = new HashMap<>();
+        }
+        skillLocks.putAll(newSkillLocks);
     }
 
     public static Map<String, Requirement[]> getCraftSkillLocks() {
@@ -312,10 +345,6 @@ public class Configuration {
         load();
     }
 
-    public static Type getSkillLocksType() {
-        return new TypeToken<Map<String, List<String>>>() {
-        }.getType();
-    }
     public static int calculateExperienceCost(int level) {
         if (level <= 0) return 0;
 
@@ -343,6 +372,164 @@ public class Configuration {
             return (int) Math.ceil((2.5 * level * level - 40.5 * level + 360) * multiplier);
         } else {
             return (int) Math.ceil((4.5 * level * level - 162.5 * level + 2220) * multiplier);
+        }
+    }
+    private static final Map<String, List<String>> RANGED_WEAPON_REQUIREMENTS = Map.of(
+            "minecraft:bow", List.of("agility:10", "defense:5"),
+            "minecraft:crossbow", List.of("agility:10", "defense:5"),
+            "modid:longbow", List.of("agility:15", "defense:10"),
+            "modid:netherite_crossbow", List.of("agility:30", "defense:25")
+    );
+
+    private static final Map<String, ArmorStats> VANILLA_ARMOR_BENCHMARKS = Map.of(
+            "leather", new ArmorStats(3, 0.0),   // Total defense: 3, toughness: 0
+            "chainmail", new ArmorStats(12, 0.0),
+            "iron", new ArmorStats(15, 0.0),
+            "gold", new ArmorStats(11, 0.0),
+            "diamond", new ArmorStats(20, 2.0),  // Total defense: 20, toughness: 2
+            "netherite", new ArmorStats(20, 3.0) // Total defense: 20, toughness: 3
+    );
+
+    public static int scanModItems(String modId) {
+        Map<String, List<String>> newEntries = new HashMap<>();
+
+        // Collect only armor, tools, and weapons from the given mod ID
+        for (Item item : ForgeRegistries.ITEMS.getValues()) {
+            ResourceLocation id = ForgeRegistries.ITEMS.getKey(item);
+            if (id != null && id.getNamespace().equals(modId)) {
+                List<String> defaultRequirement = getDefaultRequirement(item);
+                if (!defaultRequirement.isEmpty()) {
+                    newEntries.put(id.toString(), defaultRequirement);
+                }
+            }
+        }
+
+        if (newEntries.isEmpty()) {
+            return 0; // No items found
+        }
+
+        try {
+            File file = FMLPaths.CONFIGDIR.get().resolve("reskillable/skill_locks.json").toFile();
+            JsonObject skillLocksJson = new JsonObject();
+
+            // Load existing file if it exists
+            if (file.exists()) {
+                try (FileReader reader = new FileReader(file)) {
+                    skillLocksJson = new Gson().fromJson(reader, JsonObject.class);
+                }
+            }
+
+            // Get or create the "skillLocks" object
+            JsonObject skillLocks = skillLocksJson.has("skillLocks") ? skillLocksJson.getAsJsonObject("skillLocks") : new JsonObject();
+
+            // Merge new entries into the skillLocks object
+            for (Map.Entry<String, List<String>> entry : newEntries.entrySet()) {
+                if (!skillLocks.has(entry.getKey())) {
+                    skillLocks.add(entry.getKey(), new Gson().toJsonTree(entry.getValue()));
+                }
+            }
+
+            // Save the updated JSON to the file
+            skillLocksJson.add("skillLocks", skillLocks);
+            try (FileWriter writer = new FileWriter(file)) {
+                new GsonBuilder().setPrettyPrinting().create().toJson(skillLocksJson, writer);
+            }
+
+            return newEntries.size(); // Return the number of items added
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 0; // Error occurred
+        }
+    }
+
+    /**
+     * Determines the default requirement for a given item based on its type and properties.
+     */
+    private static List<String> getDefaultRequirement(Item item) {
+        if (item instanceof ArmorItem armor) {
+            int defense = armor.getDefense();
+            double toughness = armor.getToughness();
+            int level = determineArmorSkillLevel(defense, toughness);
+            return List.of("defense:" + level);
+        } else if (item instanceof SwordItem sword) {
+            double attackDamage = sword.getDamage();
+            return List.of("attack:" + determineAttackLevel(attackDamage));
+        } else if (item instanceof PickaxeItem pickaxe) {
+            int harvestLevel = pickaxe.getTier().getLevel();
+            return List.of("mining:" + determineHarvestLevel(harvestLevel));
+        } else if (item instanceof ShovelItem shovel) {
+            int harvestLevel = shovel.getTier().getLevel();
+            return List.of("gathering:" + determineHarvestLevel(harvestLevel));
+        } else if (item instanceof AxeItem axe) {
+            int harvestLevel = axe.getTier().getLevel();
+            return List.of("gathering:" + determineHarvestLevel(harvestLevel));
+        } else if (item instanceof HoeItem hoe) {
+            int harvestLevel = hoe.getTier().getLevel();
+            return List.of("farming:" + determineHarvestLevel(harvestLevel));
+        } else if (item instanceof BowItem || item instanceof CrossbowItem) {
+            ResourceLocation itemId = ForgeRegistries.ITEMS.getKey(item);
+            if (itemId != null) {
+                String itemKey = itemId.toString();
+                return RANGED_WEAPON_REQUIREMENTS.getOrDefault(itemKey, List.of("agility:10", "defense:5"));
+            }
+        }else if (item.getClass().getSimpleName().toLowerCase().contains("scythe")) {
+            return List.of("attack:20", "defense:15"); // Adjust levels as needed
+        } else if (item.getClass().getSimpleName().toLowerCase().contains("staff")) {
+            return List.of("magic:25");
+        }
+        return List.of();
+    }
+
+    /**
+     * Determines the skill level for armor dynamically based on its defense and toughness stats.
+     */
+    private static int determineArmorSkillLevel(int defense, double toughness) {
+        for (Map.Entry<String, ArmorStats> entry : VANILLA_ARMOR_BENCHMARKS.entrySet()) {
+            ArmorStats benchmark = entry.getValue();
+            if (defense <= benchmark.totalDefense && toughness <= benchmark.toughness) {
+                return switch (entry.getKey()) {
+                    case "leather" -> 5;
+                    case "chainmail" -> 10;
+                    case "iron" -> 15;
+                    case "gold" -> 15;
+                    case "diamond" -> 20;
+                    case "netherite" -> 30;
+                    default -> 5;
+                };
+            }
+        }
+        // If the armor exceeds netherite stats
+        return 35;
+    }
+
+    /**
+     * Determines the skill level required based on attack damage.
+     */
+    private static int determineAttackLevel(double attackDamage) {
+        if (attackDamage < 6) return 5;
+        if (attackDamage < 10) return 15;
+        return 30;
+    }
+
+    /**
+     * Determines the skill level required based on harvest level.
+     */
+    private static int determineHarvestLevel(int harvestLevel) {
+        if (harvestLevel < 2) return 5;
+        if (harvestLevel == 2) return 15;
+        return 30;
+    }
+
+    /**
+     * Helper class for armor stats comparison.
+     */
+    private static class ArmorStats {
+        int totalDefense;
+        double toughness;
+
+        public ArmorStats(int totalDefense, double toughness) {
+            this.totalDefense = totalDefense;
+            this.toughness = toughness;
         }
     }
 
