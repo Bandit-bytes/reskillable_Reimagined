@@ -60,8 +60,10 @@ public class SetCommand {
         skillModel.setSkillLevel(skill, newLevel);
         SyncToClient.send(player);
 
-        source.sendSuccess(() -> Component.translatable(skill.displayName)
-                .append(" increased by " + amount + " to " + newLevel), true);
+        if (Configuration.isSkillUpMessageEnabled()) {
+            source.sendSuccess(() -> Component.translatable(skill.displayName)
+                    .append(" increased by " + amount + " to " + newLevel), true);
+        }
 
         return 1;
     }

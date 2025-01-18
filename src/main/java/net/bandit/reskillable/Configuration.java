@@ -39,6 +39,7 @@ public class Configuration {
     private static final ForgeConfigSpec.DoubleValue XP_SCALING_MULTIPLIER;
     private static final ForgeConfigSpec.ConfigValue<List<? extends String>> SKILL_ALIAS;
     private static final ForgeConfigSpec.BooleanValue ENABLE_SKILL_LEVELING;
+    private static final ForgeConfigSpec.BooleanValue ENABLE_SKILL_UP_MESSAGE;
 
     private static boolean disableWool;
     private static boolean showTabButtons;
@@ -128,6 +129,8 @@ public class Configuration {
 
         ENABLE_SKILL_LEVELING = builder.comment("Enable or disable skill leveling via GUI or selection. If disabled, skill levels must be granted by commands.")
                 .define("enableSkillLeveling", true);
+        ENABLE_SKILL_UP_MESSAGE = builder.comment("Enable or disable the skill level-up message.")
+                .define("enableSkillUpMessage", true);
 
         SKILL_ALIAS = builder.defineList("skillAliases", List.of("defense=defense"), obj -> true);
 
@@ -171,6 +174,9 @@ public class Configuration {
     public static boolean isSkillLevelingEnabled() {
         return enableSkillLeveling;
     }
+    public static boolean isSkillUpMessageEnabled() {
+        return ENABLE_SKILL_UP_MESSAGE.get();
+    }
 
     private static Map<String, Requirement[]> parseSkillLocks(Map<String, List<String>> data) {
         Map<String, Requirement[]> locks = new HashMap<>();
@@ -181,7 +187,7 @@ public class Configuration {
         }
 
         for (Map.Entry<String, List<String>> entry : data.entrySet()) {
-            System.out.println("Parsing attack lock for: " + entry.getKey());
+//            System.out.println("Parsing attack lock for: " + entry.getKey());
             try {
                 List<String> rawRequirements = entry.getValue();
                 Requirement[] requirements = new Requirement[rawRequirements.size()];

@@ -96,40 +96,32 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
     private boolean canUse(Player player, ResourceLocation resource) {
         return checkRequirements(player, resource, RequirementType.USE);
     }
-
     private boolean checkRequirements(Player player, ResourceLocation resource, RequirementType type) {
         Requirement[] requirements = type.getRequirements(resource);
         if (requirements == null) {
-//            System.out.println("No requirements found for " + resource + " in " + type);
-            return true;
-        }
-
-//        System.out.println("Requirements for " + resource + ":");
-        for (Requirement requirement : requirements) {
-//            System.out.println("- Skill: " + requirement.skill.name() + ", Level: " + requirement.level);
+            return true; // No requirements
         }
 
         for (Requirement requirement : requirements) {
             if (getSkillLevel(requirement.skill) < requirement.level) {
-//                System.out.println("Player does not meet requirement: " + requirement.skill.name() + " level " + requirement.level);
-                sendSkillRequirementMessage(player, type);
+                sendSkillRequirementMessage(player, type, requirement); // Pass unmet requirement
                 return false;
             }
         }
         return true;
     }
 
-
-    private void sendSkillRequirementMessage(Player player, RequirementType type) {
+    private void sendSkillRequirementMessage(Player player, RequirementType type, Requirement unmetRequirement) {
         String message = switch (type) {
-            case ATTACK -> "You are not strong enough to attack this creature.";
-            case CRAFT -> "You are not skilled enough to craft this item.";
-            case USE -> "You are not skilled enough to use this item.";
+            case ATTACK -> "You need " + unmetRequirement.skill.name() + " level " + unmetRequirement.level + " to attack this creature.";
+            case CRAFT -> "You need " + unmetRequirement.skill.name() + " level " + unmetRequirement.level + " to craft this item.";
+            case USE -> "You need " + unmetRequirement.skill.name() + " level " + unmetRequirement.level + " to use this item.";
         };
 
         // Display the message to the player's chat
         player.displayClientMessage(Component.literal(message), true);
     }
+
 
     public static SkillModel get(Player player) {
         return player.getCapability(SkillCapability.INSTANCE).orElse(null);

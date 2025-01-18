@@ -16,22 +16,23 @@ public class InventoryTabs {
     @SubscribeEvent
     public static void onInitGui(ScreenEvent.Init.Post event) {
         if (!Configuration.shouldShowTabButtons()) {
-            return; // Do nothing if tab buttons are disabled
+            return;
         }
 
         var screen = event.getScreen();
 
-        // Check if the current screen is Inventory, Creative, or Skill screen
-        if (screen instanceof InventoryScreen || screen instanceof CreativeModeInventoryScreen || screen instanceof SkillScreen) {
-            boolean isCreative = screen instanceof CreativeModeInventoryScreen;
+        // Check if the screen is an Inventory or Skill screen (exclude Creative Mode)
+        if (screen instanceof InventoryScreen && !(screen instanceof CreativeModeInventoryScreen) || screen instanceof SkillScreen) {
             boolean isSkillsOpen = screen instanceof SkillScreen;
 
-            // Calculate positions for the tabs
-            int x = (screen.width - (isCreative ? 195 : 176)) / 2 - 28; // Left of the GUI
-            int y = (screen.height - (isCreative ? 136 : 166)) / 2;    // Center vertically
+            int guiLeft = (screen.width - 176) / 2; // Default GUI width
+            int guiTop = (screen.height - 166) / 2;
+            int buttonX = guiLeft - 28;
+            int inventoryTabY = guiTop + 7;
+            int skillsTabY = guiTop + 36;
 
             // Add Inventory tab
-            event.addListener(new TabButton(x, y + 7, TabButton.TabType.INVENTORY, !isSkillsOpen) {
+            event.addListener(new TabButton(buttonX, inventoryTabY, TabButton.TabType.INVENTORY, !isSkillsOpen) {
                 @Override
                 public void onPress() {
                     Minecraft.getInstance().setScreen(new InventoryScreen(Minecraft.getInstance().player));
@@ -39,7 +40,7 @@ public class InventoryTabs {
             });
 
             // Add Skills tab
-            event.addListener(new TabButton(x, y + 36, TabButton.TabType.SKILLS, isSkillsOpen) {
+            event.addListener(new TabButton(buttonX, skillsTabY, TabButton.TabType.SKILLS, isSkillsOpen) {
                 @Override
                 public void onPress() {
                     Minecraft.getInstance().setScreen(new SkillScreen());

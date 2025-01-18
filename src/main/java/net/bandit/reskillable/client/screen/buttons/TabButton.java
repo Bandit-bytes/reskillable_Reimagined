@@ -27,7 +27,11 @@ public class TabButton extends AbstractWidget {
         active = !(minecraft.screen instanceof InventoryScreen) || !((InventoryScreen) minecraft.screen).getRecipeBookComponent().isVisible();
 
         if (active) {
-            RenderSystem.setShaderTexture(0, SkillScreen.RESOURCES);
+            if (minecraft.screen instanceof InventoryScreen inventoryScreen) {
+                int guiLeft = inventoryScreen.getGuiLeft();
+                int guiTop = inventoryScreen.getGuiTop();
+                setPosition(guiLeft - 28, guiTop + (type == TabType.INVENTORY ? 7 : 36));
+            }
 
             // Draw the tab background
             guiGraphics.blit(SkillScreen.RESOURCES, getX(), getY(), selected ? 31 : 0, 166, width, height);
