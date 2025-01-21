@@ -19,5 +19,8 @@
   "tooltip.rereskillable.skill_cost_available": "Стоимость: §a%s XP §fМожно повысить уровень",
   "tooltip.rereskillable.skill_cost_unavailable": "Стоимость: §c%s XP §fНедостаточно",
   "tooltip.rereskillable.total_xp": "Ваш общий XP: §a%s",
-  "tooltip.rereskillable.skill_cost": "XP: %s / Стоимость: %s"
+  "tooltip.rereskillable.skill_cost": "XP: %s / Стоимость: %s",
+  "message.reskillable.requirement.attack": "Вам необходимы следующие умения, чтобы атаковать это существо: %s.",
+  "message.reskillable.requirement.craft": "Вам необходимы следующие умения, чтобы создать этот предмет: %s.",
+  "message.reskillable.requirement.use": "Вам необходимы следующие умения, чтобы использовать этот предмет: %s."
 }

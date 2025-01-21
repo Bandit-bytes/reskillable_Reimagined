@@ -388,18 +388,16 @@ public class Configuration {
     );
 
     private static final Map<String, ArmorStats> VANILLA_ARMOR_BENCHMARKS = Map.of(
-            "leather", new ArmorStats(3, 0.0),   // Total defense: 3, toughness: 0
+            "leather", new ArmorStats(3, 0.0),
             "chainmail", new ArmorStats(12, 0.0),
             "iron", new ArmorStats(15, 0.0),
             "gold", new ArmorStats(11, 0.0),
-            "diamond", new ArmorStats(20, 2.0),  // Total defense: 20, toughness: 2
-            "netherite", new ArmorStats(20, 3.0) // Total defense: 20, toughness: 3
+            "diamond", new ArmorStats(20, 2.0),
+            "netherite", new ArmorStats(20, 3.0)
     );
 
     public static int scanModItems(String modId) {
         Map<String, List<String>> newEntries = new HashMap<>();
-
-        // Collect only armor, tools, and weapons from the given mod ID
         for (Item item : ForgeRegistries.ITEMS.getValues()) {
             ResourceLocation id = ForgeRegistries.ITEMS.getKey(item);
             if (id != null && id.getNamespace().equals(modId)) {
@@ -417,34 +415,26 @@ public class Configuration {
         try {
             File file = FMLPaths.CONFIGDIR.get().resolve("reskillable/skill_locks.json").toFile();
             JsonObject skillLocksJson = new JsonObject();
-
-            // Load existing file if it exists
             if (file.exists()) {
                 try (FileReader reader = new FileReader(file)) {
                     skillLocksJson = new Gson().fromJson(reader, JsonObject.class);
                 }
             }
-
-            // Get or create the "skillLocks" object
             JsonObject skillLocks = skillLocksJson.has("skillLocks") ? skillLocksJson.getAsJsonObject("skillLocks") : new JsonObject();
-
-            // Merge new entries into the skillLocks object
             for (Map.Entry<String, List<String>> entry : newEntries.entrySet()) {
                 if (!skillLocks.has(entry.getKey())) {
                     skillLocks.add(entry.getKey(), new Gson().toJsonTree(entry.getValue()));
                 }
             }
-
-            // Save the updated JSON to the file
             skillLocksJson.add("skillLocks", skillLocks);
             try (FileWriter writer = new FileWriter(file)) {
                 new GsonBuilder().setPrettyPrinting().create().toJson(skillLocksJson, writer);
             }
 
-            return newEntries.size(); // Return the number of items added
+            return newEntries.size();
         } catch (Exception e) {
             e.printStackTrace();
-            return 0; // Error occurred
+            return 0;
         }
     }
 
@@ -479,7 +469,7 @@ public class Configuration {
                 return RANGED_WEAPON_REQUIREMENTS.getOrDefault(itemKey, List.of("agility:10", "defense:5"));
             }
         }else if (item.getClass().getSimpleName().toLowerCase().contains("scythe")) {
-            return List.of("attack:20", "defense:15"); // Adjust levels as needed
+            return List.of("attack:20", "defense:15");
         } else if (item.getClass().getSimpleName().toLowerCase().contains("staff")) {
             return List.of("magic:25");
         }

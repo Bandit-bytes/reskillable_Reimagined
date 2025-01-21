@@ -19,5 +19,9 @@
   "tooltip.rereskillable.skill_cost_available": "Cost: §a%s XP §fCan level Up",
   "tooltip.rereskillable.skill_cost_unavailable": "Cost: §c%s XP §fNot Enough",
   "tooltip.rereskillable.total_xp": "Your total XP: §a%s",
-  "tooltip.rereskillable.skill_cost": "XP: %s / Cost: %s"
+  "tooltip.rereskillable.skill_cost": "XP: %s / Cost: %s",
+  "message.reskillable.requirement.attack": "You need the following skills to attack this creature: %s.",
+  "message.reskillable.requirement.craft": "You need the following skills to craft this item: %s.",
+  "message.reskillable.requirement.use": "You need the following skills to use this item: %s."
+
 }

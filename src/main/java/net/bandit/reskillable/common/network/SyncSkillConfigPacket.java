@@ -18,6 +18,7 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -73,25 +74,28 @@ public class SyncSkillConfigPacket {
 
     public static void handle(SyncSkillConfigPacket msg, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
-            try {
-                if (ctx.get().getDirection().getReceptionSide().isClient()) {
-                    Configuration.setSkillLocks(msg.skillLocks);
-                    Configuration.setCraftSkillLocks(msg.craftSkillLocks);
-                    Configuration.setAttackSkillLocks(msg.attackSkillLocks);
+            CompletableFuture.runAsync(() -> {
+                try {
+                    if (ctx.get().getDirection().getReceptionSide().isClient()) {
+                        Configuration.setSkillLocks(msg.skillLocks);
+                        Configuration.setCraftSkillLocks(msg.craftSkillLocks);
+                        Configuration.setAttackSkillLocks(msg.attackSkillLocks);
 
-                    if (msg.isFinalChunk) {
-                        refreshClientUI();
-                        LOGGER.info("All skill configuration chunks received and applied.");
+                        if (msg.isFinalChunk) {
+                            refreshClientUI();
+                            LOGGER.info("All skill configuration chunks received and applied.");
+                        }
+                    } else {
+                        LOGGER.warning("Received SyncSkillConfigPacket on server. Ignoring.");
                     }
-                } else {
-                    LOGGER.warning("Received SyncSkillConfigPacket on server. Ignoring.");
+                } catch (Exception e) {
+                    LOGGER.log(Level.SEVERE, "Error updating skill locks", e);
                 }
-            } catch (Exception e) {
-                LOGGER.log(Level.SEVERE, "Error updating skill locks", e);
-            }
+            });
         });
         ctx.get().setPacketHandled(true);
     }
+
 
     private static void refreshClientUI() {
         DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
@@ -113,15 +117,30 @@ public class SyncSkillConfigPacket {
                 return;
             }
 
-            List<Map.Entry<String, Requirement[]>> entries = new ArrayList<>(skillLocks.entrySet());
-            for (int i = 0; i < entries.size(); i += CHUNK_SIZE) {
-                Map<String, Requirement[]> chunk = entries.stream()
+            List<Map.Entry<String, Requirement[]>> skillLockEntries = new ArrayList<>(skillLocks.entrySet());
+            List<Map.Entry<String, Requirement[]>> craftSkillLockEntries = new ArrayList<>(craftSkillLocks.entrySet());
+            List<Map.Entry<String, Requirement[]>> attackSkillLockEntries = new ArrayList<>(attackSkillLocks.entrySet());
+
+            int maxSize = Math.max(Math.max(skillLockEntries.size(), craftSkillLockEntries.size()), attackSkillLockEntries.size());
+
+            for (int i = 0; i < maxSize; i += CHUNK_SIZE) {
+                Map<String, Requirement[]> skillLockChunk = skillLockEntries.stream()
                         .skip(i)
                         .limit(CHUNK_SIZE)
                         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
-                boolean isFinalChunk = (i + CHUNK_SIZE) >= entries.size();
-                SyncSkillConfigPacket packet = new SyncSkillConfigPacket(chunk, craftSkillLocks, attackSkillLocks, isFinalChunk);
+                Map<String, Requirement[]> craftSkillLockChunk = craftSkillLockEntries.stream()
+                        .skip(i)
+                        .limit(CHUNK_SIZE)
+                        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+                Map<String, Requirement[]> attackSkillLockChunk = attackSkillLockEntries.stream()
+                        .skip(i)
+                        .limit(CHUNK_SIZE)
+                        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+                boolean isFinalChunk = (i + CHUNK_SIZE) >= maxSize;
+                SyncSkillConfigPacket packet = new SyncSkillConfigPacket(skillLockChunk, craftSkillLockChunk, attackSkillLockChunk, isFinalChunk);
                 Reskillable.NETWORK.send(PacketDistributor.ALL.noArg(), packet);
 
                 LOGGER.info("Sent chunk " + (i / CHUNK_SIZE + 1) + " to all clients.");

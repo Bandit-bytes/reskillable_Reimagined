@@ -7,7 +7,7 @@ public enum Skill {
     MINING(0, "skill.mining"),
     GATHERING(1, "skill.gathering"),
     ATTACK(2, "skill.attack"),
-    DEFENSE(3, "skill.defense"), // Corrected from "DEFENCE" to "DEFENSE"
+    DEFENSE(3, "skill.defense"),
     BUILDING(4, "skill.building"),
     FARMING(5, "skill.farming"),
     AGILITY(6, "skill.agility"),

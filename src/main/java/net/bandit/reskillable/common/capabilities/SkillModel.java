@@ -15,6 +15,10 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.Block;
 import net.minecraftforge.common.util.INBTSerializable;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
 
 public class SkillModel implements INBTSerializable<CompoundTag> {
     private static final int DEFAULT_SKILL_COUNT = 8;
@@ -22,7 +26,7 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
     private int[] skillExperience = new int[DEFAULT_SKILL_COUNT];
 
     public SkillModel() {
-        resetSkills(); // Initialize default skill values
+        resetSkills();
     }
 
     // Get Skill Level
@@ -98,28 +102,45 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
     }
     private boolean checkRequirements(Player player, ResourceLocation resource, RequirementType type) {
         Requirement[] requirements = type.getRequirements(resource);
-        if (requirements == null) {
-            return true; // No requirements
+        if (requirements == null || requirements.length == 0) {
+            return true;
         }
 
+        List<Requirement> unmetRequirements = new ArrayList<>();
         for (Requirement requirement : requirements) {
             if (getSkillLevel(requirement.skill) < requirement.level) {
-                sendSkillRequirementMessage(player, type, requirement); // Pass unmet requirement
-                return false;
+                unmetRequirements.add(requirement);
             }
         }
+
+        if (!unmetRequirements.isEmpty()) {
+            sendSkillRequirementMessage(player, type, unmetRequirements);
+            return false;
+        }
+
         return true;
     }
-
-    private void sendSkillRequirementMessage(Player player, RequirementType type, Requirement unmetRequirement) {
-        String message = switch (type) {
-            case ATTACK -> "You need " + unmetRequirement.skill.name() + " level " + unmetRequirement.level + " to attack this creature.";
-            case CRAFT -> "You need " + unmetRequirement.skill.name() + " level " + unmetRequirement.level + " to craft this item.";
-            case USE -> "You need " + unmetRequirement.skill.name() + " level " + unmetRequirement.level + " to use this item.";
+    private void sendSkillRequirementMessage(Player player, RequirementType type, List<Requirement> unmetRequirements) {
+        String translationKey = switch (type) {
+            case ATTACK -> "message.reskillable.requirement.attack";
+            case CRAFT -> "message.reskillable.requirement.craft";
+            case USE -> "message.reskillable.requirement.use";
         };
 
-        // Display the message to the player's chat
-        player.displayClientMessage(Component.literal(message), true);
+        List<Component> formattedRequirements = new ArrayList<>();
+        for (Requirement req : unmetRequirements) {
+            formattedRequirements.add(
+                    Component.literal(req.skill.name() + " level " + req.level)
+            );
+        }
+        Component joinedRequirements = Component.literal(" ")
+                .append(Component.literal(String.join(", ",
+                        formattedRequirements.stream()
+                                .map(Component::getString)
+                                .collect(Collectors.toList()))
+                ));
+        Component message = Component.translatable(translationKey, joinedRequirements);
+        player.displayClientMessage(message, true);
     }
 
 
@@ -138,13 +159,11 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
         return checkRequirements(player, resource, RequirementType.ATTACK);
     }
 
-    // Prevent Resets by Logging and Syncing
     public void syncSkills(Player player) {
         if (player instanceof ServerPlayer) {
             SyncToClient.send(player);
         }
     }
-
 
     public void resetSkills() {
         for (int i = 0; i < DEFAULT_SKILL_COUNT; i++) {

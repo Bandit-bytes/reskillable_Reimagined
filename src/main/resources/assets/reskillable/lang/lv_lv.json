@@ -19,5 +19,8 @@
   "tooltip.rereskillable.skill_cost_available": "Izmaksas: §a%s XP §fVar līmeņoties",
   "tooltip.rereskillable.skill_cost_unavailable": "Izmaksas: §c%s XP §fNepietiek",
   "tooltip.rereskillable.total_xp": "Jūsu kopējais XP: §a%s",
-  "tooltip.rereskillable.skill_cost": "XP: %s / Izmaksas: %s"
+  "tooltip.rereskillable.skill_cost": "XP: %s / Izmaksas: %s",
+  "message.reskillable.requirement.attack": "Jums nepieciešamas šādas prasmes, lai uzbruktu šim radījumam: %s.",
+  "message.reskillable.requirement.craft": "Jums nepieciešamas šādas prasmes, lai izgatavotu šo priekšmetu: %s.",
+  "message.reskillable.requirement.use": "Jums nepieciešamas šādas prasmes, lai lietotu šo priekšmetu: %s."
 }

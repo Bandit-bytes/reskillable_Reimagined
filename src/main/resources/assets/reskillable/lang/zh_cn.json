@@ -19,5 +19,8 @@
   "tooltip.rereskillable.skill_cost_available": "消耗: §a%s XP §f可以升级",
   "tooltip.rereskillable.skill_cost_unavailable": "消耗: §c%s XP §f不足",
   "tooltip.rereskillable.total_xp": "你的总 XP: §a%s",
-  "tooltip.rereskillable.skill_cost": "XP: %s / 消耗: %s"
+  "tooltip.rereskillable.skill_cost": "XP: %s / 消耗: %s",
+  "message.reskillable.requirement.attack": "你需要以下技能才能攻击此生物：%s。",
+  "message.reskillable.requirement.craft": "你需要以下技能才能制作此物品：%s。",
+  "message.reskillable.requirement.use": "你需要以下技能才能使用此物品：%s。"
 }

@@ -22,9 +22,10 @@ public class SkillProvider implements ICapabilitySerializable<CompoundTag> {
         this.skillModel = skillModel;
         this.optional = LazyOptional.of(() -> skillModel);
     }
-
     public void invalidate() {
-        optional.invalidate();
+        if (optional != null) {
+            optional.invalidate();
+        }
     }
 
     // Get Capability
