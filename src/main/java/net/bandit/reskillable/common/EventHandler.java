@@ -141,7 +141,6 @@ public class EventHandler {
             SkillModel skillModel = new SkillModel();
             SkillProvider provider = new SkillProvider(skillModel);
             event.addCapability(new ResourceLocation("reskillable", "cap_skills"), provider);
-            event.addListener(provider::invalidate);
         }
     }
     @SubscribeEvent
