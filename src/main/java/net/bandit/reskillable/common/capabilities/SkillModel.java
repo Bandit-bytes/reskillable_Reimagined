@@ -129,10 +129,15 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
 
         List<Component> formattedRequirements = new ArrayList<>();
         for (Requirement req : unmetRequirements) {
+            String skillTranslationKey = "skill." + req.skill.name().toLowerCase(); // Ensure key matches lang file
+            Component translatedSkillName = Component.translatable(skillTranslationKey); // Retrieve translated name
             formattedRequirements.add(
-                    Component.literal(req.skill.name() + " level " + req.level)
+                    Component.literal("")
+                            .append(translatedSkillName)
+                            .append(" level " + req.level)
             );
         }
+
         Component joinedRequirements = Component.literal(" ")
                 .append(Component.literal(String.join(", ",
                         formattedRequirements.stream()
