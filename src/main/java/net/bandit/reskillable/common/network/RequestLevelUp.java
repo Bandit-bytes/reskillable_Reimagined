@@ -34,7 +34,7 @@ public class RequestLevelUp {
             }
             // Check if skill leveling is enabled
             if (!Configuration.isSkillLevelingEnabled()) {
-                player.sendSystemMessage(Component.literal("Skill leveling is currently disabled on this server."));
+                player.sendSystemMessage(Component.translatable("reskillable.server.disabled"));
                 return;
             }
 
@@ -51,7 +51,7 @@ public class RequestLevelUp {
             int currentLevel = skillModel.getSkillLevel(skill);
 
             if (currentLevel >= Configuration.getMaxLevel()) {
-                player.sendSystemMessage(Component.literal("Skill is already at the maximum level."));
+                player.sendSystemMessage(Component.translatable("reskillable.maxlevel"));
                 return;
             }
 
@@ -71,7 +71,7 @@ public class RequestLevelUp {
                 skillModel.increaseSkillLevel(skill, player);
                 SyncToClient.send(player);
             } else {
-                player.sendSystemMessage(Component.literal("Not enough XP to level up this skill."));
+                player.sendSystemMessage(Component.translatable("reskillable.not_enough"));
             }
         });
 

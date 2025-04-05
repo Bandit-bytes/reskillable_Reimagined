@@ -22,5 +22,8 @@
   "tooltip.rereskillable.skill_cost": "XP: %s / 消耗: %s",
   "message.reskillable.requirement.attack": "你需要以下技能才能攻击此生物：%s。",
   "message.reskillable.requirement.craft": "你需要以下技能才能制作此物品：%s。",
-  "message.reskillable.requirement.use": "你需要以下技能才能使用此物品：%s。"
+  "message.reskillable.requirement.use": "你需要以下技能才能使用此物品：%s。",
+  "reskillable.server.disabled": "该服务器当前已禁用技能升级。",
+  "reskillable.maxlevel": "该技能已达到最大等级。",
+  "reskillable.not_enough": "XP不足，无法升级该技能。"
 }

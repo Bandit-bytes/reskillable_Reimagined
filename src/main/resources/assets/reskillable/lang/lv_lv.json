@@ -22,5 +22,9 @@
   "tooltip.rereskillable.skill_cost": "XP: %s / Izmaksas: %s",
   "message.reskillable.requirement.attack": "Jums nepieciešamas šādas prasmes, lai uzbruktu šim radījumam: %s.",
   "message.reskillable.requirement.craft": "Jums nepieciešamas šādas prasmes, lai izgatavotu šo priekšmetu: %s.",
-  "message.reskillable.requirement.use": "Jums nepieciešamas šādas prasmes, lai lietotu šo priekšmetu: %s."
+  "message.reskillable.requirement.use": "Jums nepieciešamas šādas prasmes, lai lietotu šo priekšmetu: %s.",
+  "reskillable.server.disabled": "Prasmju līmeņu paaugstināšana šajā serverī pašlaik ir atspējota.",
+  "reskillable.maxlevel": "Prasme jau ir sasniegusi maksimālo līmeni.",
+  "reskillable.not_enough": "Nav pietiekami daudz XP, lai paaugstinātu šīs prasmes līmeni."
 }
+

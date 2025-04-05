@@ -5,16 +5,20 @@ import net.bandit.reskillable.client.screen.buttons.SkillButton;
 import net.bandit.reskillable.common.capabilities.SkillModel;
 import net.bandit.reskillable.common.commands.skills.Skill;
 import net.bandit.reskillable.Configuration;
+import net.bandit.reskillable.common.commands.skills.SkillAttributeBonus;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class SkillScreen extends Screen {
@@ -47,21 +51,8 @@ public class SkillScreen extends Screen {
         int top = (height - 166) / 2;
 
         renderBackground(guiGraphics);
-
-        // Render the main GUI texture
         guiGraphics.blit(RESOURCES, left, top, 0, 0, 176, 166);
 
-        // Render the "Skills" label without a button or background
-        int labelX = width / 2 - font.width("Skills") / 2;
-        int labelY = top + 6;
-//        guiGraphics.drawString(font, "Skills", labelX, labelY, 0x3F3F3F, false);
-
-        // Render tooltip for total XP if hovering over the label
-        if (mouseX > labelX && mouseX < labelX + font.width("Skills") && mouseY > labelY && mouseY < labelY + font.lineHeight) {
-            renderTotalXPTooltip(guiGraphics, mouseX, mouseY);
-        }
-
-        // Render precomputed XP costs and colors
         int i = 0;
         for (Skill skill : Skill.values()) {
             int x = left + (i % 2) * 83 + 10;
@@ -75,26 +66,94 @@ public class SkillScreen extends Screen {
         }
 
         super.render(guiGraphics, mouseX, mouseY, partialTicks);
-    }
 
-    private void renderTotalXPTooltip(GuiGraphics guiGraphics, int mouseX, int mouseY) {
-        Player player = Minecraft.getInstance().player;
-        if (player != null) {
-            int totalXP = calculateTotalXP(player);
-            int level = getLevelForTotalXP(totalXP);
-
-            // Create components for the tooltip
-            Component totalXPComponent = Component.literal(String.valueOf(totalXP)).withStyle(ChatFormatting.GREEN);
-            Component levelComponent = Component.literal(String.valueOf(level));
-            Component tooltip = Component.translatable("tooltip.rereskillable.total_xp", totalXPComponent, levelComponent);
-
-            // Render the tooltip
-            guiGraphics.renderTooltip(Minecraft.getInstance().font, tooltip, mouseX, mouseY);
+        int labelX = width / 2 - font.width("Skills") / 2;
+        int labelY = top + 6;
+        if (mouseX > labelX && mouseX < labelX + font.width("Skills") && mouseY > labelY && mouseY < labelY + font.lineHeight) {
+            renderTotalXPTooltip(guiGraphics, mouseX, mouseY);
         }
     }
 
+    private void renderTotalXPTooltip(GuiGraphics guiGraphics, int mouseX, int mouseY) {
+    Player player = Minecraft.getInstance().player;
+    if (player != null) {
+        int totalXP = calculateTotalXP(player);
+        int level = getLevelForTotalXP(totalXP);
 
-    // Helper methods for XP calculation
+        Component totalXPComponent = Component.literal(String.valueOf(totalXP)).withStyle(ChatFormatting.GREEN);
+        Component levelComponent = Component.literal(String.valueOf(level));
+        Component tooltip = Component.translatable("tooltip.rereskillable.total_xp", totalXPComponent, levelComponent);
+
+        List<Component> tooltipLines = new ArrayList<>();
+        tooltipLines.add(tooltip);
+
+        tooltipLines.add(Component.literal(" "));
+
+        SkillModel model = SkillModel.get(player);
+        if (model != null) {
+            for (Skill skill : Skill.values()) {
+                int skillLevel = model.getSkillLevel(skill);
+
+                var bonus = SkillAttributeBonus.getBySkill(skill);
+                Attribute attribute = bonus != null ? bonus.getAttribute() : null;
+
+                if (bonus != null && attribute != null) {
+                    double amount = (skillLevel / 5) * bonus.getBonusPerStep();
+                    if (amount > 0) {
+                        Component skillName = Component.translatable("skill." + skill.name().toLowerCase()).withStyle(ChatFormatting.GOLD);
+                        Component attrName = Component.translatable(attribute.getDescriptionId()).withStyle(ChatFormatting.GRAY);
+
+                        Component bonusLine = Component.literal("")
+                                .append(skillName)
+                                .append(": +")
+                                .append(Component.literal(String.format("%.2f", amount)).withStyle(ChatFormatting.AQUA))
+                                .append(" ")
+                                .append(attrName);
+
+                        tooltipLines.add(bonusLine);
+                    }
+                } else {
+                    Component skillName = Component.translatable("skill." + skill.name().toLowerCase()).withStyle(ChatFormatting.GOLD);
+                    Component bonusLine = switch (skill) {
+                        case MINING -> Component.literal("")
+                                .append(skillName)
+                                .append(": ")
+                                .append(Component.literal("x" + String.format("%.2f", 1.0 + (skillLevel / 5.0) * 0.25)).withStyle(ChatFormatting.AQUA))
+                                .append(" ")
+                                .append(Component.literal("Break Speed").withStyle(ChatFormatting.GRAY));
+
+                        case GATHERING -> Component.literal("")
+                                .append(skillName)
+                                .append(": +")
+                                .append(Component.literal(String.format("%.1f", (skillLevel / 5.0 * 0.5))).withStyle(ChatFormatting.AQUA))
+                                .append(" ")
+                                .append(Component.literal("Pickup Range").withStyle(ChatFormatting.GRAY));
+
+                        case FARMING -> Component.literal("")
+                                .append(skillName)
+                                .append(": +")
+                                .append(Component.literal((int)((skillLevel / 5.0) * 25) + "%").withStyle(ChatFormatting.AQUA))
+                                .append(" ")
+                                .append(Component.literal("Crop Growth").withStyle(ChatFormatting.GRAY));
+
+                        default -> null;
+                    };
+
+                    if (bonusLine != null) {
+                        tooltipLines.add(bonusLine);
+                    }
+                }
+
+            }
+        }
+        guiGraphics.renderTooltip(
+                Minecraft.getInstance().font,
+                tooltipLines.stream().map(Component::getVisualOrderText).toList(),
+                mouseX,
+                mouseY
+        );
+    }
+}
     private int calculateTotalXP(Player player) {
         int level = player.experienceLevel;
         float progress = player.experienceProgress;
@@ -135,8 +194,6 @@ public class SkillScreen extends Screen {
         Player player = Minecraft.getInstance().player;
         if (player != null) {
             SkillModel skillModel = SkillModel.get(player);
-
-            // Pre-compute XP costs and colors
             for (Skill skill : Skill.values()) {
                 int skillLevel = skillModel.getSkillLevel(skill);
                 int xpCost = Configuration.calculateExperienceCost(skillLevel);

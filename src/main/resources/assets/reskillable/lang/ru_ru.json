@@ -22,5 +22,9 @@
   "tooltip.rereskillable.skill_cost": "XP: %s / Стоимость: %s",
   "message.reskillable.requirement.attack": "Вам необходимы следующие умения, чтобы атаковать это существо: %s.",
   "message.reskillable.requirement.craft": "Вам необходимы следующие умения, чтобы создать этот предмет: %s.",
-  "message.reskillable.requirement.use": "Вам необходимы следующие умения, чтобы использовать этот предмет: %s."
+  "message.reskillable.requirement.use": "Вам необходимы следующие умения, чтобы использовать этот предмет: %s.",
+  "reskillable.server.disabled": "Прокачка навыков на этом сервере в данный момент отключена.",
+  "reskillable.maxlevel": "Этот навык уже достиг максимального уровня.",
+  "reskillable.not_enough": "Недостаточно опыта для повышения уровня этого навыка."
 }
+

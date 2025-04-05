@@ -3,7 +3,10 @@ package net.bandit.reskillable.common;
 import net.bandit.reskillable.Configuration;
 import net.bandit.reskillable.common.capabilities.SkillModel;
 import net.bandit.reskillable.common.capabilities.SkillProvider;
+import net.bandit.reskillable.common.commands.skills.Skill;
+import net.bandit.reskillable.common.commands.skills.SkillAttributeBonus;
 import net.bandit.reskillable.common.network.SyncToClient;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.animal.Sheep;
@@ -11,6 +14,11 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.tags.ItemTags;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.level.BlockEvent;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.event.AttachCapabilitiesEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
@@ -19,9 +27,11 @@ import net.minecraftforge.event.entity.living.LivingEquipmentChangeEvent;
 import net.minecraftforge.event.entity.player.AttackEntityEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
+import net.minecraftforge.eventbus.api.Event;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,6 +39,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class EventHandler {
     private SkillModel lastDiedPlayerSkills = null;
     private static final Map<UUID, SkillModel> lastDiedPlayerSkillsMap = new ConcurrentHashMap<>();
+
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public void onLeftClickBlock(PlayerInteractEvent.LeftClickBlock event) {
@@ -143,6 +154,7 @@ public class EventHandler {
             event.addCapability(new ResourceLocation("reskillable", "cap_skills"), provider);
         }
     }
+
     @SubscribeEvent
     public void onPlayerClone(PlayerEvent.Clone event) {
         Player original = event.getOriginal();
@@ -153,49 +165,113 @@ public class EventHandler {
 
         if (originalModel != null && cloneModel != null) {
             cloneModel.cloneFrom(originalModel);
-//            System.out.println("Skills cloned for player: " + clone.getName().getString());
             cloneModel.syncSkills(clone);
-        } else {
-//            System.out.println("SkillModel missing during player clone event for player: " + clone.getName().getString());
+            cloneModel.updateSkillAttributeBonuses(clone);
         }
         original.invalidateCaps();
     }
 
     @SubscribeEvent
     public void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
-        SkillModel skillModel = SkillModel.get(event.getEntity());
+        Player player = event.getEntity();
+        SkillModel skillModel = SkillModel.get(player);
+
         if (skillModel != null) {
-            SyncToClient.send(event.getEntity());
+            // Send data to the client
+            SyncToClient.send(player);
+
+            // Update attribute bonuses based on skill levels
+            skillModel.updateSkillAttributeBonuses(player);
         }
     }
+
     @SubscribeEvent
     public void onPlayerRespawn(PlayerEvent.PlayerRespawnEvent event) {
         Player player = event.getEntity();
+        SkillModel model = SkillModel.get(player);
 
         if (!player.level().isClientSide()) {
             SkillModel skillModel = SkillModel.get(player);
 
             if (skillModel != null) {
                 SyncToClient.send(player);
-//                System.out.println("Skills synced on respawn for player: " + player.getName().getString());
-            } else {
-//                System.out.println("SkillModel missing during respawn for player: " + player.getName().getString());
+                model.updateSkillAttributeBonuses(player);
             }
         }
     }
+
     @SubscribeEvent
     public void onChangeDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
         Player player = event.getEntity();
+        SkillModel model = SkillModel.get(player);
 
         if (!player.level().isClientSide()) {
             SkillModel skillModel = SkillModel.get(player);
             if (skillModel != null) {
                 skillModel.syncSkills(player);
-//                System.out.println("Skills synced on dimension change for player: " + player.getName().getString());
-            } else {
-//                System.out.println("SkillModel missing during dimension change for player: " + player.getName().getString());
+                model.updateSkillAttributeBonuses(player);
             }
         }
     }
 
+    @SubscribeEvent
+    public void onBreakSpeed(PlayerEvent.BreakSpeed event) {
+        Player player = event.getEntity();
+        SkillModel model = SkillModel.get(player);
+        if (model != null) {
+            int miningLevel = model.getSkillLevel(Skill.MINING);
+            if (miningLevel >= 5) {
+                var bonus = SkillAttributeBonus.getBySkill(Skill.MINING);
+                if (bonus != null) {
+                    float multiplier = 1.0f + (miningLevel / 5f) * (float) bonus.getBonusPerStep();
+                    event.setNewSpeed(event.getNewSpeed() * multiplier);
+                }
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public void onCropGrow(BlockEvent.CropGrowEvent.Pre event) {
+        if (!(event.getLevel() instanceof ServerLevel level)) return;
+
+        level.players().forEach(player -> {
+            if (player.distanceToSqr(Vec3.atCenterOf(event.getPos())) < 64) {
+                SkillModel model = SkillModel.get(player);
+                if (model != null) {
+                    int farmingLevel = model.getSkillLevel(Skill.FARMING);
+                    var bonus = SkillAttributeBonus.getBySkill(Skill.FARMING);
+                    if (bonus != null) {
+                        float chance = (farmingLevel / 5f) * (float) bonus.getBonusPerStep();
+                        if (farmingLevel >= 5 && level.random.nextFloat() < chance) {
+                            event.setResult(Event.Result.ALLOW);
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    @SubscribeEvent
+    public void onPlayerTick(TickEvent.PlayerTickEvent event) {
+        if (event.phase != TickEvent.Phase.END || event.player.level().isClientSide) return;
+
+        Player player = event.player;
+        SkillModel model = SkillModel.get(player);
+        if (model == null) return;
+
+        int gatheringLevel = model.getSkillLevel(Skill.GATHERING);
+        if (gatheringLevel < 5) return;
+
+        var bonus = SkillAttributeBonus.getBySkill(Skill.GATHERING);
+        if (bonus != null) {
+            double range = 2.5 + (gatheringLevel / 5.0) * bonus.getBonusPerStep();
+            List<ItemEntity> items = player.level().getEntitiesOfClass(ItemEntity.class, player.getBoundingBox().inflate(range));
+
+            for (ItemEntity item : items) {
+                if (!item.hasPickUpDelay() && !item.isRemoved()) {
+                    item.playerTouch(player);
+                }
+            }
+        }
+    }
 }

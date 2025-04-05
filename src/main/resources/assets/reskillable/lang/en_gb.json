@@ -22,6 +22,9 @@
   "tooltip.rereskillable.skill_cost": "XP: %s / Cost: %s",
   "message.reskillable.requirement.attack": "You need the following skills to attack this creature: %s.",
   "message.reskillable.requirement.craft": "You need the following skills to craft this item: %s.",
-  "message.reskillable.requirement.use": "You need the following skills to use this item: %s."
+  "message.reskillable.requirement.use": "You need the following skills to use this item: %s.",
+  "reskillable.server.disabled": "Skill leveling is currently disabled on this server.",
+  "reskillable.maxlevel": "Skill is already at the maximum level.",
+  "reskillable.not_enough": "Not enough XP to level up this skill."
 
 }
