@@ -21,7 +21,6 @@ public class InventoryTabs {
 
         var screen = event.getScreen();
 
-        // Check if the screen is an Inventory or Skill screen (exclude Creative Mode)
         if (screen instanceof InventoryScreen && !(screen instanceof CreativeModeInventoryScreen) || screen instanceof SkillScreen) {
             boolean isSkillsOpen = screen instanceof SkillScreen;
 
@@ -39,7 +38,6 @@ public class InventoryTabs {
                 }
             });
 
-            // Add Skills tab
             event.addListener(new TabButton(buttonX, skillsTabY, TabButton.TabType.SKILLS, isSkillsOpen) {
                 @Override
                 public void onPress() {

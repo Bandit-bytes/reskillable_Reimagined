@@ -26,6 +26,7 @@ public class SkillScreen extends Screen {
     private final Map<Skill, String> xpCostDisplay = new HashMap<>();
     private final Map<Skill, Integer> xpCostColor = new HashMap<>();
 
+
     public SkillScreen() {
         super(Component.empty());
     }
@@ -103,10 +104,11 @@ public class SkillScreen extends Screen {
                         Component skillName = Component.translatable("skill." + skill.name().toLowerCase()).withStyle(ChatFormatting.GOLD);
                         Component attrName = Component.translatable(attribute.getDescriptionId()).withStyle(ChatFormatting.GRAY);
 
+                        String percentText = String.format("%.1f%%", amount * 100);
                         Component bonusLine = Component.literal("")
                                 .append(skillName)
                                 .append(": +")
-                                .append(Component.literal(String.format("%.2f", amount)).withStyle(ChatFormatting.AQUA))
+                                .append(Component.literal(percentText).withStyle(ChatFormatting.AQUA))
                                 .append(" ")
                                 .append(attrName);
 
@@ -125,9 +127,10 @@ public class SkillScreen extends Screen {
                         case GATHERING -> Component.literal("")
                                 .append(skillName)
                                 .append(": +")
-                                .append(Component.literal(String.format("%.1f", (skillLevel / 5.0 * 0.5))).withStyle(ChatFormatting.AQUA))
+                                .append(Component.literal(String.format("%.0f%%", (skillLevel / 5.0 * Configuration.GATHERING_XP_BONUS.get() * 100)))
+                                        .withStyle(ChatFormatting.AQUA))
                                 .append(" ")
-                                .append(Component.literal("Pickup Range").withStyle(ChatFormatting.GRAY));
+                                .append(Component.literal("Bonus XP from Orbs").withStyle(ChatFormatting.GRAY));
 
                         case FARMING -> Component.literal("")
                                 .append(skillName)

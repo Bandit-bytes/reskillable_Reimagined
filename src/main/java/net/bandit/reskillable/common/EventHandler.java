@@ -15,6 +15,7 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.tags.ItemTags;
 import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.entity.player.PlayerXpEvent;
 import net.minecraftforge.event.level.BlockEvent;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.server.level.ServerLevel;
@@ -177,11 +178,9 @@ public class EventHandler {
         SkillModel skillModel = SkillModel.get(player);
 
         if (skillModel != null) {
-            // Send data to the client
             SyncToClient.send(player);
-
-            // Update attribute bonuses based on skill levels
             skillModel.updateSkillAttributeBonuses(player);
+
         }
     }
 
@@ -222,7 +221,7 @@ public class EventHandler {
             int miningLevel = model.getSkillLevel(Skill.MINING);
             if (miningLevel >= 5) {
                 var bonus = SkillAttributeBonus.getBySkill(Skill.MINING);
-                if (bonus != null) {
+                if (bonus != null && model.isPerkEnabled(Skill.MINING)) {
                     float multiplier = 1.0f + (miningLevel / 5f) * (float) bonus.getBonusPerStep();
                     event.setNewSpeed(event.getNewSpeed() * multiplier);
                 }
@@ -240,7 +239,7 @@ public class EventHandler {
                 if (model != null) {
                     int farmingLevel = model.getSkillLevel(Skill.FARMING);
                     var bonus = SkillAttributeBonus.getBySkill(Skill.FARMING);
-                    if (bonus != null) {
+                    if (bonus != null && model.isPerkEnabled(Skill.FARMING)) {
                         float chance = (farmingLevel / 5f) * (float) bonus.getBonusPerStep();
                         if (farmingLevel >= 5 && level.random.nextFloat() < chance) {
                             event.setResult(Event.Result.ALLOW);
@@ -251,27 +250,45 @@ public class EventHandler {
         });
     }
 
-    @SubscribeEvent
-    public void onPlayerTick(TickEvent.PlayerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || event.player.level().isClientSide) return;
 
-        Player player = event.player;
+    @SubscribeEvent
+    public void onXpPickup(PlayerXpEvent.PickupXp event) {
+        Player player = event.getEntity();
+        if (player.level().isClientSide) return;
+
         SkillModel model = SkillModel.get(player);
-        if (model == null) return;
+        if (model == null || !model.isPerkEnabled(Skill.GATHERING)) return;
 
         int gatheringLevel = model.getSkillLevel(Skill.GATHERING);
         if (gatheringLevel < 5) return;
 
         var bonus = SkillAttributeBonus.getBySkill(Skill.GATHERING);
         if (bonus != null) {
-            double range = 2.5 + (gatheringLevel / 5.0) * bonus.getBonusPerStep();
-            List<ItemEntity> items = player.level().getEntitiesOfClass(ItemEntity.class, player.getBoundingBox().inflate(range));
+            double bonusPercentPerStep = bonus.getBonusPerStep();
+            int bonusSteps = gatheringLevel / 5;
+            float originalXp = event.getOrb().value;
 
-            for (ItemEntity item : items) {
-                if (!item.hasPickUpDelay() && !item.isRemoved()) {
-                    item.playerTouch(player);
-                }
+            int bonusXp = Math.round(originalXp * (float)(bonusSteps * bonusPercentPerStep));
+            if (bonusXp > 0) {
+                player.giveExperiencePoints(bonusXp);
             }
         }
     }
+    @SubscribeEvent
+    public void onPlayerTick(TickEvent.PlayerTickEvent event) {
+        if (event.phase != TickEvent.Phase.END || event.player.level().isClientSide) return;
+        if (event.player.tickCount % 20 != 0) return;
+
+
+        Player player = event.player;
+        SkillModel model = SkillModel.get(player);
+        if (model == null) return;
+
+        for (SkillAttributeBonus bonus : SkillAttributeBonus.values()) {
+            if (bonus.getAttribute() != null) {
+            }
+        }
+    }
+
+
 }

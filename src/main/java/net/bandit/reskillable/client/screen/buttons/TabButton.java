@@ -20,7 +20,6 @@ public class TabButton extends AbstractWidget {
         this.selected = selected;
     }
 
-    // Render the widget
     @Override
     public void renderWidget(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
         Minecraft minecraft = Minecraft.getInstance();
@@ -33,9 +32,7 @@ public class TabButton extends AbstractWidget {
                 setPosition(guiLeft - 28, guiTop + (type == TabType.INVENTORY ? 7 : 36));
             }
 
-            // Draw the tab background
             guiGraphics.blit(SkillScreen.RESOURCES, getX(), getY(), selected ? 31 : 0, 166, width, height);
-            // Draw the icon
             guiGraphics.blit(SkillScreen.RESOURCES, getX() + (selected ? 8 : 10), getY() + 6, 240, 128 + type.iconIndex * 16, 16, 16);
         }
     }

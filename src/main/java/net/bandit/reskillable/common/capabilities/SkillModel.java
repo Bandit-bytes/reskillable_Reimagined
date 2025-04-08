@@ -19,10 +19,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.Block;
 import net.minecraftforge.common.util.INBTSerializable;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 
@@ -30,6 +27,7 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
     private static final int DEFAULT_SKILL_COUNT = 8;
     private int[] skillLevels = new int[DEFAULT_SKILL_COUNT];
     private int[] skillExperience = new int[DEFAULT_SKILL_COUNT];
+    private final Set<Skill> disabledPerks = new HashSet<>();
     private static final UUID GLOBAL_HEALTH_BONUS_ID = UUID.nameUUIDFromBytes("reskillable:global_health_bonus".getBytes());
 
 
@@ -235,24 +233,33 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
     }
     public void updateSkillAttributeBonuses(Player player) {
         for (SkillAttributeBonus bonus : SkillAttributeBonus.values()) {
-            int skillLevel = getSkillLevel(bonus.skill);
-            int bonusSteps = skillLevel / 5;
-            double totalBonus = bonusSteps * bonus.getBonusPerStep();
-
             Attribute attr = bonus.getAttribute();
-            if (attr != null) {
-                UUID modifierId = SkillModel.ATTRIBUTE_MODIFIER_IDS[bonus.skill.index];
-                var attrInstance = player.getAttribute(attr);
-                if (attrInstance != null) {
-                    attrInstance.removeModifier(modifierId);
-                    if (totalBonus > 0) {
-                        AttributeModifier modifier = new AttributeModifier(modifierId, "Reskillable Skill Bonus", totalBonus, AttributeModifier.Operation.ADDITION);
-                        attrInstance.addPermanentModifier(modifier);
-                    }
+            if (attr == null) continue;
+
+            UUID modifierId = SkillModel.ATTRIBUTE_MODIFIER_IDS[bonus.skill.index];
+            var attrInstance = player.getAttribute(attr);
+            if (attrInstance == null) continue;
+
+            // Always remove the modifier first
+            attrInstance.removeModifier(modifierId);
+
+            // Then re-add it only if the perk is enabled and has bonus
+            if (isPerkEnabled(bonus.skill)) {
+                int skillLevel = getSkillLevel(bonus.skill);
+                int bonusSteps = skillLevel / 5;
+                double totalBonus = bonusSteps * bonus.getBonusPerStep();
+
+                if (totalBonus > 0) {
+                    AttributeModifier modifier = new AttributeModifier(
+                            modifierId, "Reskillable Skill Bonus", totalBonus, bonus.operation
+                    );
+                    attrInstance.addPermanentModifier(modifier);
                 }
-            }
+
+    }
         }
-        int totalSkillLevels = Arrays.stream(skillLevels).sum();
+
+    int totalSkillLevels = Arrays.stream(skillLevels).sum();
         int levelsPerHeart = Configuration.LEVELS_PER_HEART.get();
         double healthPerHeart = Configuration.HEALTH_PER_HEART.get();
 
@@ -268,6 +275,23 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
                         GLOBAL_HEALTH_BONUS_ID, "Reskillable Total Level Bonus", healthBonus, AttributeModifier.Operation.ADDITION
                 );
                 healthAttr.addPermanentModifier(healthModifier);
+            }
+        }
+    }
+    public boolean isPerkEnabled(Skill skill) {
+        return !disabledPerks.contains(skill);
+    }
+
+    public void togglePerk(Skill skill) {
+        if (!disabledPerks.add(skill)) {
+            disabledPerks.remove(skill);
+        }
+
+    }
+    public void refreshAttributes(Player player) {
+        for (SkillAttributeBonus bonus : SkillAttributeBonus.values()) {
+            if (bonus.getAttribute() != null) {
+                bonus.applyModifier(player, this);
             }
         }
     }

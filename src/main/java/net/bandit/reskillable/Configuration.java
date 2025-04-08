@@ -51,7 +51,7 @@ public class Configuration {
     public static ForgeConfigSpec.DoubleValue BLOCK_REACH_BONUS;
     public static ForgeConfigSpec.DoubleValue MINING_SPEED_MULTIPLIER;
     public static ForgeConfigSpec.DoubleValue CROP_GROWTH_CHANCE;
-    public static ForgeConfigSpec.DoubleValue GATHERING_RANGE_BONUS;
+    public static final ForgeConfigSpec.DoubleValue GATHERING_XP_BONUS;
     public static final ForgeConfigSpec.ConfigValue<String> MAGIC_ATTRIBUTE_ID;
 
 
@@ -149,18 +149,20 @@ public class Configuration {
 
         SKILL_ALIAS = builder.defineList("skillAliases", List.of("defense=defense"), obj -> true);
 
-        ATTACK_DAMAGE_BONUS = builder.defineInRange("attackDamageBonus", 0.5, 0.0, 10.0);
-        ARMOR_BONUS = builder.defineInRange("armorBonus", 0.5, 0.0, 10.0);
-        MOVEMENT_SPEED_BONUS = builder.defineInRange("movementSpeedBonus", 0.01, 0.0, 1.0);
+        ATTACK_DAMAGE_BONUS = builder.defineInRange("attackDamageBonus", 0.15, 0.0, 10.0);
+        ARMOR_BONUS = builder.defineInRange("armorBonus", 0.15, 0.0, 10.0);
+        MOVEMENT_SPEED_BONUS = builder.defineInRange("movementSpeedBonus", 0.05, 0.0, 1.0);
         MAGIC_ATTRIBUTE_ID = builder
                 .comment("The registry ID of the attribute to use for the Magic skill (e.g. 'modid:spell_power')")
                 .define("magicAttribute", "minecraft:generic.luck");
-        LUCK_BONUS = builder.defineInRange("MagicBonus", 0.3, 0.0, 10.0);
+        LUCK_BONUS = builder.defineInRange("MagicBonus", 0.05, 0.0, 10.0);
         BLOCK_REACH_BONUS = builder.defineInRange("blockReachBonus", 0.25, 0.0, 5.0);
 
         MINING_SPEED_MULTIPLIER = builder.defineInRange("miningSpeedMultiplier", 0.25, 0.0, 5.0);
         CROP_GROWTH_CHANCE = builder.defineInRange("cropGrowthChancePer5Levels", 0.25, 0.0, 1.0);
-        GATHERING_RANGE_BONUS = builder.defineInRange("gatheringRangeBonusPer5Levels", 0.5, 0.0, 10.0);
+        GATHERING_XP_BONUS = builder
+                .comment("Bonus XP multiplier per 5 levels of Gathering (e.g., 0.05 = +5% XP per step)")
+                .defineInRange("gatheringXpBonus", 0.05, 0.0, 1.0);
 
         LEVELS_PER_HEART = builder
                 .comment("How many total skill levels are required for each heart gained.")
