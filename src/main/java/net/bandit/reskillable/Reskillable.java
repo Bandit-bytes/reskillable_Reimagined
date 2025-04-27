@@ -9,6 +9,7 @@ import net.bandit.reskillable.common.network.NotifyWarning;
 import net.bandit.reskillable.common.network.RequestLevelUp;
 import net.bandit.reskillable.common.network.SyncSkillConfigPacket;
 import net.bandit.reskillable.common.network.SyncToClient;
+import net.bandit.reskillable.event.SoundRegistry;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
@@ -34,6 +35,8 @@ public class Reskillable {
     public Reskillable() {
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::commonSetup);
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::initCaps);
+
+        SoundRegistry.SOUND_EVENTS.register(FMLJavaModLoadingContext.get().getModEventBus());
 
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, Configuration.getConfig());
 

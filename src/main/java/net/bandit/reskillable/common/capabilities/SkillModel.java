@@ -121,6 +121,7 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
     private boolean canUse(Player player, ResourceLocation resource) {
         return checkRequirements(player, resource, RequirementType.USE);
     }
+
     private boolean checkRequirements(Player player, ResourceLocation resource, RequirementType type) {
         Requirement[] requirements = type.getRequirements(resource);
         if (requirements == null || requirements.length == 0) {
@@ -141,6 +142,7 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
 
         return true;
     }
+
     private void sendSkillRequirementMessage(Player player, RequirementType type, List<Requirement> unmetRequirements) {
         String translationKey = switch (type) {
             case ATTACK -> "message.reskillable.requirement.attack";
@@ -224,6 +226,7 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
             skillExperience = loadedExperience;
         }
     }
+
     private static final UUID[] ATTRIBUTE_MODIFIER_IDS = new UUID[Skill.values().length];
 
     static {
@@ -236,14 +239,16 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
             Attribute attr = bonus.getAttribute();
             if (attr == null) continue;
 
-            UUID modifierId = SkillModel.ATTRIBUTE_MODIFIER_IDS[bonus.skill.index];
+            UUID modifierId = UUID.nameUUIDFromBytes(("reskillable:" + bonus.skill.name().toLowerCase()).getBytes());
             var attrInstance = player.getAttribute(attr);
             if (attrInstance == null) continue;
 
-            // Always remove the modifier first
-            attrInstance.removeModifier(modifierId);
+            // Remove our modifier if it exists — only ours, identified by UUID
+            attrInstance.getModifiers().stream()
+                    .filter(mod -> mod.getId().equals(modifierId))
+                    .forEach(attrInstance::removeModifier);
 
-            // Then re-add it only if the perk is enabled and has bonus
+            // Only apply if enabled
             if (isPerkEnabled(bonus.skill)) {
                 int skillLevel = getSkillLevel(bonus.skill);
                 int bonusSteps = skillLevel / 5;
@@ -251,33 +256,44 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
 
                 if (totalBonus > 0) {
                     AttributeModifier modifier = new AttributeModifier(
-                            modifierId, "Reskillable Skill Bonus", totalBonus, bonus.operation
+                            modifierId,
+                            "Reskillable Bonus: " + bonus.skill.name(),
+                            totalBonus,
+                            bonus.operation
                     );
                     attrInstance.addPermanentModifier(modifier);
                 }
-
+            }
+        }
+        handleHealthBonus(player);
     }
+    private void handleHealthBonus(Player player) {
+        if (!Configuration.HEALTH_BONUS.get()) {
+            return;
         }
 
-    int totalSkillLevels = Arrays.stream(skillLevels).sum();
+        int totalSkillLevels = Arrays.stream(skillLevels).sum();
         int levelsPerHeart = Configuration.LEVELS_PER_HEART.get();
         double healthPerHeart = Configuration.HEALTH_PER_HEART.get();
 
         int hearts = totalSkillLevels / levelsPerHeart;
         double healthBonus = hearts * healthPerHeart;
 
-
         var healthAttr = player.getAttribute(Attributes.MAX_HEALTH);
         if (healthAttr != null) {
             healthAttr.removeModifier(GLOBAL_HEALTH_BONUS_ID);
             if (healthBonus > 0) {
                 AttributeModifier healthModifier = new AttributeModifier(
-                        GLOBAL_HEALTH_BONUS_ID, "Reskillable Total Level Bonus", healthBonus, AttributeModifier.Operation.ADDITION
+                        GLOBAL_HEALTH_BONUS_ID,
+                        "Reskillable Total Level Bonus",
+                        healthBonus,
+                        AttributeModifier.Operation.ADDITION
                 );
                 healthAttr.addPermanentModifier(healthModifier);
             }
         }
     }
+
     public boolean isPerkEnabled(Skill skill) {
         return !disabledPerks.contains(skill);
     }
@@ -286,14 +302,5 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
         if (!disabledPerks.add(skill)) {
             disabledPerks.remove(skill);
         }
-
     }
-    public void refreshAttributes(Player player) {
-        for (SkillAttributeBonus bonus : SkillAttributeBonus.values()) {
-            if (bonus.getAttribute() != null) {
-                bonus.applyModifier(player, this);
-            }
-        }
-    }
-
 }

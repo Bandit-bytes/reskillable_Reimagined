@@ -88,31 +88,31 @@ public class SkillButton extends Button {
 
             List<Component> tooltipLines = new ArrayList<>();
             tooltipLines.add(tooltip);
-            if (SkillAttributeBonus.getBySkill(skill) != null) {
-                boolean enabled = skillModel.isPerkEnabled(skill);
-                tooltipLines.add(Component.literal("➤ ")
-                        .append(Component.literal("Right-click: ").withStyle(ChatFormatting.GOLD))
-                        .append(Component.literal(enabled ? "Disable skill perk" : "Enable skill perk").withStyle(enabled ? ChatFormatting.RED : ChatFormatting.GREEN)));
-            }
-
-            tooltipLines.add(Component.literal("➤ ")
-                    .append(Component.literal("Left-click: ").withStyle(ChatFormatting.GOLD))
-                    .append(Component.literal("Level up this skill").withStyle(ChatFormatting.AQUA)));
-
-
-            int screenHeight = Minecraft.getInstance().getWindow().getGuiScaledHeight();
-            int tooltipHeight = 10 + tooltipLines.size() * 10; // estimated height (adjust if you have custom fonts)
-            int tooltipY = mouseY;
-            if (mouseY + tooltipHeight > screenHeight) {
-                tooltipY = mouseY - tooltipHeight - 4;
-            }
-
-            guiGraphics.renderTooltip(
-                    Minecraft.getInstance().font,
-                    tooltipLines.stream().map(Component::getVisualOrderText).toList(),
-                    mouseX,
-                    tooltipY
-            );
+//            if (SkillAttributeBonus.getBySkill(skill) != null) {
+//                boolean enabled = skillModel.isPerkEnabled(skill);
+//                tooltipLines.add(Component.literal("➤ ")
+//                        .append(Component.literal("Right-click: ").withStyle(ChatFormatting.GOLD))
+//                        .append(Component.literal(enabled ? "Disable skill perk" : "Enable skill perk").withStyle(enabled ? ChatFormatting.RED : ChatFormatting.GREEN)));
+//            }
+//
+//            tooltipLines.add(Component.literal("➤ ")
+//                    .append(Component.literal("Left-click: ").withStyle(ChatFormatting.GOLD))
+//                    .append(Component.literal("Level up this skill").withStyle(ChatFormatting.AQUA)));
+//
+//
+//            int screenHeight = Minecraft.getInstance().getWindow().getGuiScaledHeight();
+//            int tooltipHeight = 10 + tooltipLines.size() * 10; // estimated height (adjust if you have custom fonts)
+//            int tooltipY = mouseY;
+//            if (mouseY + tooltipHeight > screenHeight) {
+//                tooltipY = mouseY - tooltipHeight - 4;
+//            }
+//
+//            guiGraphics.renderTooltip(
+//                    Minecraft.getInstance().font,
+//                    tooltipLines.stream().map(Component::getVisualOrderText).toList(),
+//                    mouseX,
+//                    tooltipY
+//            );
 
         }
     }
@@ -156,4 +156,28 @@ public class SkillButton extends Button {
         return true;
 
 }
+    public List<Component> getTooltipLines(Player player) {
+        List<Component> lines = new ArrayList<>();
+        SkillModel model = SkillModel.get(player);
+        int level = model.getSkillLevel(skill);
+        int cost = Configuration.calculateCostForLevel(level);
+        int playerXP = getPlayerTotalXP(player);
+
+        Component xp = Component.literal(String.valueOf(playerXP)).withStyle(playerXP >= cost ? ChatFormatting.GREEN : ChatFormatting.RED);
+        Component costC = Component.literal(String.valueOf(cost));
+        lines.add(Component.translatable("tooltip.rereskillable.skill_cost", xp, costC));
+
+        if (SkillAttributeBonus.getBySkill(skill) != null) {
+            boolean enabled = model.isPerkEnabled(skill);
+            lines.add(Component.literal("➤ ")
+                    .append(Component.literal("Right-click: ").withStyle(ChatFormatting.GOLD))
+                    .append(Component.literal(enabled ? "Disable skill perk" : "Enable skill perk").withStyle(enabled ? ChatFormatting.RED : ChatFormatting.GREEN)));
+        }
+
+        lines.add(Component.literal("➤ ")
+                .append(Component.literal("Left-click: ").withStyle(ChatFormatting.GOLD))
+                .append(Component.literal("Level up this skill").withStyle(ChatFormatting.AQUA)));
+        return lines;
+    }
+
 }

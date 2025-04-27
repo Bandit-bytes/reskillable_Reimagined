@@ -73,7 +73,21 @@ public class SkillScreen extends Screen {
         if (mouseX > labelX && mouseX < labelX + font.width("Skills") && mouseY > labelY && mouseY < labelY + font.lineHeight) {
             renderTotalXPTooltip(guiGraphics, mouseX, mouseY);
         }
+
+        for (var widget : this.renderables) {
+            if (widget instanceof SkillButton button && button.isMouseOver(mouseX, mouseY)) {
+                var tooltipLines = button.getTooltipLines(Minecraft.getInstance().player);
+                guiGraphics.renderTooltip(
+                        font,
+                        tooltipLines.stream().map(Component::getVisualOrderText).toList(),
+                        mouseX,
+                        mouseY
+                );
+            }
+        }
+
     }
+
 
     private void renderTotalXPTooltip(GuiGraphics guiGraphics, int mouseX, int mouseY) {
     Player player = Minecraft.getInstance().player;

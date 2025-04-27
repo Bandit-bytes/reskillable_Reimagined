@@ -68,9 +68,36 @@ public class RequestLevelUp {
 
             if (playerTotalXp >= cost) {
                 deductXp(player, cost);
+
+                int oldLevel = skillModel.getSkillLevel(skill); // Save old level
                 skillModel.increaseSkillLevel(skill, player);
+                int newLevel = skillModel.getSkillLevel(skill); // Get new level after increasing
+
+                // Play level up sound
+                player.level().playSound(
+                        null,
+                        player.blockPosition(),
+                        net.bandit.reskillable.event.SoundRegistry.LEVEL_UP_EVENT.get(),
+                        net.minecraft.sounds.SoundSource.PLAYERS,
+                        1.0F,
+                        1.0F
+                );
+
+                // Play milestone sound if level is a multiple of 5
+                if (newLevel % 5 == 0) {
+                    player.level().playSound(
+                            null,
+                            player.blockPosition(),
+                            net.bandit.reskillable.event.SoundRegistry.MILESTONE_EVENT.get(),
+                            net.minecraft.sounds.SoundSource.PLAYERS,
+                            1.0F,
+                            1.2F
+                    );
+                }
+
                 SyncToClient.send(player);
-            } else {
+
+        } else {
                 player.sendSystemMessage(Component.translatable("reskillable.not_enough"));
             }
         });

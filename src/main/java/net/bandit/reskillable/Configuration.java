@@ -36,6 +36,7 @@ public class Configuration {
     private static final ForgeConfigSpec.BooleanValue DISABLE_WOOL;
     private static final ForgeConfigSpec.BooleanValue SHOW_TAB_BUTTONS;
     private static final ForgeConfigSpec.BooleanValue DEATH_RESET;
+    public static final ForgeConfigSpec.BooleanValue HEALTH_BONUS;
     private static final ForgeConfigSpec.IntValue STARTING_COST;
     private static final ForgeConfigSpec.IntValue MAXIMUM_LEVEL;
     private static final ForgeConfigSpec.DoubleValue XP_SCALING_MULTIPLIER;
@@ -59,6 +60,7 @@ public class Configuration {
     private static boolean disableWool;
     private static boolean showTabButtons;
     private static boolean deathReset;
+    private static boolean healthbonus;
     private static int startingCost;
     private static int maximumLevel;
     private static double xpScalingMultiplier;
@@ -125,6 +127,9 @@ public class Configuration {
         builder.comment("Reset all skills to 1 when a player dies.");
         DEATH_RESET = builder.define("deathSkillReset", false);
 
+        builder.comment("Should you gain health on set level ups?");
+        HEALTH_BONUS = builder.define("HealthBonus", true);
+
         builder.comment("Toggle the visibility of the tab buttons in the inventory.");
         SHOW_TAB_BUTTONS = builder.define("showTabButtons", true);
 
@@ -184,6 +189,7 @@ public class Configuration {
         showTabButtons = SHOW_TAB_BUTTONS.get();
         deathReset = DEATH_RESET.get();
         startingCost = STARTING_COST.get();
+        healthbonus = HEALTH_BONUS.get();
 //        costIncrease = COST_INCREASE.get();
         xpScalingMultiplier = XP_SCALING_MULTIPLIER.get();
         maximumLevel = MAXIMUM_LEVEL.get();
