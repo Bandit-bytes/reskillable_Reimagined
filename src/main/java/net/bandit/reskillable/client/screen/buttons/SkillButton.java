@@ -2,12 +2,14 @@ package net.bandit.reskillable.client.screen.buttons;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.Tesselator;
+import net.bandit.reskillable.Reskillable;
 import net.bandit.reskillable.client.screen.SkillScreen;
 import net.bandit.reskillable.common.capabilities.SkillModel;
 import net.bandit.reskillable.common.commands.skills.Skill;
 import net.bandit.reskillable.Configuration;
 import net.bandit.reskillable.common.commands.skills.SkillAttributeBonus;
 import net.bandit.reskillable.common.network.RequestLevelUp;
+import net.bandit.reskillable.common.network.TogglePerkPacket;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -146,16 +148,16 @@ public class SkillButton extends Button {
 
         if (button == 1) { // Right-click
             if (SkillAttributeBonus.getBySkill(skill) != null) {
-                model.togglePerk(skill);
-                model.updateSkillAttributeBonuses(player);
+                Reskillable.NETWORK.sendToServer(new TogglePerkPacket(skill));
+                player.playSound(net.minecraft.sounds.SoundEvents.UI_BUTTON_CLICK.value(), 0.6F, 1.0F);
             }
         } else if (button == 0) { // Left-click
             RequestLevelUp.send(skill);
         }
 
         return true;
+    }
 
-}
     public List<Component> getTooltipLines(Player player) {
         List<Component> lines = new ArrayList<>();
         SkillModel model = SkillModel.get(player);

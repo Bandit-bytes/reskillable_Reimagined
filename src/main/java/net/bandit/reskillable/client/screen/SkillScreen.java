@@ -112,46 +112,74 @@ public class SkillScreen extends Screen {
                 var bonus = SkillAttributeBonus.getBySkill(skill);
                 Attribute attribute = bonus != null ? bonus.getAttribute() : null;
 
-                if (bonus != null && attribute != null) {
-                    double amount = (skillLevel / 5) * bonus.getBonusPerStep();
+                if (bonus != null && attribute != null && skillLevel >= 5) {
+                    double amount = (skillLevel / 5.0) * bonus.getBonusPerStep();
+
                     if (amount > 0) {
                         Component skillName = Component.translatable("skill." + skill.name().toLowerCase()).withStyle(ChatFormatting.GOLD);
                         Component attrName = Component.translatable(attribute.getDescriptionId()).withStyle(ChatFormatting.GRAY);
 
-                        String percentText = String.format("%.1f%%", amount * 100);
+                        String percentText = String.format("+%.0f%%", amount * 100);
                         Component bonusLine = Component.literal("")
                                 .append(skillName)
-                                .append(": +")
+                                .append(": ")
                                 .append(Component.literal(percentText).withStyle(ChatFormatting.AQUA))
                                 .append(" ")
                                 .append(attrName);
 
                         tooltipLines.add(bonusLine);
                     }
-                } else {
+                }
+                else {
                     Component skillName = Component.translatable("skill." + skill.name().toLowerCase()).withStyle(ChatFormatting.GOLD);
                     Component bonusLine = switch (skill) {
+                        case AGILITY -> Component.literal("")
+                                .append(skillName)
+                                .append(": ")
+                                .append(Component.literal(skillLevel >= 5
+                                        ? String.format("+%.0f%%", (skillLevel / 5.0) * 25)
+                                        : "+0%").withStyle(ChatFormatting.AQUA))
+                                .append(" ")
+                                .append(Component.literal("Run Speed").withStyle(ChatFormatting.GRAY))
+                                .append(skillLevel < 5
+                                        ? Component.literal(" (Requires Level 5)").withStyle(ChatFormatting.DARK_GRAY)
+                                        : Component.empty());
+
                         case MINING -> Component.literal("")
                                 .append(skillName)
                                 .append(": ")
-                                .append(Component.literal("x" + String.format("%.2f", 1.0 + (skillLevel / 5.0) * 0.25)).withStyle(ChatFormatting.AQUA))
+                                .append(Component.literal(skillLevel >= 5
+                                        ? String.format("+%.0f%%", (skillLevel / 5.0) * 25)
+                                        : "+0%").withStyle(ChatFormatting.AQUA))
                                 .append(" ")
-                                .append(Component.literal("Break Speed").withStyle(ChatFormatting.GRAY));
+                                .append(Component.literal("Break Speed").withStyle(ChatFormatting.GRAY))
+                                .append(skillLevel < 5
+                                        ? Component.literal(" (Requires Level 5)").withStyle(ChatFormatting.DARK_GRAY)
+                                        : Component.empty());
 
                         case GATHERING -> Component.literal("")
                                 .append(skillName)
-                                .append(": +")
-                                .append(Component.literal(String.format("%.0f%%", (skillLevel / 5.0 * Configuration.GATHERING_XP_BONUS.get() * 100)))
-                                        .withStyle(ChatFormatting.AQUA))
+                                .append(": ")
+                                .append(Component.literal(skillLevel >= 5
+                                        ? String.format("+%.0f%%", (skillLevel / 5.0 * Configuration.GATHERING_XP_BONUS.get() * 100))
+                                        : "+0%").withStyle(ChatFormatting.AQUA))
                                 .append(" ")
-                                .append(Component.literal("Bonus XP from Orbs").withStyle(ChatFormatting.GRAY));
+                                .append(Component.literal("Bonus XP from Orbs").withStyle(ChatFormatting.GRAY))
+                                .append(skillLevel < 5
+                                        ? Component.literal(" (Requires Level 5)").withStyle(ChatFormatting.DARK_GRAY)
+                                        : Component.empty());
 
                         case FARMING -> Component.literal("")
                                 .append(skillName)
-                                .append(": +")
-                                .append(Component.literal((int)((skillLevel / 5.0) * 25) + "%").withStyle(ChatFormatting.AQUA))
+                                .append(": ")
+                                .append(Component.literal(skillLevel >= 5
+                                        ? "+" + (int)((skillLevel / 5.0) * 25) + "%"
+                                        : "+0%").withStyle(ChatFormatting.AQUA))
                                 .append(" ")
-                                .append(Component.literal("Crop Growth").withStyle(ChatFormatting.GRAY));
+                                .append(Component.literal("Crop Growth").withStyle(ChatFormatting.GRAY))
+                                .append(skillLevel < 5
+                                        ? Component.literal(" (Requires Level 5)").withStyle(ChatFormatting.DARK_GRAY)
+                                        : Component.empty());
 
                         default -> null;
                     };

@@ -5,10 +5,7 @@ import net.bandit.reskillable.common.CuriosCompat;
 import net.bandit.reskillable.common.EventHandler;
 import net.bandit.reskillable.common.capabilities.SkillModel;
 import net.bandit.reskillable.common.commands.Commands;
-import net.bandit.reskillable.common.network.NotifyWarning;
-import net.bandit.reskillable.common.network.RequestLevelUp;
-import net.bandit.reskillable.common.network.SyncSkillConfigPacket;
-import net.bandit.reskillable.common.network.SyncToClient;
+import net.bandit.reskillable.common.network.*;
 import net.bandit.reskillable.event.SoundRegistry;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;
@@ -24,6 +21,8 @@ import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.network.NetworkDirection;
 import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.simple.SimpleChannel;
+import net.bandit.reskillable.common.IronsSpellbooksEventHandler;
+import net.bandit.reskillable.common.TaczEventHandler;
 
 import java.util.Optional;
 
@@ -42,6 +41,14 @@ public class Reskillable {
 
         MinecraftForge.EVENT_BUS.register(new EventHandler());
         MinecraftForge.EVENT_BUS.register(new Commands());
+        // TACZ
+        if (ModList.get().isLoaded("tacz")) {
+            MinecraftForge.EVENT_BUS.register(new TaczEventHandler());
+        }
+        // irons_spellbooks
+        if (ModList.get().isLoaded("irons_spellbooks")) {
+            MinecraftForge.EVENT_BUS.register(new IronsSpellbooksEventHandler());
+        }
 
         DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> ClientInitializer::registerClientEvents);
     }
@@ -59,6 +66,8 @@ public class Reskillable {
         NETWORK.registerMessage(2, RequestLevelUp.class, RequestLevelUp::encode, RequestLevelUp::new, RequestLevelUp::handle, Optional.of(NetworkDirection.PLAY_TO_SERVER));
         NETWORK.registerMessage(3, NotifyWarning.class, NotifyWarning::encode, NotifyWarning::new, NotifyWarning::handle, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
         NETWORK.registerMessage(4, SyncSkillConfigPacket.class, SyncSkillConfigPacket::toBytes, SyncSkillConfigPacket::new, SyncSkillConfigPacket::handle);
+        NETWORK.registerMessage(5, TogglePerkPacket.class, TogglePerkPacket::encode, TogglePerkPacket::new, TogglePerkPacket::handle);
+
 
         if (ModList.get().isLoaded("curios")) {
             MinecraftForge.EVENT_BUS.register(new CuriosCompat());

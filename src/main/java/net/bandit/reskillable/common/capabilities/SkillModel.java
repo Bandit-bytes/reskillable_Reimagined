@@ -210,6 +210,20 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
         CompoundTag compound = new CompoundTag();
         compound.putIntArray("skillLevels", skillLevels);
         compound.putIntArray("skillExperience", skillExperience);
+
+        List<String> disabledSkillNames = disabledPerks.stream()
+                .map(skill -> skill.name())
+                .collect(Collectors.toList());
+
+        compound.putIntArray("skillLevels", skillLevels);
+        compound.putIntArray("skillExperience", skillExperience);
+
+        CompoundTag disabledTag = new CompoundTag();
+        for (Skill skill : disabledPerks) {
+            disabledTag.putBoolean(skill.name(), true);
+        }
+        compound.put("disabledPerks", disabledTag);
+
         return compound;
     }
 
@@ -225,7 +239,21 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
         if (loadedExperience.length == DEFAULT_SKILL_COUNT) {
             skillExperience = loadedExperience;
         }
+
+        disabledPerks.clear();
+        if (nbt.contains("disabledPerks", CompoundTag.TAG_COMPOUND)) {
+            CompoundTag disabledTag = nbt.getCompound("disabledPerks");
+            for (String key : disabledTag.getAllKeys()) {
+                try {
+                    Skill skill = Skill.valueOf(key);
+                    disabledPerks.add(skill);
+                } catch (IllegalArgumentException ignored) {
+                    // ignore invalid skills
+                }
+            }
+        }
     }
+
 
     private static final UUID[] ATTRIBUTE_MODIFIER_IDS = new UUID[Skill.values().length];
 
@@ -261,7 +289,7 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
                             totalBonus,
                             bonus.operation
                     );
-                    attrInstance.addPermanentModifier(modifier);
+                    attrInstance.addTransientModifier(modifier);
                 }
             }
         }
@@ -289,7 +317,7 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
                         healthBonus,
                         AttributeModifier.Operation.ADDITION
                 );
-                healthAttr.addPermanentModifier(healthModifier);
+                healthAttr.addTransientModifier(healthModifier);
             }
         }
     }
@@ -298,9 +326,12 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
         return !disabledPerks.contains(skill);
     }
 
-    public void togglePerk(Skill skill) {
+    public void togglePerk(Skill skill, Player player) {
         if (!disabledPerks.add(skill)) {
             disabledPerks.remove(skill);
         }
+        updateSkillAttributeBonuses(player);
+        syncSkills(player);
     }
+
 }

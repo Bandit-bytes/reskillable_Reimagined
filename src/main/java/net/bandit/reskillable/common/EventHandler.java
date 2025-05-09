@@ -103,11 +103,15 @@ public class EventHandler {
     public void onAttackEntity(AttackEntityEvent event) {
         Player player = event.getEntity();
         SkillModel model = SkillModel.get(player);
-        if (model == null) return;
+        if (model == null || player.isCreative()) return;
 
-        ItemStack item = player.getMainHandItem();
+        ItemStack mainHand = player.getMainHandItem();
+        ItemStack offHand = player.getOffhandItem();
 
-        if (!player.isCreative() && (!model.canUseItem(player, item) || !model.canAttackEntity(player, event.getTarget()))) {
+        boolean canUseMain = model.canUseItem(player, mainHand);
+        boolean canUseOff = model.canUseItem(player, offHand);
+
+        if (!canUseMain || !canUseOff || !model.canAttackEntity(player, event.getTarget())) {
             event.setCanceled(true);
         }
     }
