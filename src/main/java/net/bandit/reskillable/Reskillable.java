@@ -3,6 +3,8 @@ package net.bandit.reskillable;
 import net.bandit.reskillable.client.ClientInitializer;
 import net.bandit.reskillable.common.CuriosCompat;
 import net.bandit.reskillable.common.EventHandler;
+import net.bandit.reskillable.common.IronsSpellbooksEventHandler;
+import net.bandit.reskillable.common.TaczEventHandler;
 import net.bandit.reskillable.common.capabilities.SkillModel;
 import net.bandit.reskillable.common.commands.Commands;
 import net.bandit.reskillable.common.network.NotifyWarning;
@@ -42,6 +44,14 @@ public class Reskillable {
 
         MinecraftForge.EVENT_BUS.register(new EventHandler());
         MinecraftForge.EVENT_BUS.register(new Commands());
+        // TACZ
+        if (ModList.get().isLoaded("tacz")) {
+            MinecraftForge.EVENT_BUS.register(new TaczEventHandler());
+        }
+        // irons_spellbooks
+        if (ModList.get().isLoaded("irons_spellbooks")) {
+            MinecraftForge.EVENT_BUS.register(new IronsSpellbooksEventHandler());
+        }
 
         DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> ClientInitializer::registerClientEvents);
     }
