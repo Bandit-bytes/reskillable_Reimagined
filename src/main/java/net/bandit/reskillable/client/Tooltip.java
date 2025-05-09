@@ -34,38 +34,55 @@ public class Tooltip {
         if (Minecraft.getInstance().player != null) {
             ItemStack stack = event.getItemStack();
             ResourceLocation itemRegistryName = ForgeRegistries.ITEMS.getKey(stack.getItem());
+
             if (itemRegistryName != null) {
-                if (isTaczLoaded) {
-                    if (Objects.equals(itemRegistryName.getNamespace(), "tacz")) {
-                        // TACZ:    tacz:<gun type>__<gunid>
-                        // eg:      tacz:modern_kinetic_gun__bf1_tg1918
-                        CompoundTag tag = stack.getTag();
-                        if (tag != null) {
-                            itemRegistryName = new ResourceLocation("tacz",
-                                    "%s__%s".formatted(
-                                            itemRegistryName.getPath(),
-                                            tag.getString("GunId").replaceAll(":", "_")));
-                        }
+
+                // TACZ:    tacz:<gun type>__<gunid>
+                // eg:      tacz:modern_kinetic_gun__bf1_tg1918
+                if (isTaczLoaded && Objects.equals(itemRegistryName.getNamespace(), "tacz")) {
+                    CompoundTag tag = stack.getTag();
+                    if (tag != null && tag.contains("GunId")) {
+                        itemRegistryName = new ResourceLocation("tacz",
+                                "%s__%s".formatted(
+                                        itemRegistryName.getPath(),
+                                        tag.getString("GunId").replaceAll(":", "_")));
                     }
                 }
-                if (isIronsLoaded) {
-                    if (stack.getItem() instanceof Scroll) {
-                        // ISS:     irons_spellbooks:scroll__<spell id>_<level>
-                        // eg:      irons_spellbooks:scroll__teleport_1
-                        SpellData spellAtIndex = ISpellContainer.get(stack).getSpellAtIndex(0);
+
+                // ISS:     irons_spellbooks:scroll__<spell id>_<level>
+                // eg:      irons_spellbooks:scroll__teleport_1
+                if (isIronsLoaded && stack.getItem() instanceof Scroll) {
+                    SpellData spellAtIndex = ISpellContainer.get(stack).getSpellAtIndex(0);
+                    if (spellAtIndex != null && spellAtIndex.getSpell() != null) {
                         AbstractSpell spell = spellAtIndex.getSpell();
                         String[] split = spell.getSpellId().split(":");
                         if (split.length == 2) {
                             itemRegistryName = new ResourceLocation("irons_spellbooks",
                                     "scroll__%s_%d".formatted(
-                                            split[0x01],
+                                            split[1],
                                             spellAtIndex.getLevel()
                                     ));
                         }
                     }
                 }
 
+                // ✅ Now fetch requirements after remapping ID
                 Requirement[] requirements = Configuration.getRequirements(itemRegistryName);
+
+                if (requirements != null) {
+                    List<Component> tooltips = event.getToolTip();
+                    tooltips.add(Component.literal(""));
+                    tooltips.add(Component.translatable("tooltip.requirements").append(":").withStyle(ChatFormatting.GRAY));
+
+                    SkillModel skillModel = SkillModel.get(Minecraft.getInstance().player);
+
+                    for (Requirement requirement : requirements) {
+                        ChatFormatting colour = skillModel.getSkillLevel(requirement.skill) >= requirement.level
+                                ? ChatFormatting.GREEN : ChatFormatting.RED;
+                        tooltips.add(Component.translatable(requirement.skill.displayName)
+                                .append(" " + requirement.level).withStyle(colour));
+                    }
+                }
             }
         }
     }
