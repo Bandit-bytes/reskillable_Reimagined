@@ -95,7 +95,8 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
         if (player.isCreative() || player.level().isClientSide) return true;
 
         int totalXP = calculateTotalXPFromPlayer(player);
-        return totalXP >= Configuration.calculateExperienceCost(getSkillLevel(skill));
+        return totalXP >= Configuration.calculateCostForLevel(getSkillLevel(skill) + 1);
+
     }
 
     // Calculate Total XP for a Player

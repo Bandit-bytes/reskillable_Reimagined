@@ -3,12 +3,16 @@ package net.bandit.reskillable.common;
 import net.bandit.reskillable.Configuration;
 import net.bandit.reskillable.common.capabilities.SkillModel;
 import net.bandit.reskillable.common.capabilities.SkillProvider;
+import net.bandit.reskillable.common.commands.skills.Requirement;
 import net.bandit.reskillable.common.commands.skills.Skill;
 import net.bandit.reskillable.common.commands.skills.SkillAttributeBonus;
 import net.bandit.reskillable.common.network.SyncToClient;
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.animal.Sheep;
@@ -19,7 +23,6 @@ import net.minecraft.tags.ItemTags;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerXpEvent;
 import net.minecraftforge.event.level.BlockEvent;
-import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.resources.ResourceLocation;
@@ -33,8 +36,10 @@ import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.Event;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.event.entity.living.LivingEntityUseItemEvent;
+import net.minecraftforge.event.entity.living.LivingUseTotemEvent;
 
-import java.util.List;
+
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -289,6 +294,18 @@ public class EventHandler {
         Player player = event.player;
         SkillModel model = SkillModel.get(player);
         if (model == null) return;
+        ItemStack offhand = player.getOffhandItem();
+        if (offhand.getItem() == Items.TOTEM_OF_UNDYING) {
+            Requirement[] reqs = Configuration.getRequirements(Items.TOTEM_OF_UNDYING.builtInRegistryHolder().key().location());
+            for (Requirement req : reqs) {
+                if (model.getSkillLevel(req.skill) < req.level) {
+                    player.setItemInHand(InteractionHand.OFF_HAND, ItemStack.EMPTY);
+                    player.drop(offhand, false);
+                    player.sendSystemMessage(Component.literal("You lack the required skill to use the Totem of Undying!").withStyle(ChatFormatting.RED));
+                    break;
+                }
+            }
+        }
 
         for (SkillAttributeBonus bonus : SkillAttributeBonus.values()) {
             if (bonus.getAttribute() != null) {
@@ -333,6 +350,26 @@ public class EventHandler {
                         AttributeModifier.Operation.MULTIPLY_TOTAL
                 );
                 attribute.addTransientModifier(mod);
+            }
+        }
+    }
+    @SubscribeEvent
+    public void onUseTotem(LivingUseTotemEvent event) {
+        if (!(event.getEntity() instanceof Player player)) return;
+
+        ItemStack totem = event.getTotem();
+        if (!totem.is(Items.TOTEM_OF_UNDYING)) return;
+
+        SkillModel model = SkillModel.get(player);
+        if (model == null) return;
+
+        Requirement[] reqs = Configuration.getRequirements(Items.TOTEM_OF_UNDYING.builtInRegistryHolder().key().location());
+
+        for (Requirement req : reqs) {
+            if (model.getSkillLevel(req.skill) < req.level) {
+                event.setCanceled(true);
+                player.sendSystemMessage(Component.literal("You lack the skill to use the Totem of Undying.").withStyle(ChatFormatting.RED));
+                return;
             }
         }
     }

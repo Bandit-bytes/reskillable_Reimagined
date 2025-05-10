@@ -55,7 +55,6 @@ public class RequestLevelUp {
                 return;
             }
 
-            // Calculate cost using Configuration's multiplier
             int cost = Configuration.calculateCostForLevel(currentLevel);
 
             if (player.isCreative()) {
@@ -107,10 +106,13 @@ public class RequestLevelUp {
 
     private int calculateTotalXp(ServerPlayer player) {
         int level = player.experienceLevel;
-        int progress = Math.round(player.experienceProgress * getXpForNextLevel(level));
-        return getCumulativeXpForLevel(level) + progress;
-    }
+        float progress = player.experienceProgress;
 
+        int base = getCumulativeXpForLevel(level);
+        int next = getCumulativeXpForLevel(level + 1);
+
+        return base + Math.round((next - base) * progress);
+    }
 
     private void deductXp(ServerPlayer player, int cost) {
         // Calculate the total XP the player currently has
@@ -126,11 +128,9 @@ public class RequestLevelUp {
     }
 
 
-
     private int getXpForNextLevel(int level) {
         return Configuration.calculateExperienceCost(level);
     }
-
 
     private int getLevelForTotalXp(int totalXp) {
         int level = 0;
@@ -151,21 +151,14 @@ public class RequestLevelUp {
     }
 
     public static int getCumulativeXpForLevel(int level) {
-        double multiplier = Configuration.getXpScalingMultiplier();
-
         if (level <= 0) return 0;
 
         if (level <= 16) {
-            return (int) ((level * (level + 1)) / 2 * 2 + 7 * level * multiplier);
+            return level * level + 6 * level;
         } else if (level <= 31) {
-            return (int) ((2.5 * level * level - 40.5 * level + 360) * multiplier);
+            return (int) (2.5 * level * level - 40.5 * level + 360);
         } else {
-            return (int) ((4.5 * level * level - 162.5 * level + 2220) * multiplier);
+            return (int) (4.5 * level * level - 162.5 * level + 2220);
         }
     }
-
-    private int calculateCost(int level) {
-        return Configuration.calculateExperienceCost(level);
-    }
-
 }

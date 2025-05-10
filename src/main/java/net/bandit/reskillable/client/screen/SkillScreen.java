@@ -241,7 +241,7 @@ public class SkillScreen extends Screen {
             SkillModel skillModel = SkillModel.get(player);
             for (Skill skill : Skill.values()) {
                 int skillLevel = skillModel.getSkillLevel(skill);
-                int xpCost = Configuration.calculateExperienceCost(skillLevel);
+                int xpCost = Configuration.calculateCostForLevel(skillLevel + 1);
                 boolean hasXP = skillModel.hasSufficientXP(player, skill);
 
                 xpCostDisplay.put(skill, String.valueOf(xpCost));
