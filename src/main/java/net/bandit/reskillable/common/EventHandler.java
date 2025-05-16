@@ -174,28 +174,25 @@ public class EventHandler {
 
     @SubscribeEvent
     public void onPlayerClone(PlayerEvent.Clone event) {
-        Player original = event.getOriginal();
-        Player clone = event.getEntity();
-        original.revive();
-        SkillModel originalModel = SkillModel.get(original);
-        SkillModel cloneModel = SkillModel.get(clone);
+        if (!event.isWasDeath()) return;
+        SkillModel oldModel = SkillModel.get(event.getOriginal());
+        SkillModel newModel = SkillModel.get(event.getEntity());
 
-        if (originalModel != null && cloneModel != null) {
-            cloneModel.cloneFrom(originalModel);
-            cloneModel.syncSkills(clone);
-//            cloneModel.updateSkillAttributeBonuses(clone);
+        if (oldModel != null && newModel != null) {
+            newModel.cloneFrom(oldModel);
         }
-//        original.invalidateCaps();
     }
+
 
     @SubscribeEvent
     public void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
-        if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        ServerPlayer player = (ServerPlayer) event.getEntity();
         SkillModel model = SkillModel.get(player);
         if (model != null) {
             SyncToClient.send(player);
         }
     }
+
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public void onUseItemStart(LivingEntityUseItemEvent.Start event) {
         if (!(event.getEntity() instanceof Player player)) return;
@@ -225,18 +222,14 @@ public class EventHandler {
     }
 
 
-
     @SubscribeEvent
     public void onPlayerRespawn(PlayerEvent.PlayerRespawnEvent event) {
         Player player = event.getEntity();
-        SkillModel model = SkillModel.get(player);
-
-        if (!player.level().isClientSide()) {
-            SkillModel skillModel = SkillModel.get(player);
-
-            if (skillModel != null) {
-                SyncToClient.send((ServerPlayer) player);
-//                model.updateSkillAttributeBonuses(player);
+        if (!player.level().isClientSide() && player instanceof ServerPlayer serverPlayer) {
+            SkillModel model = SkillModel.get(serverPlayer);
+            if (model != null) {
+                SyncToClient.send(serverPlayer);
+                // model.updateSkillAttributeBonuses(serverPlayer);
             }
         }
     }
@@ -244,16 +237,16 @@ public class EventHandler {
     @SubscribeEvent
     public void onChangeDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
         Player player = event.getEntity();
-        SkillModel model = SkillModel.get(player);
 
-        if (!player.level().isClientSide()) {
-            SkillModel skillModel = SkillModel.get(player);
-            if (skillModel != null) {
-                skillModel.syncSkills(player);
-//                model.updateSkillAttributeBonuses(player);
+        if (!player.level().isClientSide() && player instanceof ServerPlayer serverPlayer) {
+            SkillModel model = SkillModel.get(serverPlayer);
+            if (model != null) {
+                model.syncSkills(serverPlayer);
+                // model.updateSkillAttributeBonuses(serverPlayer);
             }
         }
     }
+
 
     @SubscribeEvent
     public void onBreakSpeed(PlayerEvent.BreakSpeed event) {
