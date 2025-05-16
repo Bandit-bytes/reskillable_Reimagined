@@ -75,7 +75,7 @@ public class Overlay implements LayeredDraw.Layer {
             guiGraphics.blit(SkillScreen.RESOURCES, x, y, u, v, 16, 16);
 
             String levelStr = Integer.toString(requirement.level);
-            boolean met = model.getSkillLevel(requirement.skill) >= requirement.level;
+            boolean met =  ClientUtils.getClientSkillModel().getSkillLevel(requirement.skill) >= requirement.level;
             guiGraphics.drawString(minecraft.font, levelStr, x + 17 - minecraft.font.width(levelStr), y + 9, met ? 0x55FF55 : 0xFF5555, false);
         }
     }

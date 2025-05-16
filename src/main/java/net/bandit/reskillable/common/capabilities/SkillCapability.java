@@ -5,9 +5,9 @@ import net.neoforged.neoforge.capabilities.EntityCapability;
 import org.jetbrains.annotations.Nullable;
 
 public class SkillCapability {
-    public static final EntityCapability<SkillModel, @Nullable Void> INSTANCE =
+    public static final EntityCapability<SkillModel, Void> INSTANCE =
             EntityCapability.createVoid(
-                    ResourceLocation.fromNamespaceAndPath("reskillable", "skill_model"),
+                   ResourceLocation.fromNamespaceAndPath("reskillable", "skill_model"),
                     SkillModel.class
             );
 }

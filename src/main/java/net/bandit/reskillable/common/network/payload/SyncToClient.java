@@ -3,6 +3,7 @@ package net.bandit.reskillable.common.network.payload;
 import net.bandit.reskillable.client.data.ClientSkillModel;
 import net.bandit.reskillable.common.capabilities.SkillModel;
 import net.bandit.reskillable.common.commands.skills.Skill;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -10,6 +11,7 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.player.Player;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.EnumMap;
@@ -42,9 +44,15 @@ public record SyncToClient(Map<Skill, Integer> levels, Map<Skill, Boolean> disab
     }
 
     public static void handle(SyncToClient msg, LocalPlayer player) {
-        ClientSkillModel.setLevels(msg.levels);
-        ClientSkillModel.setDisabledPerks(msg.disabledPerks);
+        Player clientPlayer = Minecraft.getInstance().player;
+        if (clientPlayer != null) {
+            SkillModel clientSkillModel = SkillModel.get(clientPlayer);
+            if (clientSkillModel != null) {
+                clientSkillModel.readFromNetwork(msg);
+            }
+        }
     }
+
     public static void send(ServerPlayer player) {
         SkillModel model = SkillModel.get(player);
 

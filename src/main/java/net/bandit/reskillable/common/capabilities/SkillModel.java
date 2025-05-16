@@ -175,8 +175,13 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
     }
 
     public static SkillModel get(Player player) {
-        return player.getCapability(SkillCapability.INSTANCE, null);
+        SkillModel model = player.getCapability(SkillCapability.INSTANCE, null);
+        if (model == null) {
+            System.err.println("[Reskillable] SkillModel is NULL for player: " + player.getName().getString());
+        }
+        return model;
     }
+
 
     public boolean canCraftItem(Player player, ItemStack stack) {
         ResourceLocation resource = stack.getItem().builtInRegistryHolder().key().location();
@@ -331,6 +336,18 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
                     disabledPerks.add(skill);
                 } catch (IllegalArgumentException ignored) {
                 }
+            }
+        }
+    }
+    public void readFromNetwork(SyncToClient msg) {
+        for (Map.Entry<Skill, Integer> entry : msg.levels().entrySet()) {
+            this.skillLevels[entry.getKey().index] = entry.getValue();
+        }
+
+        this.disabledPerks.clear();
+        for (Map.Entry<Skill, Boolean> entry : msg.disabledPerks().entrySet()) {
+            if (entry.getValue()) {
+                this.disabledPerks.add(entry.getKey());
             }
         }
     }

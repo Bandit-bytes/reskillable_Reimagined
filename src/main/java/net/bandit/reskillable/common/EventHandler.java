@@ -2,14 +2,12 @@ package net.bandit.reskillable.common;
 
 import net.bandit.reskillable.Configuration;
 import net.bandit.reskillable.common.capabilities.SkillModel;
-import net.bandit.reskillable.common.capabilities.SkillProvider;
 import net.bandit.reskillable.common.commands.skills.Requirement;
 import net.bandit.reskillable.common.commands.skills.Skill;
 import net.bandit.reskillable.common.commands.skills.SkillAttributeBonus;
 import net.bandit.reskillable.common.network.payload.SyncToClient;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.ItemTags;
@@ -37,7 +35,6 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class EventHandler {
-    private SkillModel lastDiedPlayerSkills = null;
     private static final Map<UUID, SkillModel> lastDiedPlayerSkillsMap = new ConcurrentHashMap<>();
 
 
@@ -87,15 +84,14 @@ public class EventHandler {
     public void onRightClickItem(PlayerInteractEvent.RightClickItem event) {
         Player player = event.getEntity();
         SkillModel model = SkillModel.get(player);
-        if (model == null || player.isCreative()) return;
+        if (model == null) return;
 
         ItemStack item = event.getItemStack();
-        if (!model.canUseItem(player, item)) {
+
+        if (!player.isCreative() && !model.canUseItem(player, item)) {
             event.setCanceled(true);
-            player.sendSystemMessage(Component.literal("You lack the skill to use this item.").withStyle(ChatFormatting.RED));
         }
     }
-
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public void onRightClickEntity(PlayerInteractEvent.EntityInteract event) {
@@ -193,7 +189,7 @@ public class EventHandler {
     }
 
     @SubscribeEvent
-    public static void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
+    public void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
         SkillModel model = SkillModel.get(player);
         if (model != null) {

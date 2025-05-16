@@ -5,6 +5,8 @@ import net.bandit.reskillable.client.Keybind;
 import net.bandit.reskillable.client.Overlay;
 import net.bandit.reskillable.client.Tooltip;
 import net.bandit.reskillable.common.CuriosCompat;
+import net.bandit.reskillable.common.EventHandler;
+import net.bandit.reskillable.common.commands.Commands;
 import net.bandit.reskillable.common.network.NetworkInit;
 import net.bandit.reskillable.event.ClientEvents;
 import net.bandit.reskillable.event.SoundRegistry;
@@ -33,7 +35,8 @@ public class Reskillable {
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(NetworkInit::registerPayloadHandlers);
         SoundRegistry.SOUND_EVENTS.register(modEventBus);
-
+        NeoForge.EVENT_BUS.register(new EventHandler());
+        NeoForge.EVENT_BUS.register(new Commands());
         NeoForge.EVENT_BUS.register(this);
 
         modContainer.registerConfig(ModConfig.Type.COMMON, Configuration.CONFIG_SPEC);
