@@ -6,7 +6,7 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.bandit.reskillable.Configuration;
 import net.bandit.reskillable.common.capabilities.SkillModel;
 import net.bandit.reskillable.common.commands.skills.Skill;
-import net.bandit.reskillable.common.network.SyncSkillConfigPacket;
+import net.bandit.reskillable.common.network.payload.SyncSkillConfig;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
@@ -48,14 +48,14 @@ public class GetCommand {
                                 .then(Commands.argument("player", EntityArgument.player())
                                         .then(Commands.argument("skill", EnumArgument.enumArgument(Skill.class))
                                                 .executes(GetCommand::execute))))
-                        .then(Commands.literal("reload")
-                                .executes(context -> {
-                                    Configuration.load();
-                                    context.getSource().sendSuccess(() -> Component.literal("Skill configuration reloaded"), true);
-                                    SyncSkillConfigPacket.sendToAllClients();
-                                    LOGGER.info("Executed /skills reload command and sent SyncSkillConfigPacket to clients.");
-                                    return 1;
-                                }))
+//                        .then(Commands.literal("reload")
+//                                .executes(context -> {
+//                                    Configuration.load();
+//                                    context.getSource().sendSuccess(() -> Component.literal("Skill configuration reloaded"), true);
+//                                    SyncSkillConfig.sendToAllClients();
+//                                    LOGGER.info("Executed /skills reload command and sent SyncSkillConfigPacket to clients.");
+//                                    return 1;
+//                                }))
         );
     }
 }

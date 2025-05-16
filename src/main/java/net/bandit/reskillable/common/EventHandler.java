@@ -6,11 +6,12 @@ import net.bandit.reskillable.common.capabilities.SkillProvider;
 import net.bandit.reskillable.common.commands.skills.Requirement;
 import net.bandit.reskillable.common.commands.skills.Skill;
 import net.bandit.reskillable.common.commands.skills.SkillAttributeBonus;
-import net.bandit.reskillable.common.network.SyncToClient;
+import net.bandit.reskillable.common.network.payload.SyncToClient;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -22,16 +23,14 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
-import net.neoforged.neoforge.event.entity.living.LivingDropsEvent;
-import net.neoforged.neoforge.event.entity.living.LivingEquipmentChangeEvent;
-import net.neoforged.neoforge.event.entity.living.LivingUseTotemEvent;
+import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
+import net.neoforged.neoforge.event.entity.living.*;
 import net.neoforged.neoforge.event.entity.player.AttackEntityEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerXpEvent;
+import net.neoforged.neoforge.event.level.BlockEvent;
 import net.neoforged.neoforge.event.level.block.CropGrowEvent;
-import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 
 import java.util.Map;
 import java.util.UUID;
@@ -55,6 +54,20 @@ public class EventHandler {
             event.setCanceled(true);
         }
     }
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    public void onStartUsingItem(LivingEntityUseItemEvent.Start event) {
+        if (!(event.getEntity() instanceof Player player)) return;
+
+        SkillModel model = SkillModel.get(player);
+        if (model == null || player.isCreative()) return;
+
+        ItemStack item = event.getItem();
+        if (!model.canUseItem(player, item)) {
+            event.setCanceled(true);
+            player.sendSystemMessage(Component.literal("You lack the skill to use this item.").withStyle(ChatFormatting.RED));
+        }
+    }
+
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
@@ -74,14 +87,15 @@ public class EventHandler {
     public void onRightClickItem(PlayerInteractEvent.RightClickItem event) {
         Player player = event.getEntity();
         SkillModel model = SkillModel.get(player);
-        if (model == null) return;
+        if (model == null || player.isCreative()) return;
 
         ItemStack item = event.getItemStack();
-
-        if (!player.isCreative() && !model.canUseItem(player, item)) {
+        if (!model.canUseItem(player, item)) {
             event.setCanceled(true);
+            player.sendSystemMessage(Component.literal("You lack the skill to use this item.").withStyle(ChatFormatting.RED));
         }
     }
+
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public void onRightClickEntity(PlayerInteractEvent.EntityInteract event) {
@@ -116,19 +130,29 @@ public class EventHandler {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public void onChangeEquipment(LivingEquipmentChangeEvent event) {
-        if (event.getEntity() instanceof Player player) {
-            SkillModel model = SkillModel.get(player);
-            if (model == null) return;
+        if (!(event.getEntity() instanceof Player player)) return;
 
-            if (!player.isCreative() && event.getSlot().getType() == EquipmentSlot.Type.HUMANOID_ARMOR) {
-                ItemStack item = event.getTo();
-                if (!model.canUseItem(player, item)) {
-                    player.drop(item.copy(), false);
-                    item.setCount(0);
-                }
+        SkillModel model = SkillModel.get(player);
+        if (model == null || player.isCreative()) return;
+
+        // Only intercept armor equips
+        if (event.getSlot().getType() == EquipmentSlot.Type.HUMANOID_ARMOR) {
+            ItemStack newItem = event.getTo();
+            ItemStack oldItem = event.getFrom();
+
+            if (!model.canUseItem(player, newItem)) {
+                // Revert the armor equip
+                player.setItemSlot(event.getSlot(), oldItem);
+
+                // Drop the armor piece
+                player.drop(newItem.copy(), false);
+
+                // Optional message
+                player.sendSystemMessage(Component.literal("You lack the skill to equip this armor.").withStyle(ChatFormatting.RED));
             }
         }
     }
+
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public void onEntityDrops(LivingDropsEvent event) {
@@ -151,14 +175,6 @@ public class EventHandler {
         }
     }
 
-    @SubscribeEvent
-    public void onAttachCapabilities(AttachCapabilitiesEvent<Entity> event) {
-        if (event.getObject() instanceof Player) {
-            SkillModel skillModel = new SkillModel();
-            SkillProvider provider = new SkillProvider(skillModel);
-            event.addCapability(ResourceLocation.fromNamespaceAndPath("reskillable", "cap_skills"), provider);
-        }
-    }
 
     @SubscribeEvent
     public void onPlayerClone(PlayerEvent.Clone event) {
@@ -177,16 +193,42 @@ public class EventHandler {
     }
 
     @SubscribeEvent
-    public void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
-        Player player = event.getEntity();
-        SkillModel skillModel = SkillModel.get(player);
-
-        if (skillModel != null) {
+    public static void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        SkillModel model = SkillModel.get(player);
+        if (model != null) {
             SyncToClient.send(player);
-//            skillModel.updateSkillAttributeBonuses(player);
-
         }
     }
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    public void onUseItemStart(LivingEntityUseItemEvent.Start event) {
+        if (!(event.getEntity() instanceof Player player)) return;
+
+        SkillModel model = SkillModel.get(player);
+        if (model == null || player.isCreative()) return;
+
+        ItemStack item = event.getItem();
+        if (!model.canUseItem(player, item)) {
+            player.sendSystemMessage(Component.literal("You lack the skill to use this item.").withStyle(ChatFormatting.RED));
+            event.setCanceled(true);
+        }
+    }
+
+
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    public void onBlockBreak(BlockEvent.BreakEvent event) {
+        Player player = event.getPlayer();
+        SkillModel model = SkillModel.get(player);
+        if (model == null || player.isCreative()) return;
+
+        ItemStack tool = player.getMainHandItem();
+        if (!model.canUseItem(player, tool)) {
+            event.setCanceled(true);
+            player.sendSystemMessage(Component.literal("You lack the skill to use this tool.").withStyle(ChatFormatting.RED));
+        }
+    }
+
+
 
     @SubscribeEvent
     public void onPlayerRespawn(PlayerEvent.PlayerRespawnEvent event) {
@@ -197,7 +239,7 @@ public class EventHandler {
             SkillModel skillModel = SkillModel.get(player);
 
             if (skillModel != null) {
-                SyncToClient.send(player);
+                SyncToClient.send((ServerPlayer) player);
 //                model.updateSkillAttributeBonuses(player);
             }
         }

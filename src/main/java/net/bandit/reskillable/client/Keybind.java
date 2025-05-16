@@ -20,4 +20,5 @@ public class Keybind {
     public static void keybind(RegisterKeyMappingsEvent event) {
         event.register(KeyBinding.SKILLS_KEY);
     }
+
 }

@@ -105,7 +105,7 @@ dependencies {
     // compileOnly "mezz.jei:jei-${mc_version}-forge-api:${jei_version}"
     // runtimeOnly "mezz.jei:jei-${mc_version}-forge:${jei_version}"
     implementation "curse.maven:curios-309927:6401872"
-    implementation "curse.maven:irons-spells-n-spellbooks-855414:6497109"
+    compileOnly "curse.maven:irons-spells-n-spellbooks-855414:6497109"
 
     // Example mod dependency using a mod jar from ./libs with a flat dir repository
     // This maps to ./libs/coolmod-${mc_version}-${coolmod_version}.jar

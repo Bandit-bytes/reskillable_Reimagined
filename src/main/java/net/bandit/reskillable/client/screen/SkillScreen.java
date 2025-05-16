@@ -45,7 +45,18 @@ public class SkillScreen extends Screen {
         }
     }
     @Override
+    public void renderBackground(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
+        int panelWidth = 176;
+        int panelHeight = 166;
+
+        int left = (this.width - panelWidth) / 2;
+        int top = (this.height - panelHeight) / 2;
+        guiGraphics.fill(left, top, left + panelWidth, top + panelHeight, 0x99000000);
+    }
+
+    @Override
     public void render(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
+        this.renderTransparentBackground(guiGraphics);
         RenderSystem.setShaderTexture(0, RESOURCES);
 
         int left = (width - 176) / 2;
@@ -237,16 +248,19 @@ public class SkillScreen extends Screen {
     public void tick() {
         super.tick();
         Player player = Minecraft.getInstance().player;
-        if (player != null) {
-            SkillModel skillModel = SkillModel.get(player);
-            for (Skill skill : Skill.values()) {
-                int skillLevel = skillModel.getSkillLevel(skill);
-                int xpCost = Configuration.calculateCostForLevel(skillLevel + 1);
-                boolean hasXP = skillModel.hasSufficientXP(player, skill);
+        if (player == null) return;
 
-                xpCostDisplay.put(skill, String.valueOf(xpCost));
-                xpCostColor.put(skill, hasXP ? 0x00FF00 : 0xFF0000);
-            }
+        SkillModel skillModel = SkillModel.get(player);
+        if (skillModel == null) return; // Avoid null crash
+
+        for (Skill skill : Skill.values()) {
+            int skillLevel = skillModel.getSkillLevel(skill);
+            int xpCost = Configuration.calculateCostForLevel(skillLevel + 1);
+            boolean hasXP = skillModel.hasSufficientXP(player, skill);
+
+            xpCostDisplay.put(skill, String.valueOf(xpCost));
+            xpCostColor.put(skill, hasXP ? 0x00FF00 : 0xFF0000);
         }
     }
+
 }

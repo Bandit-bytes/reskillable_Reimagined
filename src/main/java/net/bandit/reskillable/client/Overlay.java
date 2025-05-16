@@ -35,7 +35,7 @@ public class Overlay implements LayeredDraw.Layer {
     }
 
     @SubscribeEvent
-    public static void onClientTick(ClientTickEvent event) {
+    public void onClientTick(ClientTickEvent.Pre event) {
         if (showTicks > 0) showTicks--;
     }
 

@@ -5,7 +5,7 @@ import net.bandit.reskillable.common.commands.skills.Requirement;
 import net.bandit.reskillable.common.commands.skills.RequirementType;
 import net.bandit.reskillable.common.commands.skills.Skill;
 import net.bandit.reskillable.common.commands.skills.SkillAttributeBonus;
-import net.bandit.reskillable.common.network.SyncToClient;
+import net.bandit.reskillable.common.network.payload.SyncToClient;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -174,12 +174,10 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
         player.displayClientMessage(message, true);
     }
 
-
     public static SkillModel get(Player player) {
-        return player.getCapability(SkillCapability.INSTANCE);
+        return player.getCapability(SkillCapability.INSTANCE, null);
     }
 
-    // Additional Can-Use Methods
     public boolean canCraftItem(Player player, ItemStack stack) {
         ResourceLocation resource = stack.getItem().builtInRegistryHolder().key().location();
         return checkRequirements(player, resource, RequirementType.CRAFT);
@@ -192,7 +190,7 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
 
     public void syncSkills(Player player) {
         if (player instanceof ServerPlayer) {
-            SyncToClient.send(player);
+            SyncToClient.send((ServerPlayer) player);
         }
     }
 
@@ -332,7 +330,6 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
                     Skill skill = Skill.valueOf(key);
                     disabledPerks.add(skill);
                 } catch (IllegalArgumentException ignored) {
-                    // ignore invalid skills
                 }
             }
         }

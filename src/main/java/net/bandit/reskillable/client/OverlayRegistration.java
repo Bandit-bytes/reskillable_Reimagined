@@ -11,6 +11,6 @@ import net.neoforged.bus.api.SubscribeEvent;
 public class OverlayRegistration {
     @SubscribeEvent
     public static void registerGuiLayers(RegisterGuiLayersEvent event) {
-        event.registerAboveAll(Overlay.ID, Overlay.LAYER);
+        event.registerAboveAll(Overlay.ID, Overlay.INSTANCE);
     }
 }

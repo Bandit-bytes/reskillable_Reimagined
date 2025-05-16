@@ -1,6 +1,5 @@
 package net.bandit.reskillable.common.capabilities;
 
-import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.capabilities.EntityCapability;
 import org.jetbrains.annotations.Nullable;
