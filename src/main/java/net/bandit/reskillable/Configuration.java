@@ -357,17 +357,15 @@ public class Configuration {
         };
 
         double multiplier = getXpScalingMultiplier();
-        if (level == 1) {
-            return (int) Math.ceil(7 * multiplier);
-        }
+
         if (level <= totalXpCosts.length) {
-            int baseCost = totalXpCosts[level - 1] - totalXpCosts[level - 2];
-            return (int) Math.ceil(baseCost * multiplier);
+            return (int) Math.ceil(totalXpCosts[level - 1] * multiplier);
         }
 
-        int baseCost = 300;
-        return (int) Math.ceil(baseCost * multiplier);
+        // Fallback cost beyond level 50
+        return (int) Math.ceil(300 * multiplier);
     }
+
 
     public static int getMaxLevel() {
         return maximumLevel;
