@@ -8,11 +8,14 @@ import net.bandit.reskillable.common.commands.skills.SkillAttributeBonus;
 import net.bandit.reskillable.common.network.payload.SyncToClient;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.animal.Sheep;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -29,6 +32,7 @@ import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerXpEvent;
 import net.neoforged.neoforge.event.level.BlockEvent;
 import net.neoforged.neoforge.event.level.block.CropGrowEvent;
+import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 
 import java.util.Map;
 import java.util.UUID;
@@ -314,39 +318,39 @@ public class EventHandler {
 
         model.updateSkillAttributeBonuses(player);
     }
-//    @SubscribeEvent
-//    public void onPlayerTickAgility(PlayerTickEvent event) {
-//        if (event.phase != TickEvent.Phase.END || event.player.level().isClientSide) return;
-//
-//        Player player = event.player;
-//        SkillModel model = SkillModel.get(player);
-//        if (model == null) return;
-//
-//        var attribute = player.getAttribute(Attributes.MOVEMENT_SPEED);
-//        if (attribute == null) return;
-//
-//        var bonus = SkillAttributeBonus.getBySkill(Skill.AGILITY);
-//        if (bonus == null) return;
-//
-//        UUID agilityId = UUID.nameUUIDFromBytes("reskillable:agility".getBytes());
-//
-//        // Always remove old modifier
-//        attribute.removeModifier(agilityId);
-//
-//        int agilityLevel = model.getSkillLevel(Skill.AGILITY);
-//        if (agilityLevel >= 5 && model.isPerkEnabled(Skill.AGILITY)) {
-//            double multiplier = (agilityLevel / 5.0) * bonus.getBonusPerStep();
-//            if (multiplier > 0) {
-//                AttributeModifier mod = new AttributeModifier(
-//                        agilityId,
-//                        "Reskillable AGILITY bonus",
-//                        multiplier,
-//                        AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL
-//                );
-//                attribute.addTransientModifier(mod);
-//            }
-//        }
-//    }
+    @SubscribeEvent
+    public void onPlayerTickAgility(PlayerTickEvent.Post event) {
+        Player player = event.getEntity();
+        SkillModel model = SkillModel.get(player);
+        if (model == null) return;
+
+        var attribute = player.getAttributes().getInstance(Attributes.MOVEMENT_SPEED);
+        if (attribute == null) return;
+
+        var bonus = SkillAttributeBonus.getBySkill(Skill.AGILITY);
+        if (bonus == null) return;
+
+        ResourceLocation id = ResourceLocation.fromNamespaceAndPath("reskillable", "agility");
+
+        attribute.getModifiers().stream()
+                .filter(mod -> mod.id().equals(id))
+                .findFirst()
+                .ifPresent(attribute::removeModifier);
+
+        int agilityLevel = model.getSkillLevel(Skill.AGILITY);
+        if (agilityLevel >= 5 && model.isPerkEnabled(Skill.AGILITY)) {
+            double multiplier = (agilityLevel / 5.0) * bonus.getBonusPerStep();
+
+            if (multiplier > 0) {
+                AttributeModifier mod = new AttributeModifier(
+                        id,
+                        multiplier,
+                        AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL
+                );
+                attribute.addTransientModifier(mod);
+            }
+        }
+    }
     @SubscribeEvent
     public void onUseTotem(LivingUseTotemEvent event) {
         if (!(event.getEntity() instanceof Player player)) return;

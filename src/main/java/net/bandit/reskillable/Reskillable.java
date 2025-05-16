@@ -46,7 +46,6 @@ public class Reskillable {
 
     private void commonSetup(final FMLCommonSetupEvent event) {
         Configuration.load();
-        LOGGER.info("HELLO FROM COMMON SETUP");
 
         if (ModList.get().isLoaded("curios")) {
             NeoForge.EVENT_BUS.register(new CuriosCompat());
@@ -55,15 +54,14 @@ public class Reskillable {
 
     @SubscribeEvent
     public void onServerStarting(ServerStartingEvent event) {
-        LOGGER.info("HELLO from server starting");
+        LOGGER.info("HELLO from BanditBytes - Reskillable");
     }
 
     @EventBusSubscriber(modid = MOD_ID, bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
     public static class ClientModEvents {
         @SubscribeEvent
         public static void onClientSetup(FMLClientSetupEvent event) {
-            LOGGER.info("HELLO FROM CLIENT SETUP");
-            LOGGER.info("MINECRAFT NAME >> {}", Minecraft.getInstance().getUser().getName());
+            LOGGER.info("Reskillable Client Setup Successful");
             NeoForge.EVENT_BUS.register(new Tooltip());
             NeoForge.EVENT_BUS.register(new Overlay());
 //            NeoForge.EVENT_BUS.register(new Keybind());
