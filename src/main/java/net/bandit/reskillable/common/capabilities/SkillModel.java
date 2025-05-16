@@ -6,7 +6,10 @@ import net.bandit.reskillable.common.commands.skills.RequirementType;
 import net.bandit.reskillable.common.commands.skills.Skill;
 import net.bandit.reskillable.common.commands.skills.SkillAttributeBonus;
 import net.bandit.reskillable.common.network.payload.SyncToClient;
+import net.bandit.reskillable.event.SkillAttachments;
+import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -53,9 +56,9 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
         if (currentLevel < Configuration.getMaxLevel()) {
             skillLevels[skill.index]++;
             skillExperience[skill.index] = 0;
-//            updateSkillAttributeBonuses(player);
+            updateSkillAttributeBonuses(player);
             syncSkills(player);
-//            updateSkillAttributeBonuses(player);
+            updateSkillAttributeBonuses(player);
             int newLevel = skillLevels[skill.index];
             if (newLevel % 5 == 0) {
                 SkillAttributeBonus bonus = SkillAttributeBonus.getBySkill(skill);
@@ -175,13 +178,8 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
     }
 
     public static SkillModel get(Player player) {
-        SkillModel model = player.getCapability(SkillCapability.INSTANCE, null);
-        if (model == null) {
-            System.err.println("[Reskillable] SkillModel is NULL for player: " + player.getName().getString());
-        }
-        return model;
+        return player.getData(SkillAttachments.SKILL_MODEL.get());
     }
-
 
     public boolean canCraftItem(Player player, ItemStack stack) {
         ResourceLocation resource = stack.getItem().builtInRegistryHolder().key().location();
@@ -219,66 +217,73 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
             ATTRIBUTE_MODIFIER_IDS[i] = UUID.nameUUIDFromBytes(("reskillable:skill_bonus_" + i).getBytes());
         }
     }
-//    public void updateSkillAttributeBonuses(Player player) {
-//        for (SkillAttributeBonus bonus : SkillAttributeBonus.values()) {
-//            Attribute attr = bonus.getAttribute();
-//            if (attr == null) continue;
-//
-//            UUID modifierId = UUID.nameUUIDFromBytes(("reskillable:" + bonus.skill.name().toLowerCase()).getBytes());
-//            var attrInstance = player.getAttribute(attr.builtInRegistryHolder());
-//
-//            if (attrInstance == null) continue;
-//
-//            // Remove our modifier if it exists — only ours, identified by UUID
-//            attrInstance.getModifiers().stream()
-//                    .filter(mod -> mod.getId().equals(modifierId))
-//                    .forEach(attrInstance::removeModifier);
-//
-//            // Only apply if enabled
-//            if (isPerkEnabled(bonus.skill)) {
-//                int skillLevel = getSkillLevel(bonus.skill);
-//                int bonusSteps = skillLevel / 5;
-//                double totalBonus = bonusSteps * bonus.getBonusPerStep();
-//
-//                if (totalBonus > 0) {
-//                    AttributeModifier modifier = new AttributeModifier(
-//                            new ResourceLocation("reskillable", Skill.name().toLowerCase()),
-//                            bonusAmount,
-//                            AttributeModifier.Operation.ADD_VALUE
-//                    );
-//
-//                    attrInstance.addTransientModifier(modifier);
-//                }
-//            }
-//        }
-//        handleHealthBonus(player);
-//    }
-//    private void handleHealthBonus(Player player) {
-//        if (!Configuration.HEALTH_BONUS.get()) {
-//            return;
-//        }
-//
-//        int totalSkillLevels = Arrays.stream(skillLevels).sum();
-//        int levelsPerHeart = Configuration.LEVELS_PER_HEART.get();
-//        double healthPerHeart = Configuration.HEALTH_PER_HEART.get();
-//
-//        int hearts = totalSkillLevels / levelsPerHeart;
-//        double healthBonus = hearts * healthPerHeart;
-//
-//        var healthAttr = player.getAttribute(Attributes.MAX_HEALTH);
-//        if (healthAttr != null) {
-//            healthAttr.removeModifier(GLOBAL_HEALTH_BONUS_ID);
-//            if (healthBonus > 0) {
-//                AttributeModifier healthModifier = AttributeModifier.create(
-//                        GLOBAL_HEALTH_BONUS_ID,
-//                        "Reskillable Total Level Bonus",
-//                        healthBonus,
-//                        AttributeModifier.Operation.ADD_VALUE
-//                );
-//                healthAttr.addTransientModifier(healthModifier);
-//            }
-//        }
-//    }
+    public void updateSkillAttributeBonuses(Player player) {
+        for (SkillAttributeBonus bonus : SkillAttributeBonus.values()) {
+            Holder.Reference<Attribute> attr = BuiltInRegistries.ATTRIBUTE
+                    .getResourceKey(bonus.getAttribute())
+                    .flatMap(BuiltInRegistries.ATTRIBUTE::getHolder)
+                    .orElse(null);
+
+            if (attr == null) continue;
+
+            var attrInstance = player.getAttributes().getInstance(attr);
+            if (attrInstance == null) continue;
+
+            ResourceLocation id = ResourceLocation.fromNamespaceAndPath("reskillable", bonus.skill.name().toLowerCase());
+
+            attrInstance.getModifiers().stream()
+                    .filter(mod -> mod.id().equals(id))
+                    .findFirst()
+                    .ifPresent(attrInstance::removeModifier);
+
+            if (isPerkEnabled(bonus.skill)) {
+                int skillLevel = getSkillLevel(bonus.skill);
+                int bonusSteps = skillLevel / 5;
+                double totalBonus = bonusSteps * bonus.getBonusPerStep();
+
+                if (totalBonus > 0) {
+                    AttributeModifier modifier = new AttributeModifier(
+                            id,
+                            totalBonus,
+                            AttributeModifier.Operation.ADD_VALUE
+                    );
+                    attrInstance.addTransientModifier(modifier);
+                }
+            }
+        }
+
+        handleHealthBonus(player);
+    }
+
+    private void handleHealthBonus(Player player) {
+        if (!Configuration.HEALTH_BONUS.get()) return;
+
+        int totalSkillLevels = Arrays.stream(skillLevels).sum();
+        int levelsPerHeart = Configuration.LEVELS_PER_HEART.get();
+        double healthPerHeart = Configuration.HEALTH_PER_HEART.get();
+
+        int hearts = totalSkillLevels / levelsPerHeart;
+        double healthBonus = hearts * healthPerHeart;
+
+        var healthAttr = player.getAttributes().getInstance(Attributes.MAX_HEALTH);
+        if (healthAttr != null) {
+            ResourceLocation id = ResourceLocation.fromNamespaceAndPath("reskillable", "health_bonus");
+
+            healthAttr.getModifiers().stream()
+                    .filter(mod -> mod.id().equals(id))
+                    .findFirst()
+                    .ifPresent(healthAttr::removeModifier);
+
+            if (healthBonus > 0) {
+                AttributeModifier healthModifier = new AttributeModifier(
+                        id,
+                        healthBonus,
+                        AttributeModifier.Operation.ADD_VALUE
+                );
+                healthAttr.addTransientModifier(healthModifier);
+            }
+        }
+    }
 
     public boolean isPerkEnabled(Skill skill) {
         return !disabledPerks.contains(skill);
@@ -288,7 +293,7 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
         if (!disabledPerks.add(skill)) {
             disabledPerks.remove(skill);
         }
-//        updateSkillAttributeBonuses(player);
+        updateSkillAttributeBonuses(player);
         syncSkills(player);
     }
 

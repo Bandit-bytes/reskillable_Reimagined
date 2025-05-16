@@ -9,6 +9,7 @@ import net.bandit.reskillable.common.EventHandler;
 import net.bandit.reskillable.common.commands.Commands;
 import net.bandit.reskillable.common.network.NetworkInit;
 import net.bandit.reskillable.event.ClientEvents;
+import net.bandit.reskillable.event.SkillAttachments;
 import net.bandit.reskillable.event.SoundRegistry;
 import net.minecraft.client.Minecraft;
 import net.neoforged.api.distmarker.Dist;
@@ -33,6 +34,7 @@ public class Reskillable {
 
     public Reskillable(IEventBus modEventBus, ModContainer modContainer) {
         modEventBus.addListener(this::commonSetup);
+        SkillAttachments.init(modEventBus);
         modEventBus.addListener(NetworkInit::registerPayloadHandlers);
         SoundRegistry.SOUND_EVENTS.register(modEventBus);
         NeoForge.EVENT_BUS.register(new EventHandler());

@@ -131,19 +131,15 @@ public class EventHandler {
         SkillModel model = SkillModel.get(player);
         if (model == null || player.isCreative()) return;
 
-        // Only intercept armor equips
         if (event.getSlot().getType() == EquipmentSlot.Type.HUMANOID_ARMOR) {
             ItemStack newItem = event.getTo();
             ItemStack oldItem = event.getFrom();
 
             if (!model.canUseItem(player, newItem)) {
-                // Revert the armor equip
                 player.setItemSlot(event.getSlot(), oldItem);
 
-                // Drop the armor piece
                 player.drop(newItem.copy(), false);
 
-                // Optional message
                 player.sendSystemMessage(Component.literal("You lack the skill to equip this armor.").withStyle(ChatFormatting.RED));
             }
         }
@@ -229,7 +225,7 @@ public class EventHandler {
             SkillModel model = SkillModel.get(serverPlayer);
             if (model != null) {
                 SyncToClient.send(serverPlayer);
-                // model.updateSkillAttributeBonuses(serverPlayer);
+                 model.updateSkillAttributeBonuses(serverPlayer);
             }
         }
     }
@@ -242,7 +238,7 @@ public class EventHandler {
             SkillModel model = SkillModel.get(serverPlayer);
             if (model != null) {
                 model.syncSkills(serverPlayer);
-                // model.updateSkillAttributeBonuses(serverPlayer);
+                 model.updateSkillAttributeBonuses(serverPlayer);
             }
         }
     }
@@ -316,7 +312,7 @@ public class EventHandler {
         SkillModel model = SkillModel.get(player);
         if (model == null || player.level().isClientSide) return;
 
-//        model.updateSkillAttributeBonuses(player);
+        model.updateSkillAttributeBonuses(player);
     }
 //    @SubscribeEvent
 //    public void onPlayerTickAgility(PlayerTickEvent event) {
