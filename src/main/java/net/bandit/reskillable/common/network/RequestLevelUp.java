@@ -55,7 +55,8 @@ public class RequestLevelUp {
                 return;
             }
 
-            int cost = Configuration.calculateCostForLevel(currentLevel);
+            int cost = Configuration.calculateCostForLevel(currentLevel + 1);
+
 
             if (player.isCreative()) {
                 skillModel.increaseSkillLevel(skill, player);

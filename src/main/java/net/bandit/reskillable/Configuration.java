@@ -346,18 +346,14 @@ public class Configuration {
         };
 
         double multiplier = getXpScalingMultiplier();
-        if (level == 1) {
-            return (int) Math.ceil(7 * multiplier);
-        }
+
         if (level <= totalXpCosts.length) {
-            int baseCost = totalXpCosts[level - 1] - totalXpCosts[level - 2];
-            return (int) Math.ceil(baseCost * multiplier);
+            return (int) Math.ceil(totalXpCosts[level - 1] * multiplier);
         }
 
-        int baseCost = 300;
-        return (int) Math.ceil(baseCost * multiplier);
+        // Fallback cost beyond level 50
+        return (int) Math.ceil(300 * multiplier);
     }
-
     public static int getMaxLevel() {
         return maximumLevel;
     }
@@ -410,19 +406,24 @@ public class Configuration {
     }
 
     public static int calculateExperienceCost(int level) {
-        if (level <= 0) return 0;
-
-        int baseCost;
-        if (level <= 16) {
-            baseCost = 2 * level + 7;
-        } else if (level <= 31) {
-            baseCost = 5 * level - 38;
-        } else {
-            baseCost = 9 * level - 158;
-        }
+        int[] totalXpCosts = {
+                7, 16, 27, 40, 55, 72, 91, 112, 135, 160,
+                187, 216, 247, 280, 315, 352, 394, 441, 493, 550,
+                612, 679, 751, 828, 910, 997, 1089, 1186, 1288, 1395,
+                1507, 1628, 1758, 1897, 2045, 2202, 2368, 2543, 2727, 2920,
+                3122, 3333, 3553, 3782, 4020, 4267, 4523, 4788, 5062, 5345
+        };
 
         double multiplier = getXpScalingMultiplier();
-        return (int) Math.ceil(baseCost * multiplier);
+
+        if (level <= 1) return (int) Math.ceil(totalXpCosts[0] * multiplier);
+        if (level <= totalXpCosts.length) {
+            int baseCost = totalXpCosts[level - 1] - totalXpCosts[level - 2];
+            return (int) Math.ceil(baseCost * multiplier);
+        }
+
+        // Fallback cost for levels above 50
+        return (int) Math.ceil(300 * multiplier);
     }
 
 
