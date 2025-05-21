@@ -37,7 +37,7 @@ public class Configuration {
     private static final ForgeConfigSpec.BooleanValue SHOW_TAB_BUTTONS;
     private static final ForgeConfigSpec.BooleanValue DEATH_RESET;
     public static final ForgeConfigSpec.BooleanValue HEALTH_BONUS;
-    private static final ForgeConfigSpec.IntValue STARTING_COST;
+//    private static final ForgeConfigSpec.IntValue STARTING_COST;
     private static final ForgeConfigSpec.IntValue MAXIMUM_LEVEL;
     private static final ForgeConfigSpec.DoubleValue XP_SCALING_MULTIPLIER;
     private static final ForgeConfigSpec.ConfigValue<List<? extends String>> SKILL_ALIAS;
@@ -61,7 +61,7 @@ public class Configuration {
     private static boolean showTabButtons;
     private static boolean deathReset;
     private static boolean healthbonus;
-    private static int startingCost;
+//    private static int startingCost;
     private static int maximumLevel;
     private static double xpScalingMultiplier;
     private static boolean enableSkillLeveling;
@@ -133,8 +133,8 @@ public class Configuration {
         builder.comment("Toggle the visibility of the tab buttons in the inventory.");
         SHOW_TAB_BUTTONS = builder.define("showTabButtons", true);
 
-        builder.comment("Starting cost of upgrading to level 2, in experience points.");
-        STARTING_COST = builder.defineInRange("startingCost", 7, 0, 1000);
+//        builder.comment("Starting cost of upgrading to level 2, in experience points.");
+//        STARTING_COST = builder.defineInRange("startingCost", 7, 0, 1000);
 
         builder.comment("Global scaling multiplier for XP costs.");
         XP_SCALING_MULTIPLIER = builder.defineInRange("xpScalingMultiplier", 1.0, 0.1, 10.0);
@@ -188,7 +188,6 @@ public class Configuration {
         disableWool = DISABLE_WOOL.get();
         showTabButtons = SHOW_TAB_BUTTONS.get();
         deathReset = DEATH_RESET.get();
-        startingCost = STARTING_COST.get();
         healthbonus = HEALTH_BONUS.get();
 //        costIncrease = COST_INCREASE.get();
         xpScalingMultiplier = XP_SCALING_MULTIPLIER.get();
@@ -328,10 +327,10 @@ public class Configuration {
         return deathReset;
     }
 
-
     public static double getXpScalingMultiplier() {
-        return xpScalingMultiplier;
+        return XP_SCALING_MULTIPLIER.get();
     }
+
     public static int calculateCostForLevel(int level) {
         if (level < 1) {
             throw new IllegalArgumentException("Level must be 1 or greater");

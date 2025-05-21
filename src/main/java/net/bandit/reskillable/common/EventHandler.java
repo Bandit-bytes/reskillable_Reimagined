@@ -290,19 +290,21 @@ public class EventHandler {
         if (event.phase != TickEvent.Phase.END || event.player.level().isClientSide) return;
         if (event.player.tickCount % 20 != 0) return;
 
-
         Player player = event.player;
         SkillModel model = SkillModel.get(player);
         if (model == null) return;
+
         ItemStack offhand = player.getOffhandItem();
         if (offhand.getItem() == Items.TOTEM_OF_UNDYING) {
             Requirement[] reqs = Configuration.getRequirements(Items.TOTEM_OF_UNDYING.builtInRegistryHolder().key().location());
-            for (Requirement req : reqs) {
-                if (model.getSkillLevel(req.skill) < req.level) {
-                    player.setItemInHand(InteractionHand.OFF_HAND, ItemStack.EMPTY);
-                    player.drop(offhand, false);
-                    player.sendSystemMessage(Component.literal("You lack the required skill to use the Totem of Undying!").withStyle(ChatFormatting.RED));
-                    break;
+            if (reqs != null) {
+                for (Requirement req : reqs) {
+                    if (model.getSkillLevel(req.skill) < req.level) {
+                        player.setItemInHand(InteractionHand.OFF_HAND, ItemStack.EMPTY);
+                        player.drop(offhand, false);
+                        player.sendSystemMessage(Component.literal("You lack the required skill to use the Totem of Undying!").withStyle(ChatFormatting.RED));
+                        break;
+                    }
                 }
             }
         }

@@ -55,7 +55,7 @@ public class RequestLevelUp {
                 return;
             }
 
-            int cost = Configuration.calculateCostForLevel(currentLevel + 1);
+            int cost = Configuration.calculateCostForLevel(currentLevel);
 
 
             if (player.isCreative()) {
