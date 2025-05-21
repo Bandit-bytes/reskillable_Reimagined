@@ -306,19 +306,33 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
         double healthPerHeart = Configuration.HEALTH_PER_HEART.get();
 
         int hearts = totalSkillLevels / levelsPerHeart;
-        double healthBonus = hearts * healthPerHeart;
+        double newBonus = hearts * healthPerHeart;
 
         var healthAttr = player.getAttribute(Attributes.MAX_HEALTH);
         if (healthAttr != null) {
+            // Remove and re-apply the modifier
             healthAttr.removeModifier(GLOBAL_HEALTH_BONUS_ID);
-            if (healthBonus > 0) {
+
+            if (newBonus > 0) {
                 AttributeModifier healthModifier = new AttributeModifier(
                         GLOBAL_HEALTH_BONUS_ID,
                         "Reskillable Total Level Bonus",
-                        healthBonus,
+                        newBonus,
                         AttributeModifier.Operation.ADDITION
                 );
                 healthAttr.addTransientModifier(healthModifier);
+            }
+
+            // Clamp health if it's above new max (fix visual bug)
+            double max = player.getMaxHealth();
+            if (player.getHealth() > max) {
+                player.setHealth((float) max);
+            }
+
+            // Heal only if current health is exactly equal to old vanilla base (meaning they probably relogged without damage)
+            // This is a soft fix that prevents abuse but ensures hearts aren’t empty on join
+            if (player.getHealth() == 20.0 && max > 20.0) {
+                player.setHealth((float) max);
             }
         }
     }
