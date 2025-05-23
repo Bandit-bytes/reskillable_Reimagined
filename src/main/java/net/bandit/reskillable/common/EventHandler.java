@@ -142,33 +142,6 @@ public class EventHandler {
             }
         }
     }
-//
-//    @SubscribeEvent(priority = EventPriority.HIGHEST)
-//    public void onChangeEquipment(LivingEquipmentChangeEvent event) {
-//        if (!(event.getEntity() instanceof ServerPlayer player)) return;
-//        if (player.isCreative()) return;
-//
-//        SkillModel model = SkillModel.get(player);
-//        if (model == null) return;
-//
-//        if (event.getSlot().getType() == EquipmentSlot.Type.HUMANOID_ARMOR) {
-//            ItemStack newItem = event.getTo();
-//            ItemStack oldItem = event.getFrom();
-//
-//            if (!model.canUseItem(player, newItem)) {
-//                // Drop the attempted armor
-//                player.drop(newItem.copy(), false);
-//
-//                // Instead of re-setting the slot directly, schedule a task to restore armor next tick
-//                player.getServer().execute(() -> {
-//                    player.setItemSlot(event.getSlot(), oldItem);
-//                });
-//
-//                player.sendSystemMessage(Component.literal("You lack the skill to equip this armor.").withStyle(ChatFormatting.RED));
-//            }
-//        }
-//    }
-
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public void onEntityDrops(LivingDropsEvent event) {
