@@ -350,8 +350,9 @@ public class Configuration {
             return (int) Math.ceil(totalXpCosts[level - 1] * multiplier);
         }
 
-        // Fallback cost beyond level 50
-        return (int) Math.ceil(300 * multiplier);
+        // Match Minecraft's XP formula for levels beyond 50
+        int vanillaXp = (int) Math.floor(4.5 * level * level - 162.5 * level + 2220);
+        return (int) Math.ceil(vanillaXp * multiplier);
     }
     public static int getMaxLevel() {
         return maximumLevel;
@@ -421,8 +422,17 @@ public class Configuration {
             return (int) Math.ceil(baseCost * multiplier);
         }
 
-        // Fallback cost for levels above 50
-        return (int) Math.ceil(300 * multiplier);
+        // Minecraft XP cost between levels
+        int cost;
+        if (level >= 32) {
+            cost = 9 * level - 158;
+        } else if (level >= 17) {
+            cost = 5 * level - 38;
+        } else {
+            cost = 2 * level + 7;
+        }
+
+        return (int) Math.ceil(cost * multiplier);
     }
 
 

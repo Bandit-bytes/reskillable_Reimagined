@@ -367,11 +367,13 @@ public class EventHandler {
 
         Requirement[] reqs = Configuration.getRequirements(Items.TOTEM_OF_UNDYING.builtInRegistryHolder().key().location());
 
-        for (Requirement req : reqs) {
-            if (model.getSkillLevel(req.skill) < req.level) {
-                event.setCanceled(true);
-                player.sendSystemMessage(Component.literal("You lack the skill to use the Totem of Undying.").withStyle(ChatFormatting.RED));
-                return;
+        if (reqs != null) {
+            for (Requirement req : reqs) {
+                if (model.getSkillLevel(req.skill) < req.level) {
+                    event.setCanceled(true);
+                    player.sendSystemMessage(Component.literal("You lack the skill to use the Totem of Undying.").withStyle(ChatFormatting.RED));
+                    return;
+                }
             }
         }
     }
