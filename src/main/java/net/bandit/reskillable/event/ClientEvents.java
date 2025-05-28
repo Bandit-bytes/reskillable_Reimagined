@@ -4,7 +4,6 @@ import net.bandit.reskillable.Reskillable;
 import net.bandit.reskillable.client.KeyMapping;
 import net.bandit.reskillable.client.Overlay;
 import net.bandit.reskillable.client.screen.SkillScreen;
-import net.bandit.reskillable.client.screen.buttons.KeyBinding;
 import net.minecraft.client.Minecraft;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.InputEvent;
