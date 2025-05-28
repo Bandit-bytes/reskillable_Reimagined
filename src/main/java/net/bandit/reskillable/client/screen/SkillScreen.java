@@ -144,18 +144,23 @@ public class SkillScreen extends Screen {
                                 .append(skillLevel < 5
                                         ? Component.literal(" (Requires Level 5)").withStyle(ChatFormatting.DARK_GRAY)
                                         : Component.empty());
+                        case MINING -> {
+                            double bonusPerStep = SkillAttributeBonus.getBySkill(Skill.MINING) != null
+                                    ? SkillAttributeBonus.getBySkill(Skill.MINING).getBonusPerStep()
+                                    : 0.0;
 
-                        case MINING -> Component.literal("")
-                                .append(skillName)
-                                .append(": ")
-                                .append(Component.literal(skillLevel >= 5
-                                        ? String.format("+%.0f%%", (skillLevel / 5.0) * 25)
-                                        : "+0%").withStyle(ChatFormatting.AQUA))
-                                .append(" ")
-                                .append(Component.literal("Break Speed").withStyle(ChatFormatting.GRAY))
-                                .append(skillLevel < 5
-                                        ? Component.literal(" (Requires Level 5)").withStyle(ChatFormatting.DARK_GRAY)
-                                        : Component.empty());
+                            double percent = skillLevel >= 5 ? (skillLevel / 5.0) * bonusPerStep * 100.0 : 0;
+
+                            yield Component.literal("")
+                                    .append(skillName)
+                                    .append(": ")
+                                    .append(Component.literal(String.format("+%.0f%%", percent)).withStyle(ChatFormatting.AQUA))
+                                    .append(" ")
+                                    .append(Component.literal("Break Speed").withStyle(ChatFormatting.GRAY))
+                                    .append(skillLevel < 5
+                                            ? Component.literal(" (Requires Level 5)").withStyle(ChatFormatting.DARK_GRAY)
+                                            : Component.empty());
+                        }
 
                         case GATHERING -> Component.literal("")
                                 .append(skillName)
