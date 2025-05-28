@@ -1,15 +1,17 @@
 package net.bandit.reskillable.client.screen;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import net.bandit.reskillable.Configuration;
+import net.bandit.reskillable.client.KeyMapping;
 import net.bandit.reskillable.client.screen.buttons.SkillButton;
 import net.bandit.reskillable.common.capabilities.SkillModel;
 import net.bandit.reskillable.common.commands.skills.Skill;
-import net.bandit.reskillable.Configuration;
 import net.bandit.reskillable.common.commands.skills.SkillAttributeBonus;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.ai.attributes.Attribute;
@@ -253,5 +255,22 @@ public class SkillScreen extends Screen {
                 xpCostColor.put(skill, hasXP ? 0x00FF00 : 0xFF0000);
             }
         }
+    }
+
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (this.minecraft != null && this.minecraft.player != null) {
+            if (this.minecraft.options.keyInventory.matches(keyCode, scanCode)) {
+                this.minecraft.setScreen(new InventoryScreen(this.minecraft.player));
+                return true;
+            }
+
+            if (KeyMapping.openKey.matches(keyCode, scanCode)) {
+                this.onClose();
+                return true;
+            }
+        }
+
+        return super.keyPressed(keyCode, scanCode, modifiers);
     }
 }
