@@ -1,4 +1,35 @@
 # Project exclude paths
 /.gradle/
 /build/
-/build/classes/java/main/
+
+# eclipse
+bin
+*.launch
+.settings
+.metadata
+.classpath
+.project
+
+# idea
+out
+*.ipr
+*.iws
+*.iml
+.idea
+
+# gradle
+build
+.gradle
+
+# other
+eclipse
+run
+
+# Files from Forge MDK
+forge*changelog.txt
+so_changelog.txt
+src/generated/resources/.cache/cache
+/run-data/
+/src/generated/resources/.cache/
+/run/
+/.idea/

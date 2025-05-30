@@ -34,7 +34,8 @@ public class InventoryTabs {
             event.addListener(new TabButton(buttonX, inventoryTabY, TabButton.TabType.INVENTORY, !isSkillsOpen) {
                 @Override
                 public void onPress() {
-                    Minecraft.getInstance().setScreen(new InventoryScreen(Minecraft.getInstance().player));
+                    if (Minecraft.getInstance().player != null)
+                        Minecraft.getInstance().setScreen(new InventoryScreen(Minecraft.getInstance().player));
                 }
             });
 
