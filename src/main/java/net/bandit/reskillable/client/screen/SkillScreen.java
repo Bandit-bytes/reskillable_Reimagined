@@ -13,6 +13,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.player.Player;
@@ -46,6 +47,7 @@ public class SkillScreen extends Screen {
             addRenderableWidget(new SkillButton(x, y, skill));
         }
     }
+
     @Override
     public void render(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
         RenderSystem.setShaderTexture(0, RESOURCES);
@@ -90,121 +92,101 @@ public class SkillScreen extends Screen {
 
     }
 
+    private void renderTotalXPTooltip(GuiGraphics gui, int mouseX, int mouseY) {
+        Player player = Minecraft.getInstance().player;
+        if (player == null) return;
 
-    private void renderTotalXPTooltip(GuiGraphics guiGraphics, int mouseX, int mouseY) {
-    Player player = Minecraft.getInstance().player;
-    if (player != null) {
         int totalXP = calculateTotalXP(player);
         int level = getLevelForTotalXP(totalXP);
 
-        Component totalXPComponent = Component.literal(String.valueOf(totalXP)).withStyle(ChatFormatting.GREEN);
-        Component levelComponent = Component.literal(String.valueOf(level));
-        Component tooltip = Component.translatable("tooltip.rereskillable.total_xp", totalXPComponent, levelComponent);
+        Component header = Component.translatable(
+                "tooltip.rereskillable.total_xp",
+                Component.literal(String.valueOf(totalXP)).withStyle(ChatFormatting.GREEN),
+                Component.literal(String.valueOf(level))
+        );
 
-        List<Component> tooltipLines = new ArrayList<>();
-        tooltipLines.add(tooltip);
-
-        tooltipLines.add(Component.literal(" "));
+        List<Component> lines = new ArrayList<>();
+        lines.add(header);
+        lines.add(Component.empty());
 
         SkillModel model = SkillModel.get(player);
         if (model != null) {
             for (Skill skill : Skill.values()) {
                 int skillLevel = model.getSkillLevel(skill);
+                Component skillName = Component.translatable("skill." + skill.name().toLowerCase())
+                        .withStyle(ChatFormatting.GOLD);
 
                 var bonus = SkillAttributeBonus.getBySkill(skill);
-                Attribute attribute = bonus != null ? bonus.getAttribute() : null;
+                Attribute attr = bonus != null ? bonus.getAttribute() : null;
 
-                if (bonus != null && attribute != null && skillLevel >= 5) {
-                    double amount = (skillLevel / 5.0) * bonus.getBonusPerStep();
+                /* ---- 2a · Generic attribute-driven bonus ---- */
+                if (bonus != null && attr != null && skillLevel >= 5) {
+                    double pct = (skillLevel / 5.0) * bonus.getBonusPerStep() * 100.0;
+                    if (pct > 0) {
+                        Component amount = Component.literal(String.format("+%.0f%%", pct))
+                                .withStyle(ChatFormatting.AQUA);
+                        Component attrName = Component.translatable(attr.getDescriptionId())
+                                .withStyle(ChatFormatting.GRAY);
 
-                    if (amount > 0) {
-                        Component skillName = Component.translatable("skill." + skill.name().toLowerCase()).withStyle(ChatFormatting.GOLD);
-                        Component attrName = Component.translatable(attribute.getDescriptionId()).withStyle(ChatFormatting.GRAY);
-
-                        String percentText = String.format("+%.0f%%", amount * 100);
-                        Component bonusLine = Component.literal("")
-                                .append(skillName)
-                                .append(": ")
-                                .append(Component.literal(percentText).withStyle(ChatFormatting.AQUA))
-                                .append(" ")
-                                .append(attrName);
-
-                        tooltipLines.add(bonusLine);
+                        lines.add(Component.literal("")
+                                .append(skillName).append(": ").append(amount).append(" ").append(attrName));
                     }
+                    continue;
                 }
-                else {
-                    Component skillName = Component.translatable("skill." + skill.name().toLowerCase()).withStyle(ChatFormatting.GOLD);
-                    Component bonusLine = switch (skill) {
-                        case AGILITY -> Component.literal("")
-                                .append(skillName)
-                                .append(": ")
-                                .append(Component.literal(skillLevel >= 5
-                                        ? String.format("+%.0f%%", (skillLevel / 5.0) * 25)
-                                        : "+0%").withStyle(ChatFormatting.AQUA))
-                                .append(" ")
-                                .append(Component.literal("Run Speed").withStyle(ChatFormatting.GRAY))
-                                .append(skillLevel < 5
-                                        ? Component.literal(" (Requires Level 5)").withStyle(ChatFormatting.DARK_GRAY)
-                                        : Component.empty());
-                        case MINING -> {
-                            double bonusPerStep = SkillAttributeBonus.getBySkill(Skill.MINING) != null
-                                    ? SkillAttributeBonus.getBySkill(Skill.MINING).getBonusPerStep()
-                                    : 0.0;
 
-                            double percent = skillLevel >= 5 ? (skillLevel / 5.0) * bonusPerStep * 100.0 : 0;
+                Component amount;
+                Component effect;
+                boolean needsL5 = skillLevel < 5;
 
-                            yield Component.literal("")
-                                    .append(skillName)
-                                    .append(": ")
-                                    .append(Component.literal(String.format("+%.0f%%", percent)).withStyle(ChatFormatting.AQUA))
-                                    .append(" ")
-                                    .append(Component.literal("Break Speed").withStyle(ChatFormatting.GRAY))
-                                    .append(skillLevel < 5
-                                            ? Component.literal(" (Requires Level 5)").withStyle(ChatFormatting.DARK_GRAY)
-                                            : Component.empty());
-                        }
-
-                        case GATHERING -> Component.literal("")
-                                .append(skillName)
-                                .append(": ")
-                                .append(Component.literal(skillLevel >= 5
-                                        ? String.format("+%.0f%%", (skillLevel / 5.0 * Configuration.GATHERING_XP_BONUS.get() * 100))
-                                        : "+0%").withStyle(ChatFormatting.AQUA))
-                                .append(" ")
-                                .append(Component.literal("Bonus XP from Orbs").withStyle(ChatFormatting.GRAY))
-                                .append(skillLevel < 5
-                                        ? Component.literal(" (Requires Level 5)").withStyle(ChatFormatting.DARK_GRAY)
-                                        : Component.empty());
-
-                        case FARMING -> Component.literal("")
-                                .append(skillName)
-                                .append(": ")
-                                .append(Component.literal(skillLevel >= 5
-                                        ? "+" + (int)((skillLevel / 5.0) * 25) + "%"
-                                        : "+0%").withStyle(ChatFormatting.AQUA))
-                                .append(" ")
-                                .append(Component.literal("Crop Growth").withStyle(ChatFormatting.GRAY))
-                                .append(skillLevel < 5
-                                        ? Component.literal(" (Requires Level 5)").withStyle(ChatFormatting.DARK_GRAY)
-                                        : Component.empty());
-
-                        default -> null;
-                    };
-
-                    if (bonusLine != null) {
-                        tooltipLines.add(bonusLine);
+                switch (skill) {
+                    case AGILITY -> {
+                        double pct = skillLevel >= 5 ? (skillLevel / 5.0) * 25 : 0;
+                        amount = Component.literal(String.format("+%.0f%%", pct)).withStyle(ChatFormatting.AQUA);
+                        effect = Component.translatable("tooltip.rereskillable.run_speed").withStyle(ChatFormatting.GRAY);
+                    }
+                    case MINING -> {
+                        double perStep = bonus != null ? bonus.getBonusPerStep() : 0.0;
+                        double pct = skillLevel >= 5 ? (skillLevel / 5.0) * perStep * 100.0 : 0;
+                        amount = Component.literal(String.format("+%.0f%%", pct)).withStyle(ChatFormatting.AQUA);
+                        effect = Component.translatable("tooltip.rereskillable.break_speed").withStyle(ChatFormatting.GRAY);
+                    }
+                    case GATHERING -> {
+                        double pct = skillLevel >= 5
+                                ? (skillLevel / 5.0) * Configuration.GATHERING_XP_BONUS.get() * 100.0
+                                : 0;
+                        amount = Component.literal(String.format("+%.0f%%", pct)).withStyle(ChatFormatting.AQUA);
+                        effect = Component.translatable("tooltip.rereskillable.bonus_xp_orbs").withStyle(ChatFormatting.GRAY);
+                    }
+                    case FARMING -> {
+                        double pct = skillLevel >= 5 ? (skillLevel / 5.0) * 25 : 0;
+                        amount = Component.literal("+" + (int) pct + "%").withStyle(ChatFormatting.AQUA);
+                        effect = Component.translatable("tooltip.rereskillable.crop_growth").withStyle(ChatFormatting.GRAY);
+                    }
+                    default -> {
+                        continue;
                     }
                 }
 
+                MutableComponent line = Component.literal("")
+                        .append(skillName)
+                        .append(": ")
+                        .append(amount)
+                        .append(" ")
+                        .append(effect);
+                if (needsL5) line.append(" ")
+                        .append(Component.translatable("tooltip.rereskillable.requires_level_5")
+                                .withStyle(ChatFormatting.DARK_GRAY));
+
+                lines.add(line);
             }
         }
-        guiGraphics.renderTooltip(
+
+        gui.renderTooltip(
                 Minecraft.getInstance().font,
-                tooltipLines.stream().map(Component::getVisualOrderText).toList(),
-                mouseX,
-                mouseY
+                lines.stream().map(Component::getVisualOrderText).toList(),
+                mouseX, mouseY
         );
-    }
+
 }
     private int calculateTotalXP(Player player) {
         int level = player.experienceLevel;

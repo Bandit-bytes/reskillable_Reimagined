@@ -171,14 +171,18 @@ public class SkillButton extends Button {
 
         if (SkillAttributeBonus.getBySkill(skill) != null) {
             boolean enabled = model.isPerkEnabled(skill);
+
             lines.add(Component.literal("➤ ")
-                    .append(Component.literal("Right-click: ").withStyle(ChatFormatting.GOLD))
-                    .append(Component.literal(enabled ? "Disable skill perk" : "Enable skill perk").withStyle(enabled ? ChatFormatting.RED : ChatFormatting.GREEN)));
+                    .append(Component.translatable("tooltip.rereskillable.right_click").withStyle(ChatFormatting.GOLD))
+                    .append(Component.translatable(
+                            enabled ? "tooltip.rereskillable.disable_perk" : "tooltip.rereskillable.enable_perk"
+                    ).withStyle(enabled ? ChatFormatting.RED : ChatFormatting.GREEN)));
         }
 
         lines.add(Component.literal("➤ ")
-                .append(Component.literal("Left-click: ").withStyle(ChatFormatting.GOLD))
-                .append(Component.literal("Level up this skill").withStyle(ChatFormatting.AQUA)));
+                .append(Component.translatable("tooltip.rereskillable.left_click").withStyle(ChatFormatting.GOLD))
+                .append(Component.translatable("tooltip.rereskillable.level_up").withStyle(ChatFormatting.AQUA)));
+
         return lines;
     }
 
