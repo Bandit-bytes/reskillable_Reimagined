@@ -17,7 +17,7 @@ public enum SkillAttributeBonus {
     FARMING(Skill.FARMING, () -> null, () -> Configuration.CROP_GROWTH_CHANCE.get(), AttributeModifier.Operation.ADDITION),
     BUILDING(Skill.BUILDING, () -> ForgeMod.BLOCK_REACH.get(), () -> Configuration.BLOCK_REACH_BONUS.get(), AttributeModifier.Operation.ADDITION),
     DEFENSE(Skill.DEFENSE, () -> Attributes.ARMOR, () -> Configuration.ARMOR_BONUS.get(), AttributeModifier.Operation.MULTIPLY_TOTAL),
-    AGILITY(Skill.AGILITY, () -> null, () -> Configuration.MOVEMENT_SPEED_BONUS.get(), AttributeModifier.Operation.MULTIPLY_TOTAL),
+    AGILITY(Skill.AGILITY, () -> Attributes.MOVEMENT_SPEED, () -> Configuration.MOVEMENT_SPEED_BONUS.get(), AttributeModifier.Operation.MULTIPLY_TOTAL),
     MAGIC(Skill.MAGIC, Configuration::getConfiguredMagicAttribute, () -> Configuration.LUCK_BONUS.get(), AttributeModifier.Operation.MULTIPLY_TOTAL);
 
 

@@ -322,39 +322,39 @@ public class EventHandler {
 
         model.updateSkillAttributeBonuses(player);
     }
-    @SubscribeEvent
-    public void onPlayerTickAgility(TickEvent.PlayerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || event.player.level().isClientSide) return;
-
-        Player player = event.player;
-        SkillModel model = SkillModel.get(player);
-        if (model == null) return;
-
-        var attribute = player.getAttribute(Attributes.MOVEMENT_SPEED);
-        if (attribute == null) return;
-
-        var bonus = SkillAttributeBonus.getBySkill(Skill.AGILITY);
-        if (bonus == null) return;
-
-        UUID agilityId = UUID.nameUUIDFromBytes("reskillable:agility".getBytes());
-
-        // Always remove old modifier
-        attribute.removeModifier(agilityId);
-
-        int agilityLevel = model.getSkillLevel(Skill.AGILITY);
-        if (agilityLevel >= 5 && model.isPerkEnabled(Skill.AGILITY)) {
-            double multiplier = (agilityLevel / 5.0) * bonus.getBonusPerStep();
-            if (multiplier > 0) {
-                AttributeModifier mod = new AttributeModifier(
-                        agilityId,
-                        "Reskillable AGILITY bonus",
-                        multiplier,
-                        AttributeModifier.Operation.MULTIPLY_TOTAL
-                );
-                attribute.addTransientModifier(mod);
-            }
-        }
-    }
+//    @SubscribeEvent
+//    public void onPlayerTickAgility(TickEvent.PlayerTickEvent event) {
+//        if (event.phase != TickEvent.Phase.END || event.player.level().isClientSide) return;
+//
+//        Player player = event.player;
+//        SkillModel model = SkillModel.get(player);
+//        if (model == null) return;
+//
+//        var attribute = player.getAttribute(Attributes.MOVEMENT_SPEED);
+//        if (attribute == null) return;
+//
+//        var bonus = SkillAttributeBonus.getBySkill(Skill.AGILITY);
+//        if (bonus == null) return;
+//
+//        UUID agilityId = UUID.nameUUIDFromBytes("reskillable:agility".getBytes());
+//
+//        // Always remove old modifier
+//        attribute.removeModifier(agilityId);
+//
+//        int agilityLevel = model.getSkillLevel(Skill.AGILITY);
+//        if (agilityLevel >= 5 && model.isPerkEnabled(Skill.AGILITY)) {
+//            double multiplier = (agilityLevel / 5.0) * bonus.getBonusPerStep();
+//            if (multiplier > 0) {
+//                AttributeModifier mod = new AttributeModifier(
+//                        agilityId,
+//                        "Reskillable AGILITY bonus",
+//                        multiplier,
+//                        AttributeModifier.Operation.MULTIPLY_TOTAL
+//                );
+//                attribute.addTransientModifier(mod);
+//            }
+//        }
+//    }
     @SubscribeEvent
     public void onUseTotem(LivingUseTotemEvent event) {
         if (!(event.getEntity() instanceof Player player)) return;
