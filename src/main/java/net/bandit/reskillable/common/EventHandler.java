@@ -356,17 +356,28 @@ public class EventHandler {
         if (!(event.getEntity() instanceof Player player)) return;
 
         ItemStack totem = event.getTotem();
+        if (totem == null || totem.isEmpty()) return;
+
         if (!totem.is(Items.TOTEM_OF_UNDYING)) return;
 
         SkillModel model = SkillModel.get(player);
         if (model == null) return;
 
-        Requirement[] reqs = Configuration.getRequirements(Items.TOTEM_OF_UNDYING.builtInRegistryHolder().key().location());
+        var keyOpt = totem.getItem().builtInRegistryHolder().key();
+        if (keyOpt == null) return;
+        var id = keyOpt.location();
+
+        Requirement[] reqs = Configuration.getRequirements(id);
+        if (reqs == null || reqs.length == 0) return;
 
         for (Requirement req : reqs) {
+            if (req == null) continue;
             if (model.getSkillLevel(req.skill) < req.level) {
                 event.setCanceled(true);
-                player.sendSystemMessage(Component.literal("You lack the skill to use the Totem of Undying.").withStyle(ChatFormatting.RED));
+                player.sendSystemMessage(
+                        Component.literal("You lack the skill to use the Totem of Undying.")
+                                .withStyle(ChatFormatting.RED)
+                );
                 return;
             }
         }
