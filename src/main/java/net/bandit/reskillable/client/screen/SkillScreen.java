@@ -1,5 +1,6 @@
 package net.bandit.reskillable.client.screen;
 
+import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.bandit.reskillable.Configuration;
 import net.bandit.reskillable.client.screen.buttons.SkillButton;
@@ -51,52 +52,62 @@ public class SkillScreen extends Screen {
 
         int left = (this.width - panelWidth) / 2;
         int top = (this.height - panelHeight) / 2;
-        guiGraphics.fill(left, top, left + panelWidth, top + panelHeight, 0x99000000);
+//        guiGraphics.fill(left, top, left + panelWidth, top + panelHeight, 0x99000000);
     }
 
     @Override
-    public void render(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
-        this.renderTransparentBackground(guiGraphics);
-        RenderSystem.setShaderTexture(0, RESOURCES);
-
+    public void render(@NotNull GuiGraphics g, int mouseX, int mouseY, float pt) {
+        this.renderTransparentBackground(g);
         int left = (width - 176) / 2;
-        int top = (height - 166) / 2;
+        int top  = (height - 166) / 2;
 
-        renderBackground(guiGraphics, mouseX, mouseY, partialTicks);
-        guiGraphics.blit(RESOURCES, left, top, 0, 0, 176, 166);
+        renderBackground(g, mouseX, mouseY, pt);
+
+        g.setColor(1f, 1f, 1f, 1f);
+       RenderSystem.enableBlend();
+        RenderSystem.blendFuncSeparate(
+                GlStateManager.SourceFactor.ONE,
+                GlStateManager.DestFactor.ZERO,
+                GlStateManager.SourceFactor.ONE,
+                GlStateManager.DestFactor.ZERO
+        );
+
+        g.blit(RESOURCES, left, top, 0, 0, 176, 166);
+       RenderSystem.defaultBlendFunc();
+
 
         int i = 0;
         for (Skill skill : Skill.values()) {
             int x = left + (i % 2) * 83 + 10;
-            int y = top + (i / 2) * 36 + 20;
+            int y = top  + (i / 2) * 36 + 20;
 
             String xpCost = xpCostDisplay.getOrDefault(skill, "N/A");
-            int color = xpCostColor.getOrDefault(skill, 0xFFFFFF);
-
-            guiGraphics.drawString(font, "XP: " + xpCost, x, y, color, false);
+            int color     = xpCostColor.getOrDefault(skill, 0xFFFFFF);
+            g.drawString(font, "XP: " + xpCost, x, y, color, false);
             i++;
         }
 
-        super.render(guiGraphics, mouseX, mouseY, partialTicks);
+        super.render(g, mouseX, mouseY, pt);
 
         int labelX = width / 2 - font.width("Skills") / 2;
         int labelY = top + 6;
-        if (mouseX > labelX && mouseX < labelX + font.width("Skills") && mouseY > labelY && mouseY < labelY + font.lineHeight) {
-            renderTotalXPTooltip(guiGraphics, mouseX, mouseY);
+        if (mouseX > labelX && mouseX < labelX + font.width("Skills")
+                && mouseY > labelY && mouseY < labelY + font.lineHeight) {
+            renderTotalXPTooltip(g, mouseX, mouseY);
         }
 
         for (var widget : this.renderables) {
             if (widget instanceof SkillButton button && button.isMouseOver(mouseX, mouseY)) {
-                var tooltipLines = button.getTooltipLines(Minecraft.getInstance().player);
-                guiGraphics.renderTooltip(
+                var lines = button.getTooltipLines(Minecraft.getInstance().player);
+                g.renderTooltip(
                         font,
-                        tooltipLines.stream().map(Component::getVisualOrderText).toList(),
-                        mouseX,
-                        mouseY
+                        lines.stream().map(Component::getVisualOrderText).toList(),
+                        mouseX, mouseY
                 );
             }
         }
 
+        g.setColor(1f, 1f, 1f, 1f);
     }
 
 

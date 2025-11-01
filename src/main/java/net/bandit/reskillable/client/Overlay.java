@@ -43,40 +43,47 @@ public class Overlay implements LayeredDraw.Layer {
     public void render(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
         if (showTicks <= 0) return;
 
-        Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft == null || minecraft.player == null) return;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc == null || mc.player == null) return;
 
-        SkillModel model = SkillModel.get(minecraft.player);
+        SkillModel model = SkillModel.get(mc.player);
         if (model == null) return;
 
-        PoseStack stack = guiGraphics.pose();
-
-        RenderSystem.setShaderTexture(0, SkillScreen.RESOURCES);
+        // --- ensure sane state (prevents dark UI) ---
         RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        guiGraphics.setColor(1f, 1f, 1f, 1f);
 
-        int cx = minecraft.getWindow().getGuiScaledWidth() / 2;
-        int cy = minecraft.getWindow().getGuiScaledHeight() / 4;
+        int cx = mc.getWindow().getGuiScaledWidth() / 2;
+        int cy = mc.getWindow().getGuiScaledHeight() / 4;
 
+        // Draw panel
         guiGraphics.blit(SkillScreen.RESOURCES, cx - 71, cy - 4, 0, 194, 142, 40);
 
+        // Title/message
         String message = Component.translatable(messageKey).getString();
-        guiGraphics.drawString(minecraft.font, message, cx - minecraft.font.width(message) / 2, cy, 0xFF5555, false);
+        guiGraphics.drawString(mc.font, message, cx - mc.font.width(message) / 2, cy, 0xFF5555, false);
 
+        // Icons + levels
+        int maxLevel = Configuration.getMaxLevel();
         for (int i = 0; i < requirements.size(); i++) {
-            Requirement requirement = requirements.get(i);
-            int maxLevel = Configuration.getMaxLevel();
-
+            var req = requirements.get(i);
             int x = cx + i * 20 - requirements.size() * 10 + 2;
             int y = cy + 15;
-            int u = Math.min(requirement.level, maxLevel - 1) / (maxLevel / 4) * 16 + 176;
-            int v = requirement.skill.index * 16 + 128;
 
-            RenderSystem.setShaderTexture(0, SkillScreen.RESOURCES);
+            int u = Math.min(req.level, maxLevel - 1) / (maxLevel / 4) * 16 + 176;
+            int v = req.skill.index * 16 + 128;
+
             guiGraphics.blit(SkillScreen.RESOURCES, x, y, u, v, 16, 16);
 
-            String levelStr = Integer.toString(requirement.level);
-            boolean met =  ClientUtils.getClientSkillModel().getSkillLevel(requirement.skill) >= requirement.level;
-            guiGraphics.drawString(minecraft.font, levelStr, x + 17 - minecraft.font.width(levelStr), y + 9, met ? 0x55FF55 : 0xFF5555, false);
+            String levelStr = Integer.toString(req.level);
+            boolean met = ClientUtils.getClientSkillModel().getSkillLevel(req.skill) >= req.level;
+            guiGraphics.drawString(mc.font, levelStr, x + 17 - mc.font.width(levelStr), y + 9, met ? 0x55FF55 : 0xFF5555, false);
         }
+
+        // --- clean up state we changed ---
+        guiGraphics.setColor(1f, 1f, 1f, 1f);
+        RenderSystem.disableBlend();
     }
+
 }

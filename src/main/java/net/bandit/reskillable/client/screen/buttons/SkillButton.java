@@ -37,6 +37,10 @@ public class SkillButton extends Button {
     public void renderWidget(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft == null || minecraft.player == null) return;
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        guiGraphics.setColor(1f, 1f, 1f, 1f); // kill any stray tint/alpha
+
 
         LocalPlayer clientPlayer = minecraft.player;
         Font font = minecraft.font;
