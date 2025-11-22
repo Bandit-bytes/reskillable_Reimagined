@@ -103,7 +103,7 @@ public class SkillButton extends Button {
 //
 //
 //            int screenHeight = Minecraft.getInstance().getWindow().getGuiScaledHeight();
-//            int tooltipHeight = 10 + tooltipLines.size() * 10; // estimated height (adjust if you have custom fonts)
+//            int tooltipHeight = 10 + tooltipLines.size() * 10; // estimated height
 //            int tooltipY = mouseY;
 //            if (mouseY + tooltipHeight > screenHeight) {
 //                tooltipY = mouseY - tooltipHeight - 4;
