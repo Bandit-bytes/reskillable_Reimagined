@@ -101,6 +101,8 @@ sourceSets.main.resources { srcDir 'src/generated/resources' }
 dependencies {
     implementation "curse.maven:curios-309927:6401872"
     compileOnly "curse.maven:irons-spells-n-spellbooks-855414:6497109"
+    compileOnly "curse.maven:spell-engine-807653:7224826"
+    compileOnly "curse.maven:wizards-734325:7214870"
 }
 
 // This block of code expands all declared replace properties in the specified resource targets.

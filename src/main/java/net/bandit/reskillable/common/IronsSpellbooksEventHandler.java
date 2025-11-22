@@ -2,10 +2,13 @@ package net.bandit.reskillable.common;
 
 import io.redspace.ironsspellbooks.api.events.SpellPreCastEvent;
 import net.bandit.reskillable.common.capabilities.SkillModel;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 
 public class IronsSpellbooksEventHandler extends AbsEventHandler {
 
@@ -33,7 +36,41 @@ public class IronsSpellbooksEventHandler extends AbsEventHandler {
                 event.setCanceled(true);
             }
         } else {
-            // 不知道什么情况，不准施法
+            event.setCanceled(true);
+        }
+    }
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    public void onRightClickWizardsItem(PlayerInteractEvent.RightClickItem event) {
+        Player player = event.getEntity();
+        if (player.isCreative()) {
+            return;
+        }
+
+        ItemStack stack = event.getItemStack();
+        if (stack.isEmpty()) {
+            return;
+        }
+
+        SkillModel model = SkillModel.get(player);
+        if (model == null) {
+            return;
+        }
+
+        ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        if (id == null) {
+            return;
+        }
+
+        if (!"wizards".equals(id.getNamespace())) {
+            return;
+        }
+
+        String path = id.getPath();
+        if (!(path.startsWith("wand_") || path.startsWith("staff_"))) {
+            return;
+        }
+
+        if (!checkRequirements(model, player, id)) {
             event.setCanceled(true);
         }
     }

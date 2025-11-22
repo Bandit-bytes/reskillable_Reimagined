@@ -5,7 +5,8 @@
   "compatibilityLevel": "JAVA_21",
   "refmap": "reskillable.refmap.json",
   "mixins": [
-    "CraftingContainerMixin"
+    "CraftingContainerMixin",
+    "SpellHelperMixin"
   ],
   "client": [
   ],

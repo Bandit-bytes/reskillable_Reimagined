@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 // */
 public class AbsEventHandler {
 
-    protected boolean checkRequirements(SkillModel skillModel, Player player, ResourceLocation resource) {
+    public static boolean checkRequirements(SkillModel skillModel, Player player, ResourceLocation resource) {
         Requirement[] requirements = RequirementType.USE.getRequirements(resource);
         if (requirements == null || requirements.length == 0) {
             return true;
@@ -39,7 +39,7 @@ public class AbsEventHandler {
         return true;
     }
 
-    protected void sendSkillRequirementMessage(Player player, RequirementType type, List<Requirement> unmetRequirements) {
+    public static void sendSkillRequirementMessage(Player player, RequirementType type, List<Requirement> unmetRequirements) {
         String translationKey = switch (type) {
             case ATTACK -> "message.reskillable.requirement.attack";
             case CRAFT -> "message.reskillable.requirement.craft";

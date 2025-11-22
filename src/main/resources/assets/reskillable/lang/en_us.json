@@ -25,5 +25,9 @@
   "message.reskillable.requirement.use": "You need the following skills to use this item: %s.",
   "reskillable.server.disabled": "Skill leveling is currently disabled on this server.",
   "reskillable.maxlevel": "Skill is already at the maximum level.",
-  "reskillable.not_enough": "Not enough XP to level up this skill."
+  "reskillable.not_enough": "Not enough XP to level up this skill.",
+  "reskillable.requirement.not_met": "You do not meet the requirements to use this item",
+  "reskillable.requirement.not_met.weapon": "You lack the skill to wield this weapon",
+  "reskillable.requirement.not_met.spell": "You are not skilled enough to cast this spell",
+  "reskillable.requirement.skill_needed": "Required: %s Level %d"
 }
