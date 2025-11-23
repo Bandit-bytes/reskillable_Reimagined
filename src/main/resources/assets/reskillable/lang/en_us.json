@@ -25,7 +25,7 @@
   "reskillable.not_enough": "Not enough XP to level up this skill.",
   "tooltip.rereskillable.run_speed": "Run Speed",
   "tooltip.rereskillable.break_speed": "Break Speed",
-  "tooltip.rereskillable.bonus_xp_orbs": "Bonus XP from Orbs",
+  "tooltip.rereskillable.bonus_xp_orbs": "Bonus XP",
   "tooltip.rereskillable.crop_growth": "Crop Growth",
   "tooltip.rereskillable.total_xp": "Total XP: %s (Level(s): %s)",
   "tooltip.rereskillable.xp_cost": "XP: %s",
