@@ -18,7 +18,6 @@
   "key.categories.rereskillable": "Reskillable",
   "tooltip.rereskillable.skill_cost_available": "Cost: §a%s XP §fCan level Up",
   "tooltip.rereskillable.skill_cost_unavailable": "Cost: §c%s XP §fNot Enough",
-  "tooltip.rereskillable.total_xp": "Your total XP: §a%s",
   "tooltip.rereskillable.skill_cost": "XP: %s / Cost: %s",
   "message.reskillable.requirement.attack": "You need the following skills to attack this creature: %s.",
   "message.reskillable.requirement.craft": "You need the following skills to craft this item: %s.",
@@ -29,5 +28,18 @@
   "reskillable.requirement.not_met": "You do not meet the requirements to use this item",
   "reskillable.requirement.not_met.weapon": "You lack the skill to wield this weapon",
   "reskillable.requirement.not_met.spell": "You are not skilled enough to cast this spell",
-  "reskillable.requirement.skill_needed": "Required: %s Level %d"
+  "reskillable.requirement.skill_needed": "Required: %s Level %d",
+  "tooltip.rereskillable.run_speed": "Run Speed",
+  "tooltip.rereskillable.break_speed": "Break Speed",
+  "tooltip.rereskillable.bonus_xp_orbs": "Bonus XP",
+  "tooltip.rereskillable.crop_growth": "Crop Growth",
+  "tooltip.rereskillable.total_xp": "Total XP: %s (Level(s): %s)",
+  "tooltip.rereskillable.xp_cost": "XP: %s",
+  "tooltip.rereskillable.requires_level_5": "(Requires Level 5)",
+  "gui.reskillable.skills": "Skills",
+  "tooltip.rereskillable.right_click": "Right-click: ",
+  "tooltip.rereskillable.left_click": "Left-click: ",
+  "tooltip.rereskillable.enable_perk": "Enable skill perk",
+  "tooltip.rereskillable.disable_perk": "Disable skill perk",
+  "tooltip.rereskillable.level_up": "Level up this skill"
 }
