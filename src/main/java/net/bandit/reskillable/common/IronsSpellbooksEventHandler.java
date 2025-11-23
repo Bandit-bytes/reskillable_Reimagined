@@ -9,6 +9,7 @@ import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import net.spell_engine.api.spell.container.SpellContainerHelper;
 
 public class IronsSpellbooksEventHandler extends AbsEventHandler {
 
@@ -51,6 +52,13 @@ public class IronsSpellbooksEventHandler extends AbsEventHandler {
             return;
         }
 
+        var container = SpellContainerHelper
+                .containerFromItemStack(stack);
+        if (container == null) {
+            // Not a spell item, ignore
+            return;
+        }
+
         SkillModel model = SkillModel.get(player);
         if (model == null) {
             return;
@@ -61,17 +69,13 @@ public class IronsSpellbooksEventHandler extends AbsEventHandler {
             return;
         }
 
-        if (!"wizards".equals(id.getNamespace())) {
-            return;
-        }
-
-        String path = id.getPath();
-        if (!(path.startsWith("wand_") || path.startsWith("staff_"))) {
-            return;
-        }
-
         if (!checkRequirements(model, player, id)) {
             event.setCanceled(true);
+            player.displayClientMessage(
+                    net.minecraft.network.chat.Component.translatable("reskillable.requirement.not_met"),
+                    true
+            );
         }
     }
+
 }

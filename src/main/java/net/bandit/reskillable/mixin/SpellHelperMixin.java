@@ -8,6 +8,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
+import net.spell_engine.api.spell.container.SpellContainer;
+import net.spell_engine.api.spell.container.SpellContainerHelper;
 import net.spell_engine.internals.SpellHelper;
 import net.spell_engine.internals.casting.SpellCast;
 
@@ -24,12 +26,11 @@ public abstract class SpellHelperMixin {
             at = @At("HEAD"),
             cancellable = true
     )
-    private static void reskillable$gateWizardsCasting(Player player,
-                                                       ItemStack itemStack,
-                                                       ResourceLocation spellId,
-                                                       boolean checkAmmo,
-                                                       CallbackInfoReturnable<SpellCast.Attempt> cir) {
-        // Let creative bypass
+    private static void reskillable$gateSpellCasting(Player player,
+                                                     ItemStack itemStack,
+                                                     ResourceLocation spellId,
+                                                     boolean checkAmmo,
+                                                     CallbackInfoReturnable<SpellCast.Attempt> cir) {
         if (player.isCreative()) {
             return;
         }
@@ -43,22 +44,20 @@ public abstract class SpellHelperMixin {
             return;
         }
 
+        // Only gate items that actually have spells (any mod: wizards, rogues, etc.)
+        SpellContainer container = SpellContainerHelper.containerFromItemStack(itemStack);
+        if (container == null) {
+            return; // not a spell item, ignore
+        }
+
         ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(itemStack.getItem());
         if (itemId == null) {
             return;
         }
 
-        if (!"wizards".equals(itemId.getNamespace())) {
-            return;
-        }
-
-        String path = itemId.getPath();
-        if (!(path.startsWith("wand_") || path.startsWith("staff_"))) {
-            return;
-        }
-
         boolean meets = AbsEventHandler.checkRequirements(model, player, itemId);
         if (!meets) {
+            // Block the cast entirely
             cir.setReturnValue(SpellCast.Attempt.none());
         }
     }
