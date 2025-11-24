@@ -16,7 +16,6 @@ import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.NotNull;
@@ -172,11 +171,8 @@ public class SkillScreen extends Screen {
             gui.pose().pushPose();
             gui.pose().translate(textX, textY, 0);
             gui.pose().scale(scale, scale, 1.0F);
-
             gui.drawString(this.font, line, 0, 0, 0xFFFFFF, false);
-
             gui.pose().popPose();
-
 
             row++;
         }
@@ -191,7 +187,6 @@ public class SkillScreen extends Screen {
         Component amount;
         Component effect;
 
-        // Special handling for the skills that use custom texts / configs
         switch (skill) {
             case AGILITY -> {
                 double pct = skillLevel >= 5 ? (skillLevel / 5.0) * 25 : 0;
@@ -219,18 +214,19 @@ public class SkillScreen extends Screen {
                         .withStyle(ChatFormatting.GRAY);
             }
             case FARMING -> {
-                double pct = skillLevel >= 5 ? (skillLevel / 5.0) * 25 : 0;
-                amount = Component.literal("+" + (int) pct + "%")
+                double perStep = Configuration.CROP_GROWTH_CHANCE.get();
+                double pct = skillLevel >= 5
+                        ? (skillLevel / 5.0) * perStep * 100.0
+                        : 0;
+                amount = Component.literal(String.format("+%.0f%%", pct))
                         .withStyle(ChatFormatting.AQUA);
                 effect = Component.translatable("tooltip.rereskillable.crop_growth")
                         .withStyle(ChatFormatting.GRAY);
             }
 
-            // All the other attribute-based skills: ATTACK, DEFENSE, BUILDING, MAGIC
             default -> {
                 SkillAttributeBonus bonus = SkillAttributeBonus.getBySkill(skill);
                 if (bonus == null) {
-                    // truly no perk defined for this skill → keep row empty
                     return Component.empty();
                 }
 
@@ -254,11 +250,11 @@ public class SkillScreen extends Screen {
                 .append(" ")
                 .append(effect);
 
-        if (locked) {
-            line.append(" ")
-                    .append(Component.translatable("tooltip.rereskillable.requires_level_5")
-                            .withStyle(ChatFormatting.DARK_GRAY));
-        }
+//        if (locked) {
+//            line.append(" ")
+//                    .append(Component.translatable("tooltip.rereskillable.requires_level_5")
+//                            .withStyle(ChatFormatting.DARK_GRAY));
+//        }
 
         return line;
     }

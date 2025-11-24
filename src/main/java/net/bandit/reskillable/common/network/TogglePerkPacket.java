@@ -32,7 +32,7 @@ public class TogglePerkPacket {
             if (model == null) return;
 
             Skill skill = Skill.values()[skillIndex];
-            model.togglePerk(skill, player); // Server toggles the perk too
+            model.togglePerk(skill, player);
         });
         ctx.get().setPacketHandled(true);
     }
