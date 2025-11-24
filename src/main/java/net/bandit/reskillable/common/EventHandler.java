@@ -267,16 +267,20 @@ public class EventHandler {
     @SubscribeEvent
     public void onCropGrow(CropGrowEvent.Pre event) {
         if (!(event.getLevel() instanceof ServerLevel level)) return;
+        float chancePerStep = Configuration.CROP_GROWTH_CHANCE.get().floatValue();
 
         level.players().forEach(player -> {
             if (player.distanceToSqr(Vec3.atCenterOf(event.getPos())) < 64) {
                 SkillModel model = SkillModel.get(player);
                 if (model != null) {
                     int farmingLevel = model.getSkillLevel(Skill.FARMING);
-                    var bonus = SkillAttributeBonus.getBySkill(Skill.FARMING);
-                    if (bonus != null && model.isPerkEnabled(Skill.FARMING)) {
-                        float chance = (farmingLevel / 5f) * (float) bonus.getBonusPerStep();
-                        if (farmingLevel >= 5 && level.random.nextFloat() < chance) {
+
+                    if (model.isPerkEnabled(Skill.FARMING) && farmingLevel >= 5) {
+                        float steps = farmingLevel / 5f;
+                        float chance = steps * chancePerStep;
+                        if (chance > 1.0f) chance = 1.0f;
+
+                        if (level.random.nextFloat() < chance) {
                             event.setResult(CropGrowEvent.Pre.Result.GROW);
                         }
                     }
@@ -284,7 +288,6 @@ public class EventHandler {
             }
         });
     }
-
 
     @SubscribeEvent
     public void onXpPickup(PlayerXpEvent.PickupXp event) {

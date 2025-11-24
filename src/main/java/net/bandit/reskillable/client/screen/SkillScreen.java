@@ -236,12 +236,16 @@ public class SkillScreen extends Screen {
                         .withStyle(ChatFormatting.GRAY);
             }
             case FARMING -> {
-                double pct = skillLevel >= 5 ? (skillLevel / 5.0) * 25 : 0;
-                amount = Component.literal("+" + (int) pct + "%")
+                double perStep = Configuration.CROP_GROWTH_CHANCE.get();
+                double pct = skillLevel >= 5
+                        ? (skillLevel / 5.0) * perStep * 100.0
+                        : 0;
+                amount = Component.literal(String.format("+%.0f%%", pct))
                         .withStyle(ChatFormatting.AQUA);
                 effect = Component.translatable("tooltip.rereskillable.crop_growth")
                         .withStyle(ChatFormatting.GRAY);
             }
+
             default -> {
                 SkillAttributeBonus bonus = SkillAttributeBonus.getBySkill(skill);
                 if (bonus == null) {
