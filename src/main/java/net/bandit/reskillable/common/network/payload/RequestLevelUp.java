@@ -49,7 +49,7 @@ public record RequestLevelUp(int skillIndex) implements CustomPacketPayload {
             return;
         }
 
-        int cost = Configuration.calculateCostForLevel(currentLevel + 1);
+        int cost = Configuration.calculateCostForLevel(currentLevel);
         int totalXp = getTotalXp(player);
 
         if (player.isCreative() || totalXp >= cost) {
