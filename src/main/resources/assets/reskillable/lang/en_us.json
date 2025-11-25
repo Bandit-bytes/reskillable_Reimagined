@@ -37,6 +37,7 @@
   "tooltip.rereskillable.xp_cost": "XP: %s",
   "tooltip.rereskillable.requires_level_5": "(Requires Level 5)",
   "gui.reskillable.skills": "Skills",
+  "tooltip.rereskillable.block_reach": "Block reach",
   "tooltip.rereskillable.right_click": "Right-click: ",
   "tooltip.rereskillable.left_click": "Left-click: ",
   "tooltip.rereskillable.enable_perk": "Enable skill perk",

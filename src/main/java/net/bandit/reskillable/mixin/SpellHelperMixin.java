@@ -44,20 +44,17 @@ public abstract class SpellHelperMixin {
             return;
         }
 
-        // Only gate items that actually have spells (any mod: wizards, rogues, etc.)
         SpellContainer container = SpellContainerHelper.containerFromItemStack(itemStack);
         if (container == null) {
-            return; // not a spell item, ignore
+            return;
         }
 
         ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(itemStack.getItem());
         if (itemId == null) {
             return;
         }
-
         boolean meets = AbsEventHandler.checkRequirements(model, player, itemId);
         if (!meets) {
-            // Block the cast entirely
             cir.setReturnValue(SpellCast.Attempt.none());
         }
     }

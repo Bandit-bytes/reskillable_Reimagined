@@ -30,7 +30,6 @@ public class SkillScreen extends Screen {
     public static final ResourceLocation PERKS_TEXTURE =
             ResourceLocation.fromNamespaceAndPath("reskillable", "textures/gui/perks.png");
 
-    // === Perk layout (matches 1.20.1) ===
     private static final int PERK_BOX_X = 12;
     private static final int PERK_BOX_Y = 29;
     private static final int PERK_ROW_HEIGHT = 15;
@@ -70,7 +69,6 @@ public class SkillScreen extends Screen {
         int tabWidth = 45;
         int tabHeight = 17;
 
-        // Left tab: SKILLS
         skillsTab = new TabButton(
                 guiLeft + 11,
                 guiTop + 4,
@@ -198,8 +196,6 @@ public class SkillScreen extends Screen {
             row++;
         }
     }
-
-    // === Same perk-line builder as 1.20.1 version ===
     private Component buildSinglePerkLine(Skill skill, int skillLevel) {
         Component skillName = Component.translatable("skill." + skill.name().toLowerCase())
                 .withStyle(ChatFormatting.GOLD);
@@ -245,6 +241,16 @@ public class SkillScreen extends Screen {
                 effect = Component.translatable("tooltip.rereskillable.crop_growth")
                         .withStyle(ChatFormatting.GRAY);
             }
+            case BUILDING -> {
+                double perStep = Configuration.BLOCK_REACH_BONUS.get();
+                double blocks = skillLevel >= 5
+                        ? (skillLevel / 5.0) * perStep
+                        : 0;
+                amount = Component.literal(String.format("+%.1f", blocks))
+                        .withStyle(ChatFormatting.AQUA);
+                effect = Component.translatable("tooltip.rereskillable.block_reach")
+                        .withStyle(ChatFormatting.GRAY);
+            }
 
             default -> {
                 SkillAttributeBonus bonus = SkillAttributeBonus.getBySkill(skill);
@@ -272,14 +278,9 @@ public class SkillScreen extends Screen {
                 .append(" ")
                 .append(effect);
 
-        if (locked) {
-            line.append(" ")
-                    .append(Component.translatable("tooltip.rereskillable.requires_level_5")
-                            .withStyle(ChatFormatting.DARK_GRAY));
-        }
-
         return line;
     }
+
 
 
     private void renderTotalXPTooltip(GuiGraphics guiGraphics, int mouseX, int mouseY) {

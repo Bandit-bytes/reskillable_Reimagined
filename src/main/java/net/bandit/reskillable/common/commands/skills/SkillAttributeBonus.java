@@ -14,7 +14,7 @@ public enum SkillAttributeBonus {
     GATHERING(Skill.GATHERING, () -> null, () -> Configuration.GATHERING_XP_BONUS.get(), AttributeModifier.Operation.ADD_VALUE),
     MINING(Skill.MINING, () -> null, () -> Configuration.MINING_SPEED_MULTIPLIER.get(), AttributeModifier.Operation.ADD_VALUE),
     FARMING(Skill.FARMING, () -> null, () -> Configuration.CROP_GROWTH_CHANCE.get(), AttributeModifier.Operation.ADD_VALUE),
-    BUILDING(Skill.BUILDING, () -> null, () -> Configuration.BLOCK_REACH_BONUS.get(), AttributeModifier.Operation.ADD_VALUE),
+    BUILDING(Skill.BUILDING, () -> Attributes.BLOCK_INTERACTION_RANGE.value(), () -> Configuration.BLOCK_REACH_BONUS.get(), AttributeModifier.Operation.ADD_VALUE),
     DEFENSE(Skill.DEFENSE, () -> Attributes.ARMOR.value(), () -> Configuration.ARMOR_BONUS.get(), AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL),
     AGILITY(Skill.AGILITY, () -> null, () -> Configuration.MOVEMENT_SPEED_BONUS.get(), AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL),
     MAGIC(Skill.MAGIC, Configuration::getConfiguredMagicAttribute, () -> Configuration.LUCK_BONUS.get(), AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
