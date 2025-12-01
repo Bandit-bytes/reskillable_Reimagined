@@ -471,46 +471,72 @@ public class Configuration {
 
     public static int scanModItems(String modId) {
         Map<String, List<String>> newEntries = new HashMap<>();
-        for (Item item : BuiltInRegistries.ITEM.stream().toList()) {
+
+        for (Item item : BuiltInRegistries.ITEM) {
             ResourceLocation id = BuiltInRegistries.ITEM.getKey(item);
+
             if (id != null && id.getNamespace().equals(modId)) {
                 List<String> defaultRequirement = getDefaultRequirement(item);
-                if (!defaultRequirement.isEmpty()) {
-                    newEntries.put(id.toString(), defaultRequirement);
+
+                if (defaultRequirement == null || defaultRequirement.isEmpty()) {
+                    defaultRequirement = List.of(); // []
                 }
+                newEntries.put(id.toString(), defaultRequirement);
             }
         }
 
         if (newEntries.isEmpty()) {
-            return 0; // No items found
+            return 0;
         }
 
         try {
-            File file = FMLPaths.CONFIGDIR.get().resolve("reskillable/skill_locks.json").toFile();
-            JsonObject skillLocksJson = new JsonObject();
+            File file = FMLPaths.CONFIGDIR
+                    .get()
+                    .resolve("reskillable/skill_locks.json")
+                    .toFile();
+
+            JsonObject rootJson = new JsonObject();
+
             if (file.exists()) {
                 try (FileReader reader = new FileReader(file)) {
-                    skillLocksJson = new Gson().fromJson(reader, JsonObject.class);
+                    JsonObject loaded = new Gson().fromJson(reader, JsonObject.class);
+                    if (loaded != null) {
+                        rootJson = loaded;
+                    }
                 }
-            }
-            JsonObject skillLocks = skillLocksJson.has("skillLocks") ? skillLocksJson.getAsJsonObject("skillLocks") : new JsonObject();
-            for (Map.Entry<String, List<String>> entry : newEntries.entrySet()) {
-                if (!skillLocks.has(entry.getKey())) {
-                    skillLocks.add(entry.getKey(), new Gson().toJsonTree(entry.getValue()));
-                }
-            }
-            skillLocksJson.add("skillLocks", skillLocks);
-            try (FileWriter writer = new FileWriter(file)) {
-                new GsonBuilder().setPrettyPrinting().create().toJson(skillLocksJson, writer);
             }
 
-            return newEntries.size();
+            JsonObject skillLocks = rootJson.has("skillLocks")
+                    ? rootJson.getAsJsonObject("skillLocks")
+                    : new JsonObject();
+
+            Gson gson = new Gson();
+            int addedCount = 0;
+
+            for (Map.Entry<String, List<String>> entry : newEntries.entrySet()) {
+                String itemKey = entry.getKey();
+
+                if (!skillLocks.has(itemKey)) {
+                    skillLocks.add(itemKey, gson.toJsonTree(entry.getValue()));
+                    addedCount++;
+                }
+            }
+
+            rootJson.add("skillLocks", skillLocks);
+
+            try (FileWriter writer = new FileWriter(file)) {
+                new GsonBuilder()
+                        .setPrettyPrinting()
+                        .create()
+                        .toJson(rootJson, writer);
+            }
+
+            return addedCount;
         } catch (Exception e) {
             e.printStackTrace();
             return 0;
         }
     }
-
     /**
      * Determines the default requirement for a given item based on its type and properties.
      */
@@ -549,49 +575,30 @@ public class Configuration {
         return List.of();
     }
 
-    /**
-     * Determines the skill level for armor dynamically based on its defense and toughness stats.
-     */
     private static int determineArmorSkillLevel(int defense, double toughness) {
-        for (Map.Entry<String, ArmorStats> entry : VANILLA_ARMOR_BENCHMARKS.entrySet()) {
-            ArmorStats benchmark = entry.getValue();
-            if (defense <= benchmark.totalDefense && toughness <= benchmark.toughness) {
-                return switch (entry.getKey()) {
-                    case "leather" -> 5;
-                    case "chainmail" -> 10;
-                    case "iron" -> 15;
-                    case "gold" -> 15;
-                    case "diamond" -> 20;
-                    case "netherite" -> 30;
-                    default -> 5;
-                };
-            }
-        }
-        // If the armor exceeds netherite stats
+        int total = defense + (int) Math.round(toughness * 2);
+
+        if (total <= 5) return 5;
+        if (total <= 15) return 10;
+        if (total <= 22) return 15;
+        if (total <= 28) return 20;
+        if (total <= 32) return 30;
         return 35;
     }
 
-    /**
-     * Determines the skill level required based on attack damage.
-     */
     private static int determineAttackLevel(double attackDamage) {
         if (attackDamage < 6) return 5;
-        if (attackDamage < 10) return 15;
+        if (attackDamage < 8) return 10;
+        if (attackDamage < 10) return 20;
         return 30;
     }
 
-    /**
-     * Determines the skill level required based on harvest level.
-     */
-    private static int determineHarvestLevel(int harvestLevel) {
-        if (harvestLevel < 2) return 5;
-        if (harvestLevel == 2) return 15;
+    private static int determineHarvestLevel(int enchantability) {
+        if (enchantability <= 5) return 5;
+        if (enchantability <= 10) return 15;
         return 30;
     }
 
-    /**
-     * Helper class for armor stats comparison.
-     */
     private static class ArmorStats {
         int totalDefense;
         double toughness;
