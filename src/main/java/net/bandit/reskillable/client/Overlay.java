@@ -49,22 +49,17 @@ public class Overlay implements LayeredDraw.Layer {
         SkillModel model = SkillModel.get(mc.player);
         if (model == null) return;
 
-        // --- ensure sane state (prevents dark UI) ---
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
         guiGraphics.setColor(1f, 1f, 1f, 1f);
 
         int cx = mc.getWindow().getGuiScaledWidth() / 2;
         int cy = mc.getWindow().getGuiScaledHeight() / 4;
-
-        // Draw panel
         guiGraphics.blit(SkillScreen.RESOURCES, cx - 71, cy - 4, 0, 194, 142, 40);
 
-        // Title/message
         String message = Component.translatable(messageKey).getString();
         guiGraphics.drawString(mc.font, message, cx - mc.font.width(message) / 2, cy, 0xFF5555, false);
 
-        // Icons + levels
         int maxLevel = Configuration.getMaxLevel();
         for (int i = 0; i < requirements.size(); i++) {
             var req = requirements.get(i);
@@ -81,7 +76,6 @@ public class Overlay implements LayeredDraw.Layer {
             guiGraphics.drawString(mc.font, levelStr, x + 17 - mc.font.width(levelStr), y + 9, met ? 0x55FF55 : 0xFF5555, false);
         }
 
-        // --- clean up state we changed ---
         guiGraphics.setColor(1f, 1f, 1f, 1f);
         RenderSystem.disableBlend();
     }

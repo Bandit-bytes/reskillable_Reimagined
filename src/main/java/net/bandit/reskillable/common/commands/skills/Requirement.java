@@ -6,9 +6,8 @@ public class Requirement {
     public Skill skill;
     public int level;
 
-    // Default constructor for Gson
     public Requirement() {
-        this.skill = null; // Or a default skill
+        this.skill = null;
         this.level = 0;
     }
 

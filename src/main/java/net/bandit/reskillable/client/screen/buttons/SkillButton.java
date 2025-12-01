@@ -39,7 +39,7 @@ public class SkillButton extends Button {
         if (minecraft == null || minecraft.player == null) return;
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
-        guiGraphics.setColor(1f, 1f, 1f, 1f); // kill any stray tint/alpha
+        guiGraphics.setColor(1f, 1f, 1f, 1f);
 
 
         LocalPlayer clientPlayer = minecraft.player;

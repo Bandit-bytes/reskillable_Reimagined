@@ -24,13 +24,12 @@ public class InventoryTabs {
         if (screen instanceof InventoryScreen && !(screen instanceof CreativeModeInventoryScreen) || screen instanceof SkillScreen) {
             boolean isSkillsOpen = screen instanceof SkillScreen;
 
-            int guiLeft = (screen.width - 176) / 2; // Default GUI width
+            int guiLeft = (screen.width - 176) / 2;
             int guiTop = (screen.height - 166) / 2;
             int buttonX = guiLeft - 28;
             int inventoryTabY = guiTop + 7;
             int skillsTabY = guiTop + 36;
 
-            // Add Inventory tab
             event.addListener(new TabButton(buttonX, inventoryTabY, TabButton.TabType.INVENTORY, !isSkillsOpen) {
                 @Override
                 public void onPress() {

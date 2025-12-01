@@ -48,8 +48,8 @@ public class AbsEventHandler {
 
         List<Component> formattedRequirements = new ArrayList<>();
         for (Requirement req : unmetRequirements) {
-            String skillTranslationKey = "skill." + req.skill.name().toLowerCase(); // Ensure key matches lang file
-            Component translatedSkillName = Component.translatable(skillTranslationKey); // Retrieve translated name
+            String skillTranslationKey = "skill." + req.skill.name().toLowerCase();
+            Component translatedSkillName = Component.translatable(skillTranslationKey);
             formattedRequirements.add(
                     Component.literal("")
                             .append(translatedSkillName)

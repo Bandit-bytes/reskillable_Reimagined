@@ -28,7 +28,7 @@ public class Tooltip {
     private boolean isTaczLoaded = ModList.get().isLoaded("tacz");
     private boolean isIronsLoaded = ModList.get().isLoaded("irons_spellbooks");
 
-    @SuppressWarnings("t")
+
     @SubscribeEvent
     public void onTooltipDisplay(ItemTooltipEvent event) {
         if (Minecraft.getInstance().player != null) {
@@ -66,7 +66,6 @@ public class Tooltip {
                     }
                 }
 
-                // ✅ Now fetch requirements after remapping ID
                 Requirement[] requirements = Configuration.getRequirements(itemRegistryName);
 
                 if (requirements != null) {

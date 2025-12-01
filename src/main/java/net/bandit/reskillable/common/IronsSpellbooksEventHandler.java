@@ -55,7 +55,6 @@ public class IronsSpellbooksEventHandler extends AbsEventHandler {
         var container = SpellContainerHelper
                 .containerFromItemStack(stack);
         if (container == null) {
-            // Not a spell item, ignore
             return;
         }
 

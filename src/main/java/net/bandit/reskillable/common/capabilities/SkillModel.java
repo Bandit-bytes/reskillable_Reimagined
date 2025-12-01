@@ -40,17 +40,14 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
         resetSkills();
     }
 
-    // Get Skill Level
     public int getSkillLevel(Skill skill) {
         return skillLevels[skill.index];
     }
 
-    // Set Skill Level
     public void setSkillLevel(Skill skill, int level) {
         skillLevels[skill.index] = Math.min(level, Configuration.getMaxLevel());
     }
 
-    // Increase Skill Level
     public void increaseSkillLevel(Skill skill, Player player) {
         int currentLevel = skillLevels[skill.index];
         if (currentLevel < Configuration.getMaxLevel()) {
@@ -75,13 +72,11 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
         }
     }
 
-    // Add Experience to Skill
     public void addExperience(Skill skill, int experience) {
         skillExperience[skill.index] += experience;
         checkForLevelUp(skill);
     }
 
-    // Check for Level Up
     private void checkForLevelUp(Skill skill) {
         int level = skillLevels[skill.index];
         int xp = skillExperience[skill.index];
@@ -95,7 +90,6 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
         skillLevels[skill.index] = level;
     }
 
-    // Check if a Player Has Sufficient XP
     public boolean hasSufficientXP(Player player, Skill skill) {
         if (player.isCreative() || player.level().isClientSide) return true;
 
@@ -104,14 +98,12 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
 
     }
 
-    // Calculate Total XP for a Player
     private int calculateTotalXPFromPlayer(Player player) {
         int level = player.experienceLevel;
         int progress = Math.round(player.experienceProgress * Configuration.calculateExperienceCost(level));
         return Configuration.getCumulativeXpForLevel(level) + progress;
     }
 
-    // Can Use Item/Block/Entity
     public boolean canUseItem(Player player, ItemStack item) {
         return canUse(player, item.getItem().builtInRegistryHolder().key().location());
     }
