@@ -14,7 +14,7 @@
   "tooltip.requirements": "Skill Requirements",
   "key.skills": "Open Skills",
   "key.reskillable.category": "Reskillable",
-  "key.rereskillable.open_skills": "Open Skills",
+  "key.reskillable.open_skills": "Open Skills",
   "key.categories.rereskillable": "Reskillable",
   "tooltip.rereskillable.skill_cost_available": "Cost: §a%s XP §fCan level Up",
   "tooltip.rereskillable.skill_cost_unavailable": "Cost: §c%s XP §fNot Enough",
