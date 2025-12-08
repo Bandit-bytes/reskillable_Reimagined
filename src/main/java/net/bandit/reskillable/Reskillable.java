@@ -1,7 +1,6 @@
 package net.bandit.reskillable;
 
 import com.mojang.logging.LogUtils;
-import net.bandit.reskillable.client.Keybind;
 import net.bandit.reskillable.client.Overlay;
 import net.bandit.reskillable.client.Tooltip;
 import net.bandit.reskillable.common.*;

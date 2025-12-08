@@ -42,5 +42,6 @@
   "tooltip.rereskillable.left_click": "Left-click: ",
   "tooltip.rereskillable.enable_perk": "Enable skill perk",
   "tooltip.rereskillable.disable_perk": "Disable skill perk",
-  "tooltip.rereskillable.level_up": "Level up this skill"
+  "tooltip.rereskillable.level_up": "Level up this skill",
+  "config.jade.plugin_reskillable.requirements": "Reskillable requirements"
 }

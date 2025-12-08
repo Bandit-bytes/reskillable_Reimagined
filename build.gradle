@@ -100,6 +100,7 @@ sourceSets.main.resources { srcDir 'src/generated/resources' }
 
 dependencies {
     implementation "curse.maven:curios-309927:6401872"
+    implementation "curse.maven:jade-324717:6853386"
     compileOnly "curse.maven:irons-spells-n-spellbooks-855414:6497109"
     compileOnly "curse.maven:tacz-1-21-1-1353462:7295633"
     compileOnly "curse.maven:spell-engine-807653:7224826"
