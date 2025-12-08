@@ -4,10 +4,7 @@ import com.mojang.logging.LogUtils;
 import net.bandit.reskillable.client.Keybind;
 import net.bandit.reskillable.client.Overlay;
 import net.bandit.reskillable.client.Tooltip;
-import net.bandit.reskillable.common.CuriosCompat;
-import net.bandit.reskillable.common.EventHandler;
-import net.bandit.reskillable.common.IronsSpellbooksEventHandler;
-import net.bandit.reskillable.common.TaczEventHandler;
+import net.bandit.reskillable.common.*;
 import net.bandit.reskillable.common.commands.Commands;
 import net.bandit.reskillable.common.network.NetworkInit;
 import net.bandit.reskillable.event.ClientEvents;
@@ -50,6 +47,10 @@ public class Reskillable {
         // irons_spellbooks
         if (ModList.get().isLoaded("irons_spellbooks")) {
             NeoForge.EVENT_BUS.register(new IronsSpellbooksEventHandler());
+        }
+        // Spell Engine compat
+        if (ModList.get().isLoaded("spell_engine")) {
+            NeoForge.EVENT_BUS.register(new SpellEngineEventHandler());
         }
     }
 
