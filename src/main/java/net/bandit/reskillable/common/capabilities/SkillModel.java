@@ -272,7 +272,6 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
             var attrInstance = player.getAttribute(attr);
             if (attrInstance == null) continue;
 
-            // Remove our modifier if it exists — only ours, identified by UUID
             attrInstance.getModifiers().stream()
                     .filter(mod -> mod.getId().equals(modifierId))
                     .forEach(attrInstance::removeModifier);
@@ -322,15 +321,11 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
                 );
                 healthAttr.addTransientModifier(healthModifier);
             }
-
-            // Clamp health if it's above new max (fix visual bug)
             double max = player.getMaxHealth();
             if (player.getHealth() > max) {
                 player.setHealth((float) max);
             }
 
-            // Heal only if current health is exactly equal to old vanilla base (meaning they probably relogged without damage)
-            // This is a soft fix that prevents abuse but ensures hearts aren’t empty on join
             if (player.getHealth() == 20.0 && max > 20.0) {
                 player.setHealth((float) max);
             }

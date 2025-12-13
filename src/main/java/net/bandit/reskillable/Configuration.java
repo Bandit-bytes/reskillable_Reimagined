@@ -596,5 +596,4 @@ public class Configuration {
             this.toughness = toughness;
         }
     }
-
 }

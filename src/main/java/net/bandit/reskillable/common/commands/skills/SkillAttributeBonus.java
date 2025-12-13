@@ -1,6 +1,7 @@
 package net.bandit.reskillable.common.commands.skills;
 
 import net.bandit.reskillable.Configuration;
+import net.bandit.reskillable.common.capabilities.SkillModel;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraftforge.common.ForgeMod;
@@ -48,6 +49,15 @@ public enum SkillAttributeBonus {
         return null;
 
     }
+    public double getTotalBonus(SkillModel model) {
+        int steps = model.getSkillLevel(this.skill) / 5;
+        return steps * getBonusPerStep();
+    }
+
+    public double getTotalBonusPercent(SkillModel model) {
+        return getTotalBonus(model) * 100.0;
+    }
+
 }
 
 
