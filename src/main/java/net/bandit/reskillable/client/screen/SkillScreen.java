@@ -207,7 +207,9 @@ public class SkillScreen extends Screen {
 
         switch (skill) {
             case AGILITY -> {
-                double pct = skillLevel >= 5 ? (skillLevel / 5.0) * 25 : 0;
+                int steps = skillLevel / 5;
+                double perStep = Configuration.MOVEMENT_SPEED_BONUS.get();
+                double pct = steps * perStep * 100.0;
                 amount = Component.literal(String.format("+%.0f%%", pct))
                         .withStyle(ChatFormatting.AQUA);
                 effect = Component.translatable("tooltip.rereskillable.run_speed")
