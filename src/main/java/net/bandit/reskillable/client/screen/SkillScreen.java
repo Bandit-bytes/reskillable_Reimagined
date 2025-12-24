@@ -19,6 +19,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.NotNull;
+import net.minecraft.network.chat.Style;
+
 
 import java.util.*;
 
@@ -296,19 +298,40 @@ public class SkillScreen extends Screen {
     @Override
     public void tick() {
         super.tick();
-        Player player = Minecraft.getInstance().player;
-        if (player != null) {
-            SkillModel skillModel = SkillModel.get(player);
-            for (Skill skill : Skill.values()) {
-                int skillLevel = skillModel.getSkillLevel(skill);
-                int xpCost = Configuration.calculateCostForLevel(skillLevel + 1);
-                boolean hasXP = skillModel.hasSufficientXP(player, skill);
 
-                xpCostDisplay.put(skill, String.valueOf(xpCost));
-                xpCostColor.put(skill, hasXP ? 0x00FF00 : 0xFF0000);
-            }
+        Player player = Minecraft.getInstance().player;
+        if (player == null) return;
+
+        SkillModel model = SkillModel.get(player);
+        if (model == null) return;
+
+        boolean levelingEnabled = Configuration.isSkillLevelingEnabled();
+        int max = Configuration.getMaxLevel();
+
+        for (var widget : this.renderables) {
+            if (!(widget instanceof SkillButton btn)) continue;
+
+            Skill skill = btn.getSkill();
+            int level = model.getSkillLevel(skill);
+
+            int cost = Configuration.calculateCostForLevel(level);
+            int playerTotalXp = calculateTotalXP(player);
+            boolean hasXP = player.isCreative() || playerTotalXp >= cost;
+
+            xpCostDisplay.put(skill, String.valueOf(cost));
+            xpCostColor.put(skill, hasXP ? 0x00FF00 : 0xFF0000);
+
+            boolean maxed = level >= max;
+
+            GateUiResult gate = checkGateClient(model, skill, level);
+
+            btn.active = true;
+
+            boolean blockedByGate = levelingEnabled && !maxed && !gate.allowed;
+            btn.setGateBlocked(blockedByGate, blockedByGate ? gate.missingListComponent() : null);
         }
     }
+
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
@@ -335,4 +358,187 @@ public class SkillScreen extends Screen {
             // no vanilla background/text; SkillScreen handles drawing
         }
     }
+
+    private static GateUiResult checkGateClient(SkillModel model, Skill levelingSkill, int currentLevel) {
+        List<? extends String> rules;
+        try {
+            rules = Configuration.SKILL_LEVEL_GATES.get();
+        } catch (Throwable t) {
+            return GateUiResult.allowed();
+        }
+        if (rules == null || rules.isEmpty()) return GateUiResult.allowed();
+
+        int totalLevels = 0;
+        for (Skill s : Skill.values()) totalLevels += model.getSkillLevel(s);
+
+        List<MissingUiReq> missing = new ArrayList<>();
+
+        for (String line : rules) {
+            GateUiRule rule = GateUiRule.parse(line);
+            if (rule == null) continue;
+
+            if (rule.skill != levelingSkill) continue;
+            if (currentLevel < rule.minCurrentLevel) continue;
+
+            if (rule.minTotalLevels != null && totalLevels < rule.minTotalLevels) {
+                missing.add(MissingUiReq.total(rule.minTotalLevels));
+            }
+
+            for (Map.Entry<Skill, Integer> e : rule.minSkillLevels.entrySet()) {
+                int actual = model.getSkillLevel(e.getKey());
+                if (actual < e.getValue()) {
+                    missing.add(MissingUiReq.skill(e.getKey(), e.getValue()));
+                }
+            }
+        }
+
+        if (missing.isEmpty()) return GateUiResult.allowed();
+
+        // dedupe: keep highest requirement per key
+        Map<String, MissingUiReq> best = new LinkedHashMap<>();
+        for (MissingUiReq req : missing) {
+            String key = req.key();
+            MissingUiReq existing = best.get(key);
+            if (existing == null || req.required > existing.required) best.put(key, req);
+        }
+
+        return GateUiResult.blocked(new ArrayList<>(best.values()));
+    }
+
+    private static final class GateUiRule {
+        final Skill skill;
+        final int minCurrentLevel;
+        final Integer minTotalLevels;
+        final Map<Skill, Integer> minSkillLevels;
+
+        private GateUiRule(Skill skill, int minCurrentLevel, Integer minTotalLevels, Map<Skill, Integer> minSkillLevels) {
+            this.skill = skill;
+            this.minCurrentLevel = minCurrentLevel;
+            this.minTotalLevels = minTotalLevels;
+            this.minSkillLevels = minSkillLevels;
+        }
+
+        static GateUiRule parse(String line) {
+            if (line == null) return null;
+            line = line.trim();
+            if (line.isEmpty() || line.startsWith("#")) return null;
+
+            String[] parts = line.split(":", 3);
+            if (parts.length < 3) return null;
+
+            Skill skill;
+            try {
+                skill = Skill.valueOf(parts[0].trim().toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException ex) {
+                return null;
+            }
+
+            int minLevel;
+            try {
+                minLevel = Integer.parseInt(parts[1].trim());
+            } catch (NumberFormatException ex) {
+                return null;
+            }
+
+            Integer totalReq = null;
+            Map<Skill, Integer> skillReqs = new LinkedHashMap<>();
+
+            String reqs = parts[2].trim();
+            if (!reqs.isEmpty()) {
+                for (String raw : reqs.split(",")) {
+                    String tok = raw.trim();
+                    if (tok.isEmpty()) continue;
+
+                    String[] kv = tok.split("=", 2);
+                    if (kv.length != 2) continue;
+
+                    String key = kv[0].trim().toUpperCase(Locale.ROOT);
+                    int val;
+                    try {
+                        val = Integer.parseInt(kv[1].trim());
+                    } catch (NumberFormatException ex) {
+                        continue;
+                    }
+
+                    if (key.equals("TOTAL")) {
+                        totalReq = val;
+                        continue;
+                    }
+
+                    try {
+                        Skill reqSkill = Skill.valueOf(key);
+                        skillReqs.put(reqSkill, val);
+                    } catch (IllegalArgumentException ignored) {}
+                }
+            }
+
+            return new GateUiRule(skill, Math.max(0, minLevel), totalReq, skillReqs);
+        }
+    }
+
+    private static final class GateUiResult {
+        final boolean allowed;
+        final List<MissingUiReq> missing;
+
+        private GateUiResult(boolean allowed, List<MissingUiReq> missing) {
+            this.allowed = allowed;
+            this.missing = missing;
+        }
+
+        static GateUiResult allowed() {
+            return new GateUiResult(true, List.of());
+        }
+
+        static GateUiResult blocked(List<MissingUiReq> missing) {
+            return new GateUiResult(false, missing);
+        }
+
+        MutableComponent missingListComponent() {
+            if (missing == null || missing.isEmpty()) {
+                return Component.translatable("message.reskillable.gate_missing_unknown");
+            }
+
+            MutableComponent out = Component.empty();
+            for (int i = 0; i < missing.size(); i++) {
+                if (i > 0) out.append(Component.literal(", ").withStyle(ChatFormatting.GRAY));
+                out.append(missing.get(i).toComponent());
+            }
+            return out;
+        }
+    }
+
+    private static final class MissingUiReq {
+        final Skill skill; // null means TOTAL
+        final int required;
+
+        private MissingUiReq(Skill skill, int required) {
+            this.skill = skill;
+            this.required = required;
+        }
+
+        static MissingUiReq total(int required) {
+            return new MissingUiReq(null, required);
+        }
+
+        static MissingUiReq skill(Skill skill, int required) {
+            return new MissingUiReq(skill, required);
+        }
+
+        String key() {
+            return (skill == null) ? "TOTAL" : skill.name();
+        }
+
+        Component toComponent() {
+            if (skill == null) {
+                return Component.translatable("message.reskillable.req_total", required)
+                        .withStyle(ChatFormatting.YELLOW);
+            }
+            return Component.translatable(
+                    "message.reskillable.req_skill",
+                    Component.translatable("skill.reskillable." + skill.name().toLowerCase(Locale.ROOT)),
+                    required
+            ).withStyle(ChatFormatting.YELLOW);
+        }
+    }
+
 }

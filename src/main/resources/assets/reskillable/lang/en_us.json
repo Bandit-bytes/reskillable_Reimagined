@@ -35,5 +35,22 @@
   "tooltip.rereskillable.left_click": "Left-click: ",
   "tooltip.rereskillable.enable_perk": "Enable skill perk",
   "tooltip.rereskillable.disable_perk": "Disable skill perk",
-  "tooltip.rereskillable.level_up": "Level up this skill"
+  "tooltip.rereskillable.level_up": "Level up this skill",
+  "message.reskillable.leveling_disabled": "Skill leveling is disabled on this server.",
+  "message.reskillable.max_level": "That skill is already at the maximum level (%s).",
+  "message.reskillable.not_enough_xp": "Not enough XP. Cost: %s (You have: %s).",
+
+  "message.reskillable.gate_blocked": "You can’t level up %s yet. Missing: %s",
+  "message.reskillable.gate_missing_unknown": "requirements could not be determined",
+
+  "message.reskillable.req_total": "Total Skill Levels (%s)",
+  "message.reskillable.req_skill": "%s (%s)",
+  "message.reskillable.gate_blocked_short": "Requirements not met",
+
+  "skill.reskillable.attack": "Attack",
+  "skill.reskillable.defense": "Defense",
+  "skill.reskillable.agility": "Agility",
+  "skill.reskillable.mining": "Mining",
+  "skill.reskillable.gathering": "Gathering",
+  "skill.reskillable.farming": "Farming"
 }

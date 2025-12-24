@@ -21,6 +21,7 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.network.chat.Component;
 import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.NotNull;
 
@@ -29,8 +30,9 @@ import java.util.List;
 
 public class SkillButton extends Button {
     private final Skill skill;
+    private boolean gateBlocked = false;
+    private Component gateMissing = null;
     private List<Component> tooltipLines = null;
-
 
 
     public SkillButton(int x, int y, Skill skill) {
@@ -38,6 +40,15 @@ public class SkillButton extends Button {
                 .pos(x, y)
                 .size(79, 32));
         this.skill = skill;
+    }
+
+    public Skill getSkill() {
+        return this.skill;
+    }
+
+    public void setGateBlocked(boolean blocked, Component missingList) {
+        this.gateBlocked = blocked;
+        this.gateMissing = missingList;
     }
 
     @Override
@@ -72,12 +83,16 @@ public class SkillButton extends Button {
         font.drawInBatch(Component.literal(level + "/" + maxLevel), getX() + 25, getY() + 18, 0xBEBEBE, false, poseStack.last().pose(), bufferSource, Font.DisplayMode.NORMAL, 0, 15728880);
 
         bufferSource.endBatch();
+        // Dim overlay if locked by gate
+        if (gateBlocked) {
+            guiGraphics.fill(getX(), getY(), getX() + width, getY() + height, 0x88000000);
+            guiGraphics.drawString(font, "🔒", getX() + width - 12, getY() + 3, 0xFFDCA64A, false);
+        }
 
         if (isMouseOver(mouseX, mouseY)) {
             int cost = Configuration.calculateCostForLevel(level);
             int playerTotalXP = getPlayerTotalXP(clientPlayer);
 
-            // Create components for the tooltip
             Component xpComponent;
             if (playerTotalXP >= cost) {
                 xpComponent = Component.literal(String.valueOf(playerTotalXP)).withStyle(ChatFormatting.GREEN);
@@ -90,6 +105,7 @@ public class SkillButton extends Button {
 
             List<Component> tooltipLines = new ArrayList<>();
             tooltipLines.add(tooltip);
+
 //            if (SkillAttributeBonus.getBySkill(skill) != null) {
 //                boolean enabled = skillModel.isPerkEnabled(skill);
 //                tooltipLines.add(Component.literal("➤ ")
@@ -119,44 +135,77 @@ public class SkillButton extends Button {
         }
     }
 
-        private int getPlayerTotalXP (Player player){
-            int level = player.experienceLevel;
-            float progress = player.experienceProgress;
+    private int getPlayerTotalXP(Player player) {
+        int level = player.experienceLevel;
+        float progress = player.experienceProgress;
 
-            if (level <= 16) {
-                return (level * level) + (6 * level) + Math.round(progress * (2 * level + 7));
-            } else if (level <= 31) {
-                return (int) (2.5 * level * level - 40.5 * level + 360) + Math.round(progress * (5 * level - 38));
-            } else {
-                return (int) (4.5 * level * level - 162.5 * level + 2220) + Math.round(progress * (9 * level - 158));
-            }
+        if (level <= 16) {
+            return (level * level) + (6 * level) + Math.round(progress * (2 * level + 7));
+        } else if (level <= 31) {
+            return (int) (2.5 * level * level - 40.5 * level + 360) + Math.round(progress * (5 * level - 38));
+        } else {
+            return (int) (4.5 * level * level - 162.5 * level + 2220) + Math.round(progress * (9 * level - 158));
         }
+    }
 
-        @Override
+    @Override
     public void updateWidgetNarration(@NotNull NarrationElementOutput output) {
         defaultButtonNarrationText(output);
     }
+
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (!this.active || !this.visible || !this.isMouseOver(mouseX, mouseY)) return false;
+        if (!this.visible || !this.isMouseOver(mouseX, mouseY)) return false;
 
         Minecraft mc = Minecraft.getInstance();
         Player player = mc.player;
         if (player == null) return false;
 
         SkillModel model = SkillModel.get(player);
+        int level = model.getSkillLevel(skill);
+        int max = Configuration.getMaxLevel();
 
-        if (button == 1) { // Right-click
+        // RIGHT CLICK: perk toggle should always be allowed (even if gated / no XP)
+        if (button == 1) {
             if (SkillAttributeBonus.getBySkill(skill) != null) {
                 Reskillable.NETWORK.sendToServer(new TogglePerkPacket(skill));
-                player.playSound(net.minecraft.sounds.SoundEvents.UI_BUTTON_CLICK.value(), 0.6F, 1.0F);
+                player.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 0.6F, 1.0F);
+                return true;
             }
-        } else if (button == 0) { // Left-click
-            RequestLevelUp.send(skill);
+            return false;
         }
 
-        return true;
+        // LEFT CLICK: level up checks
+        if (button == 0) {
+            if (!Configuration.isSkillLevelingEnabled()) {
+                player.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 0.35F, 0.6F);
+                return true;
+            }
+
+            if (level >= max) {
+                player.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 0.35F, 0.6F);
+                return true;
+            }
+
+            if (gateBlocked) {
+                player.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 0.35F, 0.6F);
+                return true;
+            }
+
+            int cost = Configuration.calculateCostForLevel(level);
+            int playerXP = getPlayerTotalXP(player);
+            if (!player.isCreative() && playerXP < cost) {
+                player.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 0.35F, 0.6F);
+                return true;
+            }
+
+            RequestLevelUp.send(skill);
+            return true;
+        }
+
+        return false;
     }
+
 
     public List<Component> getTooltipLines(Player player) {
         List<Component> lines = new ArrayList<>();
@@ -178,6 +227,24 @@ public class SkillButton extends Button {
                             enabled ? "tooltip.rereskillable.disable_perk" : "tooltip.rereskillable.enable_perk"
                     ).withStyle(enabled ? ChatFormatting.RED : ChatFormatting.GREEN)));
         }
+        if (!Configuration.isSkillLevelingEnabled()) {
+            lines.add(Component.translatable("message.reskillable.leveling_disabled").withStyle(ChatFormatting.RED));
+            return lines;
+        }
+
+        int maxLevel = Configuration.getMaxLevel();
+        if (level >= maxLevel) {
+            lines.add(Component.translatable("message.reskillable.max_level", maxLevel).withStyle(ChatFormatting.RED));
+            return lines;
+        }
+
+        if (gateBlocked) {
+            lines.add(Component.translatable("message.reskillable.gate_blocked_short").withStyle(ChatFormatting.RED));
+            if (gateMissing != null) {
+                lines.add(gateMissing.copy().withStyle(ChatFormatting.YELLOW));
+            }
+        }
+
 
         lines.add(Component.literal("➤ ")
                 .append(Component.translatable("tooltip.rereskillable.left_click").withStyle(ChatFormatting.GOLD))

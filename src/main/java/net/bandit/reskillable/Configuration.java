@@ -38,6 +38,7 @@ public class Configuration {
     private static final ForgeConfigSpec.BooleanValue DEATH_RESET;
     public static final ForgeConfigSpec.BooleanValue HEALTH_BONUS;
 //    private static final ForgeConfigSpec.IntValue STARTING_COST;
+    public static ForgeConfigSpec.ConfigValue<List<? extends String>> SKILL_LEVEL_GATES;
     private static final ForgeConfigSpec.IntValue MAXIMUM_LEVEL;
     private static final ForgeConfigSpec.DoubleValue XP_SCALING_MULTIPLIER;
     private static final ForgeConfigSpec.ConfigValue<List<? extends String>> SKILL_ALIAS;
@@ -176,7 +177,14 @@ public class Configuration {
         HEALTH_PER_HEART = builder
                 .comment("How much health (in half-hearts) is granted per configured levelsPerHeart.")
                 .defineInRange("healthPerHeart", 2.0, 0.5, 20.0); // 2.0 = 1 heart
-
+        SKILL_LEVEL_GATES = builder
+                .comment("Skill gating rules. (all skills start at level 1 so add 8 to a total count)",
+                        "Format: SKILL:MIN_CURRENT_LEVEL:REQS",
+                        "Example: ATTACK:10:TOTAL=30,MINING=5,DEFENSE=5",
+                        "Tokens: TOTAL=<n>, or OTHER_SKILL=<n>")
+                .defineListAllowEmpty("skill_level_gates",
+                        List.of(),
+                        o -> o instanceof String);
 
 
         CONFIG_SPEC = builder.build();
