@@ -1,5 +1,7 @@
 package net.bandit.reskillable.common.network;
 
+import net.bandit.reskillable.common.commands.skills.Skill;
+import net.bandit.reskillable.common.gating.GateClientCache;
 import net.bandit.reskillable.common.network.payload.*;
 import net.minecraft.client.Minecraft;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -24,5 +26,13 @@ public class ClientNetworkInit {
         registrar.playToClient(SyncSkillConfig.TYPE, SyncSkillConfig.STREAM_CODEC, (payload, context) -> {
             Minecraft.getInstance().execute(() -> ClientHandlers.handleSyncSkillConfig(payload));
         });
+        registrar.playToClient(
+                SyncGateStatus.TYPE,
+                SyncGateStatus.STREAM_CODEC,
+                (payload, context) -> {
+                    context.enqueueWork(() -> SyncGateStatus.handleClient(payload));
+                }
+        );
+
     }
 }

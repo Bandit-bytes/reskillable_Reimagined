@@ -4,6 +4,8 @@ import net.bandit.reskillable.Configuration;
 import net.bandit.reskillable.common.capabilities.SkillModel;
 import net.bandit.reskillable.common.commands.skills.Skill;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
 
 import java.util.*;
 
@@ -28,13 +30,21 @@ public final class SkillLevelGate {
         }
     }
 
-    public record MissingReq(Skill skill, int required) {
-        static MissingReq total(int required) { return new MissingReq(null, required); }
-        static MissingReq skill(Skill skill, int required) { return new MissingReq(skill, required); }
+    public record MissingReq(Skill skill, int required, ResourceLocation advId) {
+        static MissingReq total(int required) { return new MissingReq(null, required, null); }
+        static MissingReq skill(Skill skill, int required) { return new MissingReq(skill, required, null); }
+        static MissingReq adv(ResourceLocation id) { return new MissingReq(null, 0, id); }
 
-        String key() { return skill == null ? "TOTAL" : skill.name(); }
+        String key() {
+            if (advId != null) return "ADV:" + advId;
+            return skill == null ? "TOTAL" : skill.name();
+        }
 
         Component toComponent() {
+            if (advId != null) {
+                // Show a clean-ish requirement. You can later swap this to the real advancement title in the UI layer.
+                return Component.translatable("message.reskillable.req_adv", prettyAdvName(advId));
+            }
             if (skill == null) {
                 return Component.translatable("message.reskillable.req_total", required);
             }
@@ -44,9 +54,32 @@ public final class SkillLevelGate {
                     required
             );
         }
+
+        private static Component prettyAdvName(ResourceLocation id) {
+            // Fallback formatting: use last path segment, Title Case-ish
+            String path = id.getPath();
+            String last = path.contains("/") ? path.substring(path.lastIndexOf('/') + 1) : path;
+            String pretty = last.replace('_', ' ');
+            if (!pretty.isEmpty()) {
+                pretty = pretty.substring(0, 1).toUpperCase(Locale.ROOT) + pretty.substring(1);
+            }
+            // Include namespace so it's not ambiguous in modpacks
+            return Component.literal(id.getNamespace() + ":" + pretty);
+        }
     }
 
+    /**
+     * Back-compat (no ADV checks possible without a ServerPlayer).
+     * Keeps old call sites compiling; ADV tokens will be ignored here.
+     */
     public static GateResult check(SkillModel model, Skill levelingSkill, int currentLevel) {
+        return check(null, model, levelingSkill, currentLevel);
+    }
+
+    /**
+     * Full check including ADV= requirements (when player is provided).
+     */
+    public static GateResult check(ServerPlayer player, SkillModel model, Skill levelingSkill, int currentLevel) {
         List<? extends String> rules;
         try {
             rules = Configuration.SKILL_LEVEL_GATES.get();
@@ -77,22 +110,47 @@ public final class SkillLevelGate {
                     missing.add(MissingReq.skill(e.getKey(), e.getValue()));
                 }
             }
+
+            // ADV requirements (only enforce if we actually have a server player)
+            if (player != null && rule.requiredAdvancements != null && !rule.requiredAdvancements.isEmpty()) {
+                for (ResourceLocation advId : rule.requiredAdvancements) {
+                    if (!AdvancementGateUtil.has(player, advId)) {
+                        missing.add(MissingReq.adv(advId));
+                    }
+                }
+            }
         }
 
         if (missing.isEmpty()) return GateResult.allow();
 
-        // dedupe: keep highest requirement per key
+        // dedupe: keep highest requirement per key.
+        // For ADV entries, we just keep one per advancement id.
         Map<String, MissingReq> best = new LinkedHashMap<>();
         for (MissingReq req : missing) {
             String key = req.key();
             MissingReq existing = best.get(key);
-            if (existing == null || req.required > existing.required) best.put(key, req);
+
+            if (existing == null) {
+                best.put(key, req);
+                continue;
+            }
+
+            // For numeric requirements, keep the highest.
+            if (req.advId == null && existing.advId == null && req.required > existing.required) {
+                best.put(key, req);
+            }
         }
 
         return GateResult.block(new ArrayList<>(best.values()));
     }
 
-    private record Rule(Skill skill, int minCurrentLevel, Integer minTotalLevels, Map<Skill, Integer> minSkillLevels) {
+    private record Rule(
+            Skill skill,
+            int minCurrentLevel,
+            Integer minTotalLevels,
+            Map<Skill, Integer> minSkillLevels,
+            List<ResourceLocation> requiredAdvancements
+    ) {
         static Rule parse(String line) {
             if (line == null) return null;
             line = line.trim();
@@ -117,6 +175,7 @@ public final class SkillLevelGate {
 
             Integer totalReq = null;
             Map<Skill, Integer> skillReqs = new LinkedHashMap<>();
+            List<ResourceLocation> advReqs = new ArrayList<>();
 
             String reqs = parts[2].trim();
             if (!reqs.isEmpty()) {
@@ -127,11 +186,21 @@ public final class SkillLevelGate {
                     String[] kv = tok.split("=", 2);
                     if (kv.length != 2) continue;
 
-                    String key = kv[0].trim().toUpperCase(Locale.ROOT);
+                    String keyRaw = kv[0].trim();
+                    String valRaw = kv[1].trim();
+
+                    // ADV token(s)
+                    if (keyRaw.equalsIgnoreCase("ADV")) {
+                        ResourceLocation id = ResourceLocation.tryParse(valRaw);
+                        if (id != null) advReqs.add(id);
+                        continue;
+                    }
+
+                    String key = keyRaw.toUpperCase(Locale.ROOT);
 
                     int val;
                     try {
-                        val = Integer.parseInt(kv[1].trim());
+                        val = Integer.parseInt(valRaw);
                     } catch (NumberFormatException ex) {
                         continue;
                     }
@@ -148,7 +217,7 @@ public final class SkillLevelGate {
                 }
             }
 
-            return new Rule(skill, Math.max(0, minLevel), totalReq, skillReqs);
+            return new Rule(skill, Math.max(0, minLevel), totalReq, skillReqs, advReqs);
         }
     }
 }

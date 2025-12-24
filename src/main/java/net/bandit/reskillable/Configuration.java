@@ -180,15 +180,15 @@ public class Configuration {
                 .comment("How much health (in half-hearts) is granted per configured levelsPerHeart.")
                 .defineInRange("healthPerHeart", 2.0, 0.5, 20.0); // 2.0 = 1 heart
         SKILL_LEVEL_GATES = builder
-                .comment("Skill gating rules. (all skills start at level 1 so add 8 to a total count)",
+                .comment(
+                        "Skill gating rules. (all skills start at level 1 so add 8 to a total count)",
                         "Format: SKILL:MIN_CURRENT_LEVEL:REQS",
                         "Example: ATTACK:10:TOTAL=30,MINING=5,DEFENSE=5",
-                        "Tokens: TOTAL=<n>, or OTHER_SKILL=<n>")
-                .defineListAllowEmpty("skill_level_gates",
-                        List.of(),
-                        o -> o instanceof String);
-
-
+                        "New token: ADV=<namespace:path> (player must have completed the advancement)",
+                        "You can include multiple: ADV=minecraft:story/mine_diamond,ADV=minecraft:nether/root",
+                        "Tokens: TOTAL=<n>, OTHER_SKILL=<n>, ADV=<advancement_id>"
+                )
+                .defineListAllowEmpty("skill_level_gates", List.of(), o -> o instanceof String);
 
         CONFIG_SPEC = builder.build();
     }

@@ -50,7 +50,8 @@ public record RequestLevelUp(int skillIndex) implements CustomPacketPayload {
             player.sendSystemMessage(Component.translatable("reskillable.maxlevel"));
             return;
         }
-        SkillLevelGate.GateResult gate = SkillLevelGate.check(model, skill, currentLevel);
+        SkillLevelGate.GateResult gate = SkillLevelGate.check(player, model, skill, currentLevel);
+
         if (!gate.allowed()) {
             player.sendSystemMessage(
                     Component.translatable("message.reskillable.gate_blocked_short")
@@ -75,6 +76,7 @@ public record RequestLevelUp(int skillIndex) implements CustomPacketPayload {
             }
 
             SyncToClient.send(player);
+            SyncGateStatus.sendAll(player);
         } else {
             player.sendSystemMessage(Component.translatable("reskillable.not_enough"));
         }

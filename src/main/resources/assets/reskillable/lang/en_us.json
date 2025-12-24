@@ -57,5 +57,10 @@
   "skill.reskillable.agility": "Agility",
   "skill.reskillable.mining": "Mining",
   "skill.reskillable.gathering": "Gathering",
-  "skill.reskillable.farming": "Farming"
+  "skill.reskillable.farming": "Farming",
+  "message.reskillable.gate_hold_shift": "Hold Shift for requirements",
+  "message.reskillable.gate_requirements": "Requirements",
+  "message.reskillable.req_adv": "Advancement: %s",
+  "config.jade.plugin_reskillable.requirements_block": "Show Skill Requirements Blocks",
+  "config.jade.plugin_reskillable.requirements_entity": "Show Skill Requirements Entities"
 }

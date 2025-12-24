@@ -7,6 +7,8 @@ import net.bandit.reskillable.client.screen.buttons.SkillButton;
 import net.bandit.reskillable.common.capabilities.SkillModel;
 import net.bandit.reskillable.common.commands.skills.Skill;
 import net.bandit.reskillable.common.commands.skills.SkillAttributeBonus;
+import net.bandit.reskillable.common.gating.GateClientCache;
+import net.bandit.reskillable.common.network.payload.RequestGateStatus;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -36,6 +38,7 @@ public class SkillScreen extends Screen {
     private static final int PERK_BOX_Y = 29;
     private static final int PERK_ROW_HEIGHT = 15;
     private static final int PERK_TEXT_OFFSET_X = 15;
+    private boolean requestedGateSync = false;
 
     private final Map<Skill, String> xpCostDisplay = new HashMap<>();
     private final Map<Skill, Integer> xpCostColor = new HashMap<>();
@@ -50,17 +53,21 @@ public class SkillScreen extends Screen {
 
     @Override
     protected void init() {
+        super.init();
+
         int left = (width - 162) / 2;
-        int top = (height - 128) / 2;
+        int top  = (height - 128) / 2;
 
         this.clearWidgets();
 
         if (page == 0) {
+            GateClientCache.clear();
+            RequestGateStatus.send();
+
             for (int i = 0; i < 8; i++) {
                 int x = left + i % 2 * 83;
                 int y = top + i / 2 * 36;
                 Skill skill = Skill.values()[i];
-
                 addRenderableWidget(new SkillButton(x, y, skill));
             }
         }
@@ -152,17 +159,19 @@ public class SkillScreen extends Screen {
         super.render(g, mouseX, mouseY, pt);
 
         if (page == 0) {
-            for (var widget : this.renderables) {
-                if (widget instanceof SkillButton button && button.isMouseOver(mouseX, mouseY)) {
+            for (var child : this.children()) {
+                if (child instanceof SkillButton button && button.isMouseOver(mouseX, mouseY)) {
                     var lines = button.getTooltipLines(Minecraft.getInstance().player);
                     g.renderTooltip(
-                            font,
+                            this.font,
                             lines.stream().map(Component::getVisualOrderText).toList(),
                             mouseX, mouseY
                     );
+                    break; // don't render multiple tooltips
                 }
             }
         }
+
 
         g.setColor(1f, 1f, 1f, 1f);
     }
@@ -400,14 +409,17 @@ public class SkillScreen extends Screen {
 
             boolean maxed = level >= max;
 
-            SkillLevelGate.GateResult gate = SkillLevelGate.check(model, skill, level);
-            boolean blockedByGate = levelingEnabled && !maxed && !gate.allowed();
+            var cached = GateClientCache.get(skill);
+            boolean blockedByGate = levelingEnabled && !maxed && cached != null && cached.blocked();
 
-            btn.active = true; // keep hover/tooltip working even when blocked
-            btn.setGateBlocked(blockedByGate, blockedByGate ? gate.missingListComponent() : null);
+            btn.active = true;
+            btn.setGateBlocked(
+                    blockedByGate,
+                    blockedByGate && cached != null ? cached.missingList()
+                            : null
+            );
         }
     }
-
 
     private static class TabButton extends Button {
         public TabButton(int x, int y, int width, int height, OnPress onPress) {

@@ -19,6 +19,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.NotNull;
+import net.minecraft.client.gui.screens.Screen;
+
 
 import java.util.ArrayList;
 import java.util.List;
@@ -169,11 +171,40 @@ public class SkillButton extends Button {
         }
 
         if (gateBlocked) {
-            lines.add(Component.translatable("message.reskillable.gate_blocked_short").withStyle(ChatFormatting.RED));
-            if (gateMissing != null) {
-                lines.add(gateMissing.copy().withStyle(ChatFormatting.YELLOW));
+            lines.add(
+                    Component.literal("🔒 ")
+                            .append(Component.translatable("message.reskillable.gate_blocked_short"))
+                            .withStyle(ChatFormatting.RED)
+            );
+
+            if (!Screen.hasShiftDown()) {
+                lines.add(
+                        Component.literal("⇧ ")
+                                .append(Component.translatable("message.reskillable.gate_hold_shift"))
+                                .withStyle(ChatFormatting.DARK_GRAY)
+                );
+            } else if (gateMissing != null) {
+                // Expanded requirements
+                lines.add(Component.empty());
+
+                lines.add(
+                        Component.translatable("message.reskillable.gate_requirements")
+                                .withStyle(ChatFormatting.GOLD)
+                );
+
+                for (Component part : splitRequirements(gateMissing)) {
+                    lines.add(
+                            Component.literal(" • ")
+                                    .append(part)
+                                    .withStyle(ChatFormatting.YELLOW)
+                    );
+                }
             }
+
+            lines.add(Component.literal("────────────────").withStyle(ChatFormatting.DARK_GRAY));
         }
+
+
 
         if (SkillAttributeBonus.getBySkill(skill) != null) {
             boolean enabled = model.isPerkEnabled(skill);
@@ -202,6 +233,17 @@ public class SkillButton extends Button {
             return (int) (4.5 * level * level - 162.5 * level + 2220) + Math.round(progress * (9 * level - 158));
         }
     }
+    private List<Component> splitRequirements(Component combined) {
+        String raw = combined.getString();
+        String[] parts = raw.split(",\\s*");
+
+        List<Component> out = new ArrayList<>();
+        for (String p : parts) {
+            out.add(Component.literal(p));
+        }
+        return out;
+    }
+
 
     public List<Component> getCurrentTooltipLines() {
         return tooltipLines;
