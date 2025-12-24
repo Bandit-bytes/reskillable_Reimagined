@@ -42,6 +42,7 @@ public class Configuration {
     private static final ModConfigSpec.IntValue STARTING_COST;
     private static final ModConfigSpec.IntValue MAXIMUM_LEVEL;
     private static final ModConfigSpec.DoubleValue XP_SCALING_MULTIPLIER;
+    public static ModConfigSpec.ConfigValue<List<? extends String>> SKILL_LEVEL_GATES;
     private static final ModConfigSpec.ConfigValue<List<? extends String>> SKILL_ALIAS;
     private static final ModConfigSpec.BooleanValue ENABLE_SKILL_LEVELING;
     private static final ModConfigSpec.BooleanValue ENABLE_SKILL_UP_MESSAGE;
@@ -178,6 +179,14 @@ public class Configuration {
         HEALTH_PER_HEART = builder
                 .comment("How much health (in half-hearts) is granted per configured levelsPerHeart.")
                 .defineInRange("healthPerHeart", 2.0, 0.5, 20.0); // 2.0 = 1 heart
+        SKILL_LEVEL_GATES = builder
+                .comment("Skill gating rules. (all skills start at level 1 so add 8 to a total count)",
+                        "Format: SKILL:MIN_CURRENT_LEVEL:REQS",
+                        "Example: ATTACK:10:TOTAL=30,MINING=5,DEFENSE=5",
+                        "Tokens: TOTAL=<n>, or OTHER_SKILL=<n>")
+                .defineListAllowEmpty("skill_level_gates",
+                        List.of(),
+                        o -> o instanceof String);
 
 
 

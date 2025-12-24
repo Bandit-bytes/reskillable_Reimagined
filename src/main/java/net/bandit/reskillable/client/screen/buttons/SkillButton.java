@@ -16,6 +16,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.NotNull;
 
@@ -24,6 +25,9 @@ import java.util.List;
 
 public class SkillButton extends Button {
     private final Skill skill;
+
+    private boolean gateBlocked = false;
+    private Component gateMissing = null;
     private List<Component> tooltipLines = List.of();
 
     public SkillButton(int x, int y, Skill skill) {
@@ -33,41 +37,56 @@ public class SkillButton extends Button {
         this.skill = skill;
     }
 
+    public Skill getSkill() {
+        return this.skill;
+    }
+
+    public void setGateBlocked(boolean blocked, Component missingList) {
+        this.gateBlocked = blocked;
+        this.gateMissing = missingList;
+    }
+
     @Override
-    public void renderWidget(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
-        Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft == null || minecraft.player == null) return;
+    public void renderWidget(@NotNull GuiGraphics g, int mouseX, int mouseY, float pt) {
+        Minecraft mc = Minecraft.getInstance();
+        LocalPlayer clientPlayer = mc.player;
+        if (clientPlayer == null) return;
+
+        SkillModel model = SkillModel.get(clientPlayer);
+        if (model == null) return;
+
+        Font font = mc.font;
+
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
-        guiGraphics.setColor(1f, 1f, 1f, 1f);
-
-
-        LocalPlayer clientPlayer = minecraft.player;
-        Font font = minecraft.font;
-
+        g.setColor(1f, 1f, 1f, 1f);
         RenderSystem.setShaderTexture(0, SkillScreen.RESOURCES);
 
-        SkillModel skillModel = SkillModel.get(clientPlayer);
-        if (skillModel == null) return;
-
-        int level = skillModel.getSkillLevel(skill);
+        int level = model.getSkillLevel(skill);
         int maxLevel = Configuration.getMaxLevel();
 
         int u = ((int) Math.ceil((double) level * 4 / maxLevel) - 1) * 16 + 176;
         int v = skill.index * 16 + 128;
 
-        guiGraphics.blit(SkillScreen.RESOURCES, getX(), getY(), 176, (level == maxLevel ? 64 : 0) + (isMouseOver(mouseX, mouseY) ? 32 : 0), width, height);
-        guiGraphics.blit(SkillScreen.RESOURCES, getX() + 6, getY() + 8, u, v, 16, 16);
+        g.blit(SkillScreen.RESOURCES, getX(), getY(),
+                176,
+                (level == maxLevel ? 64 : 0) + (isMouseOver(mouseX, mouseY) ? 32 : 0),
+                width, height);
 
-        if (!skillModel.isPerkEnabled(skill) && SkillAttributeBonus.getBySkill(skill) != null) {
-            int iconX = getX() + width - 10;
-            int iconY = getY() + height - 10;
-            guiGraphics.drawString(font, "✖", iconX, iconY, 0xFF5555, false);
+        g.blit(SkillScreen.RESOURCES, getX() + 6, getY() + 8, u, v, 16, 16);
+        if (!model.isPerkEnabled(skill) && SkillAttributeBonus.getBySkill(skill) != null) {
+            g.drawString(font, "✖", getX() + width - 10, getY() + height - 10, 0xFF5555, false);
         }
 
-        guiGraphics.drawString(font, Component.translatable(skill.getDisplayName()), getX() + 25, getY() + 7, 0xFFFFFF, false);
-        guiGraphics.drawString(font, Component.literal(level + "/" + maxLevel), getX() + 25, getY() + 18, 0xBEBEBE, false);
+        g.drawString(font, Component.translatable(skill.getDisplayName()), getX() + 25, getY() + 7, 0xFFFFFF, false);
+        g.drawString(font, Component.literal(level + "/" + maxLevel), getX() + 25, getY() + 18, 0xBEBEBE, false);
 
+        if (gateBlocked) {
+            g.fill(getX(), getY(), getX() + width, getY() + height, 0x88000000);
+            g.drawString(font, "🔒", getX() + width - 12, getY() + 3, 0xFFDCA64A, false);
+        }
+
+        // Cache tooltip lines when hovered (optional convenience)
         if (isMouseOver(mouseX, mouseY)) {
             this.tooltipLines = getTooltipLines(clientPlayer);
         } else {
@@ -91,41 +110,82 @@ public class SkillButton extends Button {
         SkillModel model = SkillModel.get(player);
         if (model == null) return false;
 
-        if (button == 1) { // Right-click
+        if (button == 1) {
             if (SkillAttributeBonus.getBySkill(skill) != null) {
                 TogglePerk.send(skill);
-                player.playSound(net.minecraft.sounds.SoundEvents.UI_BUTTON_CLICK.value(), 0.6F, 1.0F);
+                player.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 0.6F, 1.0F);
             }
-        } else if (button == 0) { // Left-click
-            RequestLevelUp.send(skill);
+            return true;
         }
 
-        return true;
+        if (button == 0) {
+
+            if (gateBlocked) {
+                player.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 0.35F, 0.6F);
+                return true;
+            }
+
+            int level = model.getSkillLevel(skill);
+            int cost = Configuration.calculateCostForLevel(level);
+            int playerXP = getPlayerTotalXP(player);
+
+            if (!player.isCreative() && playerXP < cost) {
+                player.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 0.35F, 0.6F);
+                return true;
+            }
+
+            RequestLevelUp.send(skill);
+            return true;
+        }
+
+        return false;
     }
+
 
     public List<Component> getTooltipLines(Player player) {
         SkillModel model = SkillModel.get(player);
         if (model == null) return List.of();
 
         List<Component> lines = new ArrayList<>();
+
         int level = model.getSkillLevel(skill);
         int cost = Configuration.calculateCostForLevel(level);
         int playerXP = getPlayerTotalXP(player);
 
-        Component xp = Component.literal(String.valueOf(playerXP)).withStyle(playerXP >= cost ? ChatFormatting.GREEN : ChatFormatting.RED);
+        Component xp = Component.literal(String.valueOf(playerXP))
+                .withStyle(playerXP >= cost ? ChatFormatting.GREEN : ChatFormatting.RED);
         Component costC = Component.literal(String.valueOf(cost));
+
         lines.add(Component.translatable("tooltip.rereskillable.skill_cost", xp, costC));
+        if (!Configuration.isSkillLevelingEnabled()) {
+            lines.add(Component.translatable("message.reskillable.leveling_disabled").withStyle(ChatFormatting.RED));
+            return lines;
+        }
+
+        int max = Configuration.getMaxLevel();
+        if (level >= max) {
+            lines.add(Component.translatable("message.reskillable.max_level", max).withStyle(ChatFormatting.RED));
+            return lines;
+        }
+
+        if (gateBlocked) {
+            lines.add(Component.translatable("message.reskillable.gate_blocked_short").withStyle(ChatFormatting.RED));
+            if (gateMissing != null) {
+                lines.add(gateMissing.copy().withStyle(ChatFormatting.YELLOW));
+            }
+        }
 
         if (SkillAttributeBonus.getBySkill(skill) != null) {
             boolean enabled = model.isPerkEnabled(skill);
             lines.add(Component.literal("➤ ")
-                    .append(Component.literal("Right-click: ").withStyle(ChatFormatting.GOLD))
-                    .append(Component.literal(enabled ? "Disable skill perk" : "Enable skill perk").withStyle(enabled ? ChatFormatting.RED : ChatFormatting.GREEN)));
+                    .append(Component.translatable("tooltip.rereskillable.right_click").withStyle(ChatFormatting.GOLD))
+                    .append(Component.translatable(
+                            enabled ? "tooltip.rereskillable.disable_perk" : "tooltip.rereskillable.enable_perk"
+                    ).withStyle(enabled ? ChatFormatting.RED : ChatFormatting.GREEN)));
         }
-
         lines.add(Component.literal("➤ ")
-                .append(Component.literal("Left-click: ").withStyle(ChatFormatting.GOLD))
-                .append(Component.literal("Level up this skill").withStyle(ChatFormatting.AQUA)));
+                .append(Component.translatable("tooltip.rereskillable.left_click").withStyle(ChatFormatting.GOLD))
+                .append(Component.translatable("tooltip.rereskillable.level_up").withStyle(ChatFormatting.AQUA)));
 
         return lines;
     }

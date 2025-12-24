@@ -18,6 +18,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.NotNull;
+import net.bandit.reskillable.common.gating.SkillLevelGate;
+
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -372,21 +374,40 @@ public class SkillScreen extends Screen {
     @Override
     public void tick() {
         super.tick();
+
         Player player = Minecraft.getInstance().player;
         if (player == null) return;
 
-        SkillModel skillModel = SkillModel.get(player);
-        if (skillModel == null) return;
+        SkillModel model = SkillModel.get(player);
+        if (model == null) return;
 
-        for (Skill skill : Skill.values()) {
-            int skillLevel = skillModel.getSkillLevel(skill);
-            int xpCost = Configuration.calculateCostForLevel(skillLevel + 1);
-            boolean hasXP = skillModel.hasSufficientXP(player, skill);
+        boolean levelingEnabled = Configuration.isSkillLevelingEnabled();
+        int max = Configuration.getMaxLevel();
 
-            xpCostDisplay.put(skill, String.valueOf(xpCost));
+        int playerTotalXp = calculateTotalXP(player); // reuse your existing helper
+
+        for (var widget : this.renderables) {
+            if (!(widget instanceof SkillButton btn)) continue;
+
+            Skill skill = btn.getSkill();
+            int level = model.getSkillLevel(skill);
+
+            int cost = Configuration.calculateCostForLevel(level); // cost to go from level -> level+1
+            boolean hasXP = player.isCreative() || playerTotalXp >= cost;
+
+            xpCostDisplay.put(skill, String.valueOf(cost));
             xpCostColor.put(skill, hasXP ? 0x00FF00 : 0xFF0000);
+
+            boolean maxed = level >= max;
+
+            SkillLevelGate.GateResult gate = SkillLevelGate.check(model, skill, level);
+            boolean blockedByGate = levelingEnabled && !maxed && !gate.allowed();
+
+            btn.active = true; // keep hover/tooltip working even when blocked
+            btn.setGateBlocked(blockedByGate, blockedByGate ? gate.missingListComponent() : null);
         }
     }
+
 
     private static class TabButton extends Button {
         public TabButton(int x, int y, int width, int height, OnPress onPress) {

@@ -12,6 +12,8 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.neoforged.neoforge.network.PacketDistributor;
+import net.bandit.reskillable.common.gating.SkillLevelGate;
+
 
 
 public record RequestLevelUp(int skillIndex) implements CustomPacketPayload {
@@ -46,6 +48,15 @@ public record RequestLevelUp(int skillIndex) implements CustomPacketPayload {
 
         if (currentLevel >= Configuration.getMaxLevel()) {
             player.sendSystemMessage(Component.translatable("reskillable.maxlevel"));
+            return;
+        }
+        SkillLevelGate.GateResult gate = SkillLevelGate.check(model, skill, currentLevel);
+        if (!gate.allowed()) {
+            player.sendSystemMessage(
+                    Component.translatable("message.reskillable.gate_blocked_short")
+                            .append(Component.literal(" "))
+                            .append(gate.missingListComponent())
+            );
             return;
         }
 
