@@ -2,11 +2,13 @@ package net.bandit.reskillable.client.screen;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.bandit.reskillable.Configuration;
+import net.bandit.reskillable.Reskillable;
 import net.bandit.reskillable.client.KeyMapping;
 import net.bandit.reskillable.client.screen.buttons.SkillButton;
 import net.bandit.reskillable.common.capabilities.SkillModel;
 import net.bandit.reskillable.common.commands.skills.Skill;
 import net.bandit.reskillable.common.commands.skills.SkillAttributeBonus;
+import net.bandit.reskillable.common.network.RequestLevelUp;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -34,6 +36,9 @@ public class SkillScreen extends Screen {
     private static final int PERK_BOX_Y = 29;
     private static final int PERK_ROW_HEIGHT = 15;
     private static final int PERK_TEXT_OFFSET_X = 15;
+
+    private int gatePreviewCooldownTicks = 0;
+    private int lastTotalSkillLevels = -1;
 
 
     private final Map<Skill, String> xpCostDisplay = new HashMap<>();
@@ -98,6 +103,10 @@ public class SkillScreen extends Screen {
 
         addRenderableWidget(skillsTab);
         addRenderableWidget(perksTab);
+        RequestLevelUp.clearClientGatePreview();
+        gatePreviewCooldownTicks = 0;
+        lastTotalSkillLevels = -1;
+        requestGatePreview();
     }
 
     @Override
@@ -307,6 +316,20 @@ public class SkillScreen extends Screen {
 
         boolean levelingEnabled = Configuration.isSkillLevelingEnabled();
         int max = Configuration.getMaxLevel();
+        if (page == 0) {
+            int total = 0;
+            for (Skill s : Skill.values()) total += model.getSkillLevel(s);
+
+            if (gatePreviewCooldownTicks > 0) gatePreviewCooldownTicks--;
+            boolean totalChanged = (lastTotalSkillLevels != -1 && total != lastTotalSkillLevels);
+            boolean periodic = (gatePreviewCooldownTicks == 0);
+
+            if (lastTotalSkillLevels == -1 || totalChanged || periodic) {
+                requestGatePreview();
+                gatePreviewCooldownTicks = 10;
+                lastTotalSkillLevels = total;
+            }
+        }
 
         for (var widget : this.renderables) {
             if (!(widget instanceof SkillButton btn)) continue;
@@ -326,12 +349,25 @@ public class SkillScreen extends Screen {
             GateUiResult gate = checkGateClient(model, skill, level);
 
             btn.active = true;
+            var preview = RequestLevelUp.getClientGatePreview(skill);
 
-            boolean blockedByGate = levelingEnabled && !maxed && !gate.allowed;
-            btn.setGateBlocked(blockedByGate, blockedByGate ? gate.missingListComponent() : null);
+            boolean blockedClient = !gate.allowed;
+            boolean blockedServer = preview != null && preview.blocked;
+
+            boolean blockedByGate = levelingEnabled && !maxed && (blockedClient || blockedServer);
+
+            Component tooltip = null;
+            if (blockedByGate) {
+                if (blockedServer && preview.missing != null && !preview.missing.getString().isEmpty()) {
+                    tooltip = preview.missing;
+                } else {
+                    tooltip = gate.missingListComponent();
+                }
+            }
+
+            btn.setGateBlocked(blockedByGate, tooltip);
         }
     }
-
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
@@ -404,18 +440,31 @@ public class SkillScreen extends Screen {
 
         return GateUiResult.blocked(new ArrayList<>(best.values()));
     }
+//    private static boolean hasAdvancementClient(ResourceLocation id) {
+//        Minecraft mc = Minecraft.getInstance();
+//        if (mc.player == null || mc.player.connection == null) return false;
+//
+//        var clientAdvancements = mc.player.connection.getAdvancements();
+//        var holder = clientAdvancements.getAdvancements().get(id);
+//        if (holder == null) return false;
+//        return clientAdvancements.getProgress(holder).isDone();
+//    }
 
     private static final class GateUiRule {
         final Skill skill;
         final int minCurrentLevel;
         final Integer minTotalLevels;
         final Map<Skill, Integer> minSkillLevels;
+        final List<ResourceLocation> requiredAdvancements;
 
-        private GateUiRule(Skill skill, int minCurrentLevel, Integer minTotalLevels, Map<Skill, Integer> minSkillLevels) {
+        private GateUiRule(Skill skill, int minCurrentLevel, Integer minTotalLevels,
+                           Map<Skill, Integer> minSkillLevels,
+                           List<ResourceLocation> requiredAdvancements) {
             this.skill = skill;
             this.minCurrentLevel = minCurrentLevel;
             this.minTotalLevels = minTotalLevels;
             this.minSkillLevels = minSkillLevels;
+            this.requiredAdvancements = requiredAdvancements;
         }
 
         static GateUiRule parse(String line) {
@@ -442,6 +491,7 @@ public class SkillScreen extends Screen {
 
             Integer totalReq = null;
             Map<Skill, Integer> skillReqs = new LinkedHashMap<>();
+            List<ResourceLocation> advReqs = new ArrayList<>();
 
             String reqs = parts[2].trim();
             if (!reqs.isEmpty()) {
@@ -453,28 +503,38 @@ public class SkillScreen extends Screen {
                     if (kv.length != 2) continue;
 
                     String key = kv[0].trim().toUpperCase(Locale.ROOT);
-                    int val;
-                    try {
-                        val = Integer.parseInt(kv[1].trim());
-                    } catch (NumberFormatException ex) {
-                        continue;
-                    }
+                    String value = kv[1].trim();
 
                     if (key.equals("TOTAL")) {
-                        totalReq = val;
+                        try {
+                            totalReq = Integer.parseInt(value);
+                        } catch (NumberFormatException ignored) {}
                         continue;
                     }
 
+                    // NEW: ADV requirement (string value, not int)
+                    if (key.equals("ADV") || key.equals("ADVANCEMENT")) {
+                        try {
+                            advReqs.add(new ResourceLocation(value));
+                        } catch (Exception ignored) {
+                            // invalid RL -> ignore
+                        }
+                        continue;
+                    }
+
+                    // skill reqs (int)
                     try {
+                        int val = Integer.parseInt(value);
                         Skill reqSkill = Skill.valueOf(key);
                         skillReqs.put(reqSkill, val);
-                    } catch (IllegalArgumentException ignored) {}
+                    } catch (Exception ignored) {}
                 }
             }
 
-            return new GateUiRule(skill, Math.max(0, minLevel), totalReq, skillReqs);
+            return new GateUiRule(skill, Math.max(0, minLevel), totalReq, skillReqs, advReqs);
         }
     }
+
 
     private static final class GateUiResult {
         final boolean allowed;
@@ -510,35 +570,68 @@ public class SkillScreen extends Screen {
     private static final class MissingUiReq {
         final Skill skill; // null means TOTAL
         final int required;
+        final ResourceLocation advId;
 
-        private MissingUiReq(Skill skill, int required) {
+        private MissingUiReq(Skill skill, int required, ResourceLocation advId) {
             this.skill = skill;
             this.required = required;
+            this.advId = advId;
         }
 
         static MissingUiReq total(int required) {
-            return new MissingUiReq(null, required);
+            return new MissingUiReq(null, required, null);
         }
 
         static MissingUiReq skill(Skill skill, int required) {
-            return new MissingUiReq(skill, required);
+            return new MissingUiReq(skill, required, null);
+        }
+
+        static MissingUiReq advancement(ResourceLocation id) {
+            return new MissingUiReq(null, 0, id);
         }
 
         String key() {
+            if (advId != null) return "ADV:" + advId;
             return (skill == null) ? "TOTAL" : skill.name();
         }
 
         Component toComponent() {
+            if (advId != null) {
+                return Component.literal("Advancement: ")
+                        .append(prettyAdvancement(advId))
+                        .withStyle(ChatFormatting.YELLOW);
+            }
+
             if (skill == null) {
                 return Component.translatable("message.reskillable.req_total", required)
                         .withStyle(ChatFormatting.YELLOW);
             }
+
             return Component.translatable(
                     "message.reskillable.req_skill",
                     Component.translatable("skill.reskillable." + skill.name().toLowerCase(Locale.ROOT)),
                     required
             ).withStyle(ChatFormatting.YELLOW);
         }
+    }
+    private void requestGatePreview() {
+        if (this.minecraft == null || this.minecraft.player == null) return;
+        if (Reskillable.NETWORK == null) return;
+
+        Reskillable.NETWORK.sendToServer(new RequestLevelUp.RequestGatePreviewPacket());
+    }
+    private static Component prettyAdvancement(ResourceLocation id) {
+        // minecraft:story/mine_diamond → Mine Diamonds
+        String path = id.getPath(); // story/mine_diamond
+        String name = path.substring(path.lastIndexOf('/') + 1)
+                .replace('_', ' ');
+
+        String pretty = Arrays.stream(name.split(" "))
+                .map(w -> w.substring(0, 1).toUpperCase(Locale.ROOT) + w.substring(1))
+                .reduce((a, b) -> a + " " + b)
+                .orElse(name);
+
+        return Component.literal(pretty);
     }
 
 }

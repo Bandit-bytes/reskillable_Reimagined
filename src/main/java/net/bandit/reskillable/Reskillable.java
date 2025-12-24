@@ -54,25 +54,54 @@ public class Reskillable {
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
-        Configuration.load();
+        event.enqueueWork(() -> {
+            Configuration.load();
 
-        NETWORK = NetworkRegistry.newSimpleChannel(
-                new ResourceLocation(MOD_ID, "main_channel"),
-                () -> "1.0",
-                s -> true,
-                s -> true
-        );
-        NETWORK.registerMessage(1, SyncToClient.class, SyncToClient::encode, SyncToClient::new, SyncToClient::handle, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
-        NETWORK.registerMessage(2, RequestLevelUp.class, RequestLevelUp::encode, RequestLevelUp::new, RequestLevelUp::handle, Optional.of(NetworkDirection.PLAY_TO_SERVER));
-        NETWORK.registerMessage(3, NotifyWarning.class, NotifyWarning::encode, NotifyWarning::new, NotifyWarning::handle, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
-        NETWORK.registerMessage(4, SyncSkillConfigPacket.class, SyncSkillConfigPacket::toBytes, SyncSkillConfigPacket::new, SyncSkillConfigPacket::handle);
-        NETWORK.registerMessage(5, TogglePerkPacket.class, TogglePerkPacket::encode, TogglePerkPacket::new, TogglePerkPacket::handle);
+            NETWORK = NetworkRegistry.newSimpleChannel(
+                    new ResourceLocation(MOD_ID, "main_channel"),
+                    () -> "1.0",
+                    s -> true,
+                    s -> true
+            );
 
+            NETWORK.registerMessage(1, SyncToClient.class,
+                    SyncToClient::encode, SyncToClient::new, SyncToClient::handle,
+                    Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+
+            NETWORK.registerMessage(2, RequestLevelUp.class,
+                    RequestLevelUp::encode, RequestLevelUp::new, RequestLevelUp::handle,
+                    Optional.of(NetworkDirection.PLAY_TO_SERVER));
+
+            NETWORK.registerMessage(3, NotifyWarning.class,
+                    NotifyWarning::encode, NotifyWarning::new, NotifyWarning::handle,
+                    Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+
+            NETWORK.registerMessage(4, SyncSkillConfigPacket.class,
+                    SyncSkillConfigPacket::toBytes, SyncSkillConfigPacket::new, SyncSkillConfigPacket::handle,
+                    Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+
+            NETWORK.registerMessage(5, TogglePerkPacket.class,
+                    TogglePerkPacket::encode, TogglePerkPacket::new, TogglePerkPacket::handle,
+                    Optional.of(NetworkDirection.PLAY_TO_SERVER));
+
+            NETWORK.registerMessage(6, RequestLevelUp.RequestGatePreviewPacket.class,
+                    RequestLevelUp.RequestGatePreviewPacket::encode,
+                    RequestLevelUp.RequestGatePreviewPacket::new,
+                    RequestLevelUp.RequestGatePreviewPacket::handle,
+                    Optional.of(NetworkDirection.PLAY_TO_SERVER));
+
+            NETWORK.registerMessage(7, RequestLevelUp.SyncGatePreviewPacket.class,
+                    RequestLevelUp.SyncGatePreviewPacket::encode,
+                    RequestLevelUp.SyncGatePreviewPacket::new,
+                    RequestLevelUp.SyncGatePreviewPacket::handle,
+                    Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        });
 
         if (ModList.get().isLoaded("curios")) {
             MinecraftForge.EVENT_BUS.register(new CuriosCompat());
         }
     }
+
     private void initCaps(RegisterCapabilitiesEvent event) {
         event.register(SkillModel.class);
     }

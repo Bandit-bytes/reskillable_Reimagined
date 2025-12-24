@@ -1,7 +1,6 @@
 package net.bandit.reskillable.client.screen.buttons;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.Tesselator;
 import net.bandit.reskillable.Reskillable;
 import net.bandit.reskillable.client.screen.SkillScreen;
 import net.bandit.reskillable.common.capabilities.SkillModel;
@@ -18,15 +17,16 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.network.chat.Component;
-import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 
 public class SkillButton extends Button {
     private final Skill skill;
@@ -47,9 +47,14 @@ public class SkillButton extends Button {
     }
 
     public void setGateBlocked(boolean blocked, Component missingList) {
+        boolean changed = (this.gateBlocked != blocked) || !java.util.Objects.equals(this.gateMissing, missingList);
         this.gateBlocked = blocked;
         this.gateMissing = missingList;
+        if (changed) {
+            this.tooltipLines = null;
+        }
     }
+
 
     @Override
     public void renderWidget(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
@@ -75,15 +80,10 @@ public class SkillButton extends Button {
             guiGraphics.drawString(font, "✖", iconX, iconY, 0xFF5555, false);
 
         }
+        guiGraphics.drawString(font, Component.translatable(skill.getDisplayName()), getX() + 25, getY() + 7, 0xFFFFFF, false);
+        guiGraphics.drawString(font, Component.literal(level + "/" + maxLevel), getX() + 25, getY() + 18, 0xBEBEBE, false);
 
-        PoseStack poseStack = guiGraphics.pose();
-        MultiBufferSource.BufferSource bufferSource = MultiBufferSource.immediate(Tesselator.getInstance().getBuilder());
 
-        font.drawInBatch(Component.translatable(skill.getDisplayName()), getX() + 25, getY() + 7, 0xFFFFFF, false, poseStack.last().pose(), bufferSource, Font.DisplayMode.NORMAL, 0, 15728880);
-        font.drawInBatch(Component.literal(level + "/" + maxLevel), getX() + 25, getY() + 18, 0xBEBEBE, false, poseStack.last().pose(), bufferSource, Font.DisplayMode.NORMAL, 0, 15728880);
-
-        bufferSource.endBatch();
-        // Dim overlay if locked by gate
         if (gateBlocked) {
             guiGraphics.fill(getX(), getY(), getX() + width, getY() + height, 0x88000000);
             guiGraphics.drawString(font, "🔒", getX() + width - 12, getY() + 3, 0xFFDCA64A, false);
@@ -165,7 +165,7 @@ public class SkillButton extends Button {
         int level = model.getSkillLevel(skill);
         int max = Configuration.getMaxLevel();
 
-        // RIGHT CLICK: perk toggle should always be allowed (even if gated / no XP)
+        // RIGHT CLICK
         if (button == 1) {
             if (SkillAttributeBonus.getBySkill(skill) != null) {
                 Reskillable.NETWORK.sendToServer(new TogglePerkPacket(skill));
@@ -175,7 +175,7 @@ public class SkillButton extends Button {
             return false;
         }
 
-        // LEFT CLICK: level up checks
+        // LEFT CLICK
         if (button == 0) {
             if (!Configuration.isSkillLevelingEnabled()) {
                 player.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 0.35F, 0.6F);
@@ -206,27 +206,33 @@ public class SkillButton extends Button {
         return false;
     }
 
-
     public List<Component> getTooltipLines(Player player) {
         List<Component> lines = new ArrayList<>();
+
         SkillModel model = SkillModel.get(player);
+        if (model == null) return lines;
+
         int level = model.getSkillLevel(skill);
+
         int cost = Configuration.calculateCostForLevel(level);
         int playerXP = getPlayerTotalXP(player);
 
-        Component xp = Component.literal(String.valueOf(playerXP)).withStyle(playerXP >= cost ? ChatFormatting.GREEN : ChatFormatting.RED);
+        Component xp = Component.literal(String.valueOf(playerXP))
+                .withStyle(playerXP >= cost ? ChatFormatting.GREEN : ChatFormatting.RED);
         Component costC = Component.literal(String.valueOf(cost));
+
         lines.add(Component.translatable("tooltip.rereskillable.skill_cost", xp, costC));
 
         if (SkillAttributeBonus.getBySkill(skill) != null) {
             boolean enabled = model.isPerkEnabled(skill);
-
             lines.add(Component.literal("➤ ")
                     .append(Component.translatable("tooltip.rereskillable.right_click").withStyle(ChatFormatting.GOLD))
-                    .append(Component.translatable(
-                            enabled ? "tooltip.rereskillable.disable_perk" : "tooltip.rereskillable.enable_perk"
+                    .append(Component.translatable(enabled
+                            ? "tooltip.rereskillable.disable_perk"
+                            : "tooltip.rereskillable.enable_perk"
                     ).withStyle(enabled ? ChatFormatting.RED : ChatFormatting.GREEN)));
         }
+
         if (!Configuration.isSkillLevelingEnabled()) {
             lines.add(Component.translatable("message.reskillable.leveling_disabled").withStyle(ChatFormatting.RED));
             return lines;
@@ -239,10 +245,36 @@ public class SkillButton extends Button {
         }
 
         if (gateBlocked) {
-            lines.add(Component.translatable("message.reskillable.gate_blocked_short").withStyle(ChatFormatting.RED));
-            if (gateMissing != null) {
-                lines.add(gateMissing.copy().withStyle(ChatFormatting.YELLOW));
+            boolean shift = Screen.hasShiftDown();
+
+            lines.add(
+                    Component.literal("🔒 ")
+                            .append(Component.translatable("tooltip.reskillable.locked"))
+                            .withStyle(ChatFormatting.RED)
+            );
+
+            if (!shift) {
+                lines.add(
+                        Component.translatable("tooltip.reskillable.hold_shift")
+                                .withStyle(ChatFormatting.DARK_GRAY)
+                );
+                return lines;
             }
+
+            // Shift held → show detailed requirements
+            if (gateMissing != null) {
+                lines.add(Component.empty());
+
+                for (Component c : gateMissing.getSiblings()) {
+                    lines.add(
+                            Component.literal("• ")
+                                    .append(c.copy())
+                                    .withStyle(ChatFormatting.YELLOW)
+                    );
+                }
+            }
+
+            return lines;
         }
 
 
