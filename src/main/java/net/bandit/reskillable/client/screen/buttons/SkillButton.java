@@ -34,6 +34,8 @@ public class SkillButton extends Button {
     private Component gateMissing = null;
     private List<Component> tooltipLines = null;
 
+    private static final ResourceLocation LOCK_ICON =
+            new ResourceLocation("reskillable", "textures/gui/lock_icon.png");
 
     public SkillButton(int x, int y, Skill skill) {
         super(new Button.Builder(Component.literal(""), onPress -> RequestLevelUp.send(skill))
@@ -86,7 +88,14 @@ public class SkillButton extends Button {
 
         if (gateBlocked) {
             guiGraphics.fill(getX(), getY(), getX() + width, getY() + height, 0x88000000);
-            guiGraphics.drawString(font, "🔒", getX() + width - 12, getY() + 3, 0xFFDCA64A, false);
+//            guiGraphics.drawString(font, "🔒", getX() + width - 12, getY() + 3, 0xFFDCA64A, false);
+            RenderSystem.setShaderTexture(0, LOCK_ICON);
+
+            int iconSize = 16;
+            int iconX = getX() + width - iconSize - 3;
+            int iconY = getY() + 3;
+            guiGraphics.blit(LOCK_ICON, iconX, iconY, 0, 0, iconSize, iconSize, iconSize, iconSize);
+            RenderSystem.setShaderTexture(0, SkillScreen.RESOURCES);
         }
 
         if (isMouseOver(mouseX, mouseY)) {
