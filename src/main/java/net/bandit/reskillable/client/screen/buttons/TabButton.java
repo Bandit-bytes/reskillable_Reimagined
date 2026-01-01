@@ -1,68 +1,157 @@
 package net.bandit.reskillable.client.screen.buttons;
 
+import net.bandit.reskillable.client.screen.InventoryTabs;
 import net.bandit.reskillable.client.screen.SkillScreen;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.NotNull;
 
 public class TabButton extends AbstractWidget {
+
     private final boolean selected;
     private final TabType type;
 
-    public TabButton(int x, int y, TabType type, boolean selected) {
-        super(x, y, 31, 28, Component.literal("Skill"));
+
+    private int relX;
+    private int relY;
+
+    private boolean dragging = false;
+    private int dragOffsetX = 0;
+    private int dragOffsetY = 0;
+
+    public TabButton(int relX, int relY, TabType type, boolean selected) {
+        super(0, 0, 31, 28, Component.literal("Tab"));
         this.type = type;
         this.selected = selected;
+        this.relX = relX;
+        this.relY = relY;
     }
 
     @Override
     public void renderWidget(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
         Minecraft minecraft = Minecraft.getInstance();
-        active = !(minecraft.screen instanceof InventoryScreen) || !((InventoryScreen) minecraft.screen).getRecipeBookComponent().isVisible();
+        active = !(minecraft.screen instanceof InventoryScreen inv)
+                || !inv.getRecipeBookComponent().isVisible();
 
-        if (active) {
-            if (minecraft.screen instanceof InventoryScreen inventoryScreen) {
-                int guiLeft = inventoryScreen.getGuiLeft();
-                int guiTop = inventoryScreen.getGuiTop();
-                setPosition(guiLeft - 28, guiTop + (type == TabType.INVENTORY ? 7 : 36));
+        if (!active) return;
+        if (minecraft.screen != null) {
+            int guiLeft;
+            int guiTop;
+
+            if (minecraft.screen instanceof InventoryScreen inv) {
+                guiLeft = inv.getGuiLeft();
+                guiTop = inv.getGuiTop();
+            } else {
+                guiLeft = InventoryTabs.getGuiLeft(minecraft.screen);
+                guiTop = InventoryTabs.getGuiTop(minecraft.screen);
             }
 
-            guiGraphics.blit(SkillScreen.RESOURCES, getX(), getY(), selected ? 31 : 0, 166, width, height);
-            guiGraphics.blit(SkillScreen.RESOURCES, getX() + (selected ? 8 : 10), getY() + 6, 240, 128 + type.iconIndex * 16, 16, 16);
+            setPosition(guiLeft + relX, guiTop + relY);
         }
+
+        // Draw tab
+        guiGraphics.blit(SkillScreen.RESOURCES, getX(), getY(), selected ? 31 : 0, 166, width, height);
+        guiGraphics.blit(SkillScreen.RESOURCES, getX() + (selected ? 8 : 10), getY() + 6,
+                240, 128 + type.iconIndex * 16, 16, 16);
+
+//        if (isMouseOver(mouseX, mouseY) && active) {
+//            guiGraphics.renderTooltip(
+//                    Minecraft.getInstance().font,
+//                    Component.literal(dragging ? "Release to place" : "Hold Shift to move"),
+//                    mouseX,
+//                    mouseY
+//            );
+//        }
     }
+
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (isMouseOver(mouseX, mouseY) && active) {
-            onPress();
+        if (!active || !isMouseOver(mouseX, mouseY) || button != 0) return false;
+
+        if (Screen.hasShiftDown()) {
+            dragging = true;
+            dragOffsetX = (int) mouseX - getX();
+            dragOffsetY = (int) mouseY - getY();
             return true;
         }
-        return false;
+
+        onPress();
+        return true;
+    }
+
+    @Override
+    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+        if (!dragging || button != 0) return false;
+
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.screen == null) return false;
+
+        int guiLeft;
+        int guiTop;
+
+        if (minecraft.screen instanceof InventoryScreen inv) {
+            guiLeft = inv.getGuiLeft();
+            guiTop = inv.getGuiTop();
+        } else {
+            guiLeft = InventoryTabs.getGuiLeft(minecraft.screen);
+            guiTop = InventoryTabs.getGuiTop(minecraft.screen);
+        }
+
+        int newAbsX = (int) mouseX - dragOffsetX;
+        int newAbsY = (int) mouseY - dragOffsetY;
+        relX = newAbsX - guiLeft;
+        relY = newAbsY - guiTop;
+        relX = clamp(relX, -80, InventoryTabs.GUI_W + 80);
+        relY = clamp(relY, -80, InventoryTabs.GUI_H + 80);
+
+        return true;
+    }
+
+    @Override
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (dragging && button == 0) {
+            dragging = false;
+
+            InventoryTabs.setPosition(type, relX, relY);
+            return true;
+        }
+        return super.mouseReleased(mouseX, mouseY, button);
+    }
+
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (active && Screen.hasShiftDown() && (keyCode == 82 /*R*/)) {
+            double mx = Minecraft.getInstance().mouseHandler.xpos();
+            double my = Minecraft.getInstance().mouseHandler.ypos();
+        }
+        return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
     public void onPress() {
         Minecraft minecraft = Minecraft.getInstance();
 
         switch (type) {
-            case INVENTORY:
+            case INVENTORY -> {
                 if (minecraft.player != null) {
                     minecraft.setScreen(new InventoryScreen(minecraft.player));
                 }
-                break;
-
-            case SKILLS:
-                minecraft.setScreen(new SkillScreen());
-                break;
+            }
+            case SKILLS -> minecraft.setScreen(new SkillScreen());
         }
     }
 
     @Override
     protected void updateWidgetNarration(@NotNull NarrationElementOutput output) {
         defaultButtonNarrationText(output);
+    }
+
+    private static int clamp(int v, int min, int max) {
+        return Math.max(min, Math.min(max, v));
     }
 
     public enum TabType {
@@ -72,7 +161,7 @@ public class TabButton extends AbstractWidget {
         public final int iconIndex;
 
         TabType(int index) {
-            iconIndex = index;
+            this.iconIndex = index;
         }
     }
 }

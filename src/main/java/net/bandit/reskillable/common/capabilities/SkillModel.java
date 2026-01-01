@@ -12,6 +12,7 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ClientboundUpdateAttributesPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
@@ -211,8 +212,12 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
     }
     public void updateSkillAttributeBonuses(Player player) {
         for (SkillAttributeBonus bonus : SkillAttributeBonus.values()) {
+
+            Attribute attribute = bonus.getAttribute();
+            if (attribute == null) continue;
+
             Holder.Reference<Attribute> attr = BuiltInRegistries.ATTRIBUTE
-                    .getResourceKey(bonus.getAttribute())
+                    .getResourceKey(attribute)
                     .flatMap(BuiltInRegistries.ATTRIBUTE::getHolder)
                     .orElse(null);
 
@@ -237,14 +242,22 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
                     AttributeModifier modifier = new AttributeModifier(
                             id,
                             totalBonus,
-                            AttributeModifier.Operation.ADD_VALUE
+                            bonus.operation
                     );
                     attrInstance.addTransientModifier(modifier);
                 }
             }
         }
-
         handleHealthBonus(player);
+        forceAttributeSync(player);
+    }
+    private static void forceAttributeSync(Player player) {
+        if (player instanceof ServerPlayer sp) {
+            sp.connection.send(new ClientboundUpdateAttributesPacket(
+                    sp.getId(),
+                    sp.getAttributes().getSyncableAttributes()
+            ));
+        }
     }
 
     private void handleHealthBonus(Player player) {
@@ -273,6 +286,9 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
                         AttributeModifier.Operation.ADD_VALUE
                 );
                 healthAttr.addTransientModifier(healthModifier);
+            }
+            if (player.getHealth() > player.getMaxHealth()) {
+                player.setHealth(player.getMaxHealth());
             }
         }
     }
