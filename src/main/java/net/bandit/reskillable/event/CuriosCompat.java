@@ -1,4 +1,4 @@
-package net.bandit.reskillable.common;
+package net.bandit.reskillable.event;
 
 import net.bandit.reskillable.common.capabilities.SkillModel;
 import net.minecraft.world.entity.player.Player;

@@ -1,4 +1,4 @@
-package net.bandit.reskillable.common;
+package net.bandit.reskillable.event;
 
 import io.redspace.ironsspellbooks.api.events.SpellPreCastEvent;
 import net.bandit.reskillable.common.capabilities.SkillModel;

@@ -1,8 +1,8 @@
 package net.bandit.reskillable;
 
 import net.bandit.reskillable.client.ClientInitializer;
-import net.bandit.reskillable.common.CuriosCompat;
-import net.bandit.reskillable.common.EventHandler;
+import net.bandit.reskillable.event.CuriosCompat;
+import net.bandit.reskillable.event.EventHandler;
 import net.bandit.reskillable.common.capabilities.SkillModel;
 import net.bandit.reskillable.common.commands.Commands;
 import net.bandit.reskillable.common.network.*;
@@ -21,8 +21,8 @@ import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.network.NetworkDirection;
 import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.simple.SimpleChannel;
-import net.bandit.reskillable.common.IronsSpellbooksEventHandler;
-import net.bandit.reskillable.common.TaczEventHandler;
+import net.bandit.reskillable.event.IronsSpellbooksEventHandler;
+import net.bandit.reskillable.event.TaczEventHandler;
 
 import java.util.Optional;
 

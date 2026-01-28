@@ -1,4 +1,4 @@
-package net.bandit.reskillable.common;
+package net.bandit.reskillable.event;
 
 import net.bandit.reskillable.Configuration;
 import net.bandit.reskillable.common.capabilities.SkillModel;
@@ -10,8 +10,6 @@ import net.bandit.reskillable.common.network.SyncToClient;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.entity.ai.attributes.AttributeModifier;
-import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.entity.Entity;
@@ -36,7 +34,6 @@ import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.Event;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.event.entity.living.LivingEntityUseItemEvent;
 import net.minecraftforge.event.entity.living.LivingUseTotemEvent;
 
 
@@ -111,15 +108,12 @@ public class EventHandler {
         if (model == null || player.isCreative()) return;
 
         ItemStack mainHand = player.getMainHandItem();
-        ItemStack offHand = player.getOffhandItem();
 
-        boolean canUseMain = model.canUseItem(player, mainHand);
-        boolean canUseOff = model.canUseItem(player, offHand);
-
-        if (!canUseMain || !canUseOff || !model.canAttackEntity(player, event.getTarget())) {
+        if (!model.canUseItem(player, mainHand) || !model.canAttackEntity(player, event.getTarget())) {
             event.setCanceled(true);
         }
     }
+
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public void onChangeEquipment(LivingEquipmentChangeEvent event) {

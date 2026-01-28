@@ -1,4 +1,4 @@
-package net.bandit.reskillable.common;
+package net.bandit.reskillable.event;
 
 import com.tacz.guns.api.event.common.GunFireEvent;
 import net.bandit.reskillable.common.capabilities.SkillModel;
