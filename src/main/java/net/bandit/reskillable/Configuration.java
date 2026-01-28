@@ -178,7 +178,7 @@ public class Configuration {
 
         HEALTH_PER_HEART = builder
                 .comment("How much health (in half-hearts) is granted per configured levelsPerHeart.")
-                .defineInRange("healthPerHeart", 2.0, 0.5, 20.0); // 2.0 = 1 heart
+                .defineInRange("healthPerHeart", 2.0, 0.5, 20.0);
         SKILL_LEVEL_GATES = builder
                 .comment(
                         "Skill gating rules. (all skills start at level 1 so add 8 to a total count)",

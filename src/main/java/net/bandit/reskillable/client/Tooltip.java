@@ -27,61 +27,55 @@ import java.util.logging.Logger;
 public class Tooltip {
     private static final Logger LOGGER = Logger.getLogger(Tooltip.class.getName());
 
-    private boolean isTaczLoaded = ModList.get().isLoaded("tacz");
-    private boolean isIronsLoaded = ModList.get().isLoaded("irons_spellbooks");
-
+    private final boolean isTaczLoaded = ModList.get().isLoaded("tacz");
+    private final boolean isIronsLoaded = ModList.get().isLoaded("irons_spellbooks");
 
     @SubscribeEvent
     public void onTooltipDisplay(ItemTooltipEvent event) {
-
-        if (Minecraft.getInstance().player == null)
-            return;
+        if (Minecraft.getInstance().player == null) return;
 
         ItemStack stack = event.getItemStack();
         ResourceLocation baseKey = BuiltInRegistries.ITEM.getKey(stack.getItem());
         ResourceLocation effectiveKey = baseKey;
 
         if (isTaczLoaded && baseKey != null && "tacz".equals(baseKey.getNamespace())) {
-
             CustomData data = stack.get(DataComponents.CUSTOM_DATA);
             CompoundTag tag = data != null ? data.copyTag() : null;
 
             if (tag != null && tag.contains("GunId", Tag.TAG_STRING)) {
-
                 String rawId = tag.getString("GunId");
                 String cleanId = rawId
                         .replace("tacz:", "")
-                        .replace("tacz", "");   // "m95"
+                        .replace("tacz", "");
 
                 effectiveKey = ResourceLocation.fromNamespaceAndPath(
                         "tacz",
-                        "%s__%s".formatted(
-                                baseKey.getPath(),  // modern_kinetic_gun
-                                cleanId             // m95
-                        )
+                        "%s__%s".formatted(baseKey.getPath(), cleanId)
                 );
             }
         }
 
-        if (isIronsLoaded && stack.getItem() instanceof Scroll scroll) {
+        if (isIronsLoaded && stack.getItem() instanceof Scroll) {
+            ISpellContainer container = ISpellContainer.get(stack);
+            if (container != null) {
+                SpellData spellAtIndex = container.getSpellAtIndex(0);
 
-            SpellData spellAtIndex = ISpellContainer.get(stack).getSpellAtIndex(0);
+                if (spellAtIndex != null && spellAtIndex.getSpell() != null) {
+                    AbstractSpell spell = spellAtIndex.getSpell();
+                    String[] split = spell.getSpellId().split(":");
 
-            if (spellAtIndex != null && spellAtIndex.getSpell() != null) {
-                AbstractSpell spell = spellAtIndex.getSpell();
-                String[] split = spell.getSpellId().split(":");
-
-                if (split.length == 2) {
-                    effectiveKey = ResourceLocation.fromNamespaceAndPath(
-                            "irons_spellbooks",
-                            "scroll__%s_%d".formatted(
-                                    split[1],
-                                    spellAtIndex.getLevel()
-                            )
-                    );
+                    if (split.length == 2) {
+                        effectiveKey = ResourceLocation.fromNamespaceAndPath(
+                                "irons_spellbooks",
+                                "scroll__%s_%d".formatted(split[1], spellAtIndex.getLevel())
+                        );
+                    }
                 }
+            } else {
+                // LOGGER.fine("ISpellContainer.get(stack) returned null for " + stack);
             }
         }
+
         Requirement[] requirements = Configuration.getRequirements(effectiveKey);
 
         if (requirements != null) {
