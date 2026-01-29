@@ -15,36 +15,20 @@ public class InventoryTabs {
 
     @SubscribeEvent
     public static void onInitGui(ScreenEvent.Init.Post event) {
-        if (!Configuration.shouldShowTabButtons()) {
-            return;
-        }
+        if (!Configuration.shouldShowTabButtons()) return;
 
         var screen = event.getScreen();
 
-        if (screen instanceof InventoryScreen && !(screen instanceof CreativeModeInventoryScreen) || screen instanceof SkillScreen) {
-            boolean isSkillsOpen = screen instanceof SkillScreen;
+        if ((screen instanceof InventoryScreen && !(screen instanceof CreativeModeInventoryScreen))
+                || screen instanceof SkillScreen) {
 
-            int guiLeft = (screen.width - 176) / 2; // Default GUI width
+            int guiLeft = (screen.width - 176) / 2;
             int guiTop = (screen.height - 166) / 2;
+
             int buttonX = guiLeft - 28;
-            int inventoryTabY = guiTop + 7;
-            int skillsTabY = guiTop + 36;
+            int tabY = guiTop + 7;
 
-            // Add Inventory tab
-            event.addListener(new TabButton(buttonX, inventoryTabY, TabButton.TabType.INVENTORY, !isSkillsOpen) {
-                @Override
-                public void onPress() {
-                    if (Minecraft.getInstance().player != null)
-                        Minecraft.getInstance().setScreen(new InventoryScreen(Minecraft.getInstance().player));
-                }
-            });
-
-            event.addListener(new TabButton(buttonX, skillsTabY, TabButton.TabType.SKILLS, isSkillsOpen) {
-                @Override
-                public void onPress() {
-                    Minecraft.getInstance().setScreen(new SkillScreen());
-                }
-            });
+            event.addListener(new TabButton(buttonX, tabY, TabButton.TabType.SKILLS));
         }
     }
 }

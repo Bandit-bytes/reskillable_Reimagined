@@ -66,7 +66,6 @@ public class Tooltip {
                     }
                 }
 
-                // ✅ Now fetch requirements after remapping ID
                 Requirement[] requirements = Configuration.getRequirements(itemRegistryName);
 
                 if (requirements != null) {

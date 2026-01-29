@@ -1,6 +1,5 @@
 package net.bandit.reskillable.client.screen.buttons;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import net.bandit.reskillable.client.screen.SkillScreen;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -11,31 +10,52 @@ import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.NotNull;
 
 public class TabButton extends AbstractWidget {
-    private final boolean selected;
     private final TabType type;
 
-    public TabButton(int x, int y, TabType type, boolean selected) {
+    public TabButton(int x, int y, TabType type) {
         super(x, y, 31, 28, Component.literal("Skill"));
         this.type = type;
-        this.selected = selected;
+    }
+
+    private boolean isSelected() {
+        Minecraft mc = Minecraft.getInstance();
+        return (type == TabType.SKILLS) && (mc.screen instanceof SkillScreen);
     }
 
     @Override
     public void renderWidget(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
         Minecraft minecraft = Minecraft.getInstance();
-        active = !(minecraft.screen instanceof InventoryScreen) || !((InventoryScreen) minecraft.screen).getRecipeBookComponent().isVisible();
 
-        if (active) {
-            if (minecraft.screen instanceof InventoryScreen inventoryScreen) {
-                int guiLeft = inventoryScreen.getGuiLeft();
-                int guiTop = inventoryScreen.getGuiTop();
-                setPosition(guiLeft - 28, guiTop + (type == TabType.INVENTORY ? 7 : 36));
-            }
+        active = !(minecraft.screen instanceof InventoryScreen)
+                || !((InventoryScreen) minecraft.screen).getRecipeBookComponent().isVisible();
 
-            guiGraphics.blit(SkillScreen.RESOURCES, getX(), getY(), selected ? 31 : 0, 166, width, height);
-            guiGraphics.blit(SkillScreen.RESOURCES, getX() + (selected ? 8 : 10), getY() + 6, 240, 128 + type.iconIndex * 16, 16, 16);
+        if (!active) return;
+
+        if (minecraft.screen instanceof InventoryScreen inventoryScreen) {
+            int guiLeft = inventoryScreen.getGuiLeft();
+            int guiTop = inventoryScreen.getGuiTop();
+            setPosition(guiLeft - 28, guiTop + 7);
+        } else if (minecraft.screen instanceof SkillScreen skillScreen) {
+            // If your SkillScreen is 176x166 like vanilla inventory, this matches your existing math:
+            int guiLeft = (skillScreen.width - 176) / 2;
+            int guiTop = (skillScreen.height - 166) / 2;
+            setPosition(guiLeft - 28, guiTop + 7);
         }
+
+        boolean selected = isSelected();
+
+        guiGraphics.blit(SkillScreen.RESOURCES, getX(), getY(), selected ? 31 : 0, 166, width, height);
+        guiGraphics.blit(
+                SkillScreen.RESOURCES,
+                getX() + (selected ? 8 : 10),
+                getY() + 6,
+                240,
+                128 + type.iconIndex * 16,
+                16,
+                16
+        );
     }
+
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (isMouseOver(mouseX, mouseY) && active) {
@@ -46,18 +66,14 @@ public class TabButton extends AbstractWidget {
     }
 
     public void onPress() {
-        Minecraft minecraft = Minecraft.getInstance();
+        Minecraft mc = Minecraft.getInstance();
 
-        switch (type) {
-            case INVENTORY:
-                if (minecraft.player != null) {
-                    minecraft.setScreen(new InventoryScreen(minecraft.player));
-                }
-                break;
-
-            case SKILLS:
-                minecraft.setScreen(new SkillScreen());
-                break;
+        if (type == TabType.SKILLS) {
+            if (mc.screen instanceof SkillScreen) {
+                if (mc.player != null) mc.setScreen(new InventoryScreen(mc.player));
+            } else {
+                mc.setScreen(new SkillScreen());
+            }
         }
     }
 
@@ -67,13 +83,9 @@ public class TabButton extends AbstractWidget {
     }
 
     public enum TabType {
-        INVENTORY(0),
         SKILLS(1);
 
         public final int iconIndex;
-
-        TabType(int index) {
-            iconIndex = index;
-        }
+        TabType(int index) { iconIndex = index; }
     }
 }

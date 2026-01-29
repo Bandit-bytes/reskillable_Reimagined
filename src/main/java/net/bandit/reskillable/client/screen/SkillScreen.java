@@ -391,7 +391,6 @@ public class SkillScreen extends Screen {
         }
         @Override
         public void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
-            // no vanilla background/text; SkillScreen handles drawing
         }
     }
 
@@ -568,7 +567,7 @@ public class SkillScreen extends Screen {
     }
 
     private static final class MissingUiReq {
-        final Skill skill; // null means TOTAL
+        final Skill skill;
         final int required;
         final ResourceLocation advId;
 
@@ -621,7 +620,7 @@ public class SkillScreen extends Screen {
         Reskillable.NETWORK.sendToServer(new RequestLevelUp.RequestGatePreviewPacket());
     }
     private static Component prettyAdvancement(ResourceLocation id) {
-        // minecraft:story/mine_diamond → Mine Diamonds
+        // minecraft:story/mine_diamond -> Mine Diamonds
         String path = id.getPath(); // story/mine_diamond
         String name = path.substring(path.lastIndexOf('/') + 1)
                 .replace('_', ' ');

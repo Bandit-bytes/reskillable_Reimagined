@@ -30,7 +30,6 @@ public class Overlay implements IGuiOverlay {
         if (showTicks > 0) showTicks--;
     }
 
-    // Show Warning
     public static void showWarning(ResourceLocation resource, RequirementType type) {
         requirements = Arrays.asList(type.getRequirements(resource));
         messageKey = "overlay.message." + type.name().toLowerCase(Locale.ROOT);
