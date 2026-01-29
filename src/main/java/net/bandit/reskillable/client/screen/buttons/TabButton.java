@@ -13,9 +13,7 @@ import org.jetbrains.annotations.NotNull;
 
 public class TabButton extends AbstractWidget {
 
-    private final boolean selected;
     private final TabType type;
-
 
     private int relX;
     private int relY;
@@ -24,21 +22,26 @@ public class TabButton extends AbstractWidget {
     private int dragOffsetX = 0;
     private int dragOffsetY = 0;
 
-    public TabButton(int relX, int relY, TabType type, boolean selected) {
+    public TabButton(int relX, int relY) {
         super(0, 0, 31, 28, Component.literal("Tab"));
-        this.type = type;
-        this.selected = selected;
+        this.type = TabType.SKILLS;
         this.relX = relX;
         this.relY = relY;
+    }
+
+    private boolean isSelected() {
+        return Minecraft.getInstance().screen instanceof SkillScreen;
     }
 
     @Override
     public void renderWidget(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
         Minecraft minecraft = Minecraft.getInstance();
+
         active = !(minecraft.screen instanceof InventoryScreen inv)
                 || !inv.getRecipeBookComponent().isVisible();
 
         if (!active) return;
+
         if (minecraft.screen != null) {
             int guiLeft;
             int guiTop;
@@ -54,19 +57,11 @@ public class TabButton extends AbstractWidget {
             setPosition(guiLeft + relX, guiTop + relY);
         }
 
-        // Draw tab
+        boolean selected = isSelected();
+
         guiGraphics.blit(SkillScreen.RESOURCES, getX(), getY(), selected ? 31 : 0, 166, width, height);
         guiGraphics.blit(SkillScreen.RESOURCES, getX() + (selected ? 8 : 10), getY() + 6,
                 240, 128 + type.iconIndex * 16, 16, 16);
-
-//        if (isMouseOver(mouseX, mouseY) && active) {
-//            guiGraphics.renderTooltip(
-//                    Minecraft.getInstance().font,
-//                    Component.literal(dragging ? "Release to place" : "Hold Shift to move"),
-//                    mouseX,
-//                    mouseY
-//            );
-//        }
     }
 
     @Override
@@ -104,8 +99,10 @@ public class TabButton extends AbstractWidget {
 
         int newAbsX = (int) mouseX - dragOffsetX;
         int newAbsY = (int) mouseY - dragOffsetY;
+
         relX = newAbsX - guiLeft;
         relY = newAbsY - guiTop;
+
         relX = clamp(relX, -80, InventoryTabs.GUI_W + 80);
         relY = clamp(relY, -80, InventoryTabs.GUI_H + 80);
 
@@ -117,31 +114,21 @@ public class TabButton extends AbstractWidget {
         if (dragging && button == 0) {
             dragging = false;
 
-            InventoryTabs.setPosition(type, relX, relY);
+            InventoryTabs.setPosition(relX, relY);
             return true;
         }
         return super.mouseReleased(mouseX, mouseY, button);
     }
 
-    @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (active && Screen.hasShiftDown() && (keyCode == 82 /*R*/)) {
-            double mx = Minecraft.getInstance().mouseHandler.xpos();
-            double my = Minecraft.getInstance().mouseHandler.ypos();
-        }
-        return super.keyPressed(keyCode, scanCode, modifiers);
-    }
-
     public void onPress() {
-        Minecraft minecraft = Minecraft.getInstance();
+        Minecraft mc = Minecraft.getInstance();
 
-        switch (type) {
-            case INVENTORY -> {
-                if (minecraft.player != null) {
-                    minecraft.setScreen(new InventoryScreen(minecraft.player));
-                }
+        if (mc.screen instanceof SkillScreen) {
+            if (mc.player != null) {
+                mc.setScreen(new InventoryScreen(mc.player));
             }
-            case SKILLS -> minecraft.setScreen(new SkillScreen());
+        } else {
+            mc.setScreen(new SkillScreen());
         }
     }
 
@@ -155,13 +142,9 @@ public class TabButton extends AbstractWidget {
     }
 
     public enum TabType {
-        INVENTORY(0),
         SKILLS(1);
 
         public final int iconIndex;
-
-        TabType(int index) {
-            this.iconIndex = index;
-        }
+        TabType(int index) { this.iconIndex = index; }
     }
 }
