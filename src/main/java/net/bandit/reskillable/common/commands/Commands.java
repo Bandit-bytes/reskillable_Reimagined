@@ -9,12 +9,6 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 
 public class Commands {
-
-    /**
-     * Event handler for registering commands.
-     *
-     * @param event The event that triggers the command registration.
-     */
     @SubscribeEvent
     public void onRegisterCommands(RegisterCommandsEvent event) {
         event.getDispatcher().register(
@@ -40,16 +34,8 @@ public class Commands {
         );
     }
 
-    /**
-     * Logic for the /skills scanmod <mod> command.
-     *
-     * @param source The command source (e.g., the player or server).
-     * @param modId  The mod ID to scan.
-     * @return The result code (1 for success, 0 for failure).
-     */
     private int scanModCommand(CommandSourceStack source, String modId) {
         try {
-            // Scan items for the given mod ID
             int itemCount = Configuration.scanModItems(modId);
             if (itemCount > 0) {
                 source.sendSuccess(() -> Component.literal("Added " + itemCount + " items from mod '" + modId + "' to skill_locks.json."), true);

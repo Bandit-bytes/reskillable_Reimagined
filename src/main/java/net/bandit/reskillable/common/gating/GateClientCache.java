@@ -1,6 +1,6 @@
 package net.bandit.reskillable.common.gating;
 
-import net.bandit.reskillable.common.commands.skills.Skill;
+import net.bandit.reskillable.common.skills.Skill;
 import net.minecraft.network.chat.Component;
 
 import java.util.EnumMap;

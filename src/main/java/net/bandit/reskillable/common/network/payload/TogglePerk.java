@@ -1,9 +1,8 @@
 package net.bandit.reskillable.common.network.payload;
 
 import net.bandit.reskillable.common.capabilities.SkillModel;
-import net.bandit.reskillable.common.commands.skills.Skill;
+import net.bandit.reskillable.common.skills.Skill;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;

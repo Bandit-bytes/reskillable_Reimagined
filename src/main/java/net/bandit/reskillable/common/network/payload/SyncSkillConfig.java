@@ -2,7 +2,7 @@ package net.bandit.reskillable.common.network.payload;
 
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
-import net.bandit.reskillable.common.commands.skills.Requirement;
+import net.bandit.reskillable.common.skills.Requirement;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;

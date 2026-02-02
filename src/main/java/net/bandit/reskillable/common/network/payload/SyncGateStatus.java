@@ -1,7 +1,7 @@
 package net.bandit.reskillable.common.network.payload;
 
 import net.bandit.reskillable.common.capabilities.SkillModel;
-import net.bandit.reskillable.common.commands.skills.Skill;
+import net.bandit.reskillable.common.skills.Skill;
 import net.bandit.reskillable.common.gating.GateClientCache;
 import net.bandit.reskillable.common.gating.SkillLevelGate;
 import net.minecraft.network.RegistryFriendlyByteBuf;

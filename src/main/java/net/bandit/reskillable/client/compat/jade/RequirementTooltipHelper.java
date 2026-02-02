@@ -2,7 +2,7 @@ package net.bandit.reskillable.client.compat.jade;
 
 import net.bandit.reskillable.Configuration;
 import net.bandit.reskillable.common.capabilities.SkillModel;
-import net.bandit.reskillable.common.commands.skills.Requirement;
+import net.bandit.reskillable.common.skills.Requirement;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;

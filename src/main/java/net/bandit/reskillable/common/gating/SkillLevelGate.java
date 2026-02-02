@@ -2,7 +2,7 @@ package net.bandit.reskillable.common.gating;
 
 import net.bandit.reskillable.Configuration;
 import net.bandit.reskillable.common.capabilities.SkillModel;
-import net.bandit.reskillable.common.commands.skills.Skill;
+import net.bandit.reskillable.common.skills.Skill;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;

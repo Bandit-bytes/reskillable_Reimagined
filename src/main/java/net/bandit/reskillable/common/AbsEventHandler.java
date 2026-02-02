@@ -1,8 +1,8 @@
 package net.bandit.reskillable.common;
 
 import net.bandit.reskillable.common.capabilities.SkillModel;
-import net.bandit.reskillable.common.commands.skills.Requirement;
-import net.bandit.reskillable.common.commands.skills.RequirementType;
+import net.bandit.reskillable.common.skills.Requirement;
+import net.bandit.reskillable.common.skills.RequirementType;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;

@@ -1,6 +1,6 @@
 package net.bandit.reskillable.client.data;
 
-import net.bandit.reskillable.common.commands.skills.Skill;
+import net.bandit.reskillable.common.skills.Skill;
 
 import java.util.EnumMap;
 import java.util.Map;

@@ -5,8 +5,8 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import net.bandit.reskillable.Configuration;
 import net.bandit.reskillable.client.screen.buttons.SkillButton;
 import net.bandit.reskillable.common.capabilities.SkillModel;
-import net.bandit.reskillable.common.commands.skills.Skill;
-import net.bandit.reskillable.common.commands.skills.SkillAttributeBonus;
+import net.bandit.reskillable.common.skills.Skill;
+import net.bandit.reskillable.common.skills.SkillAttributeBonus;
 import net.bandit.reskillable.common.gating.GateClientCache;
 import net.bandit.reskillable.common.network.payload.RequestGateStatus;
 import net.minecraft.ChatFormatting;
@@ -20,7 +20,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.NotNull;
-import net.bandit.reskillable.common.gating.SkillLevelGate;
 
 
 import java.util.ArrayList;

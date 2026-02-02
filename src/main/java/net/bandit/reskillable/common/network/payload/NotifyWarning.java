@@ -1,6 +1,6 @@
 package net.bandit.reskillable.common.network.payload;
 
-import net.bandit.reskillable.common.commands.skills.RequirementType;
+import net.bandit.reskillable.common.skills.RequirementType;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;

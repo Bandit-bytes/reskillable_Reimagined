@@ -2,9 +2,9 @@ package net.bandit.reskillable.common;
 
 import net.bandit.reskillable.Configuration;
 import net.bandit.reskillable.common.capabilities.SkillModel;
-import net.bandit.reskillable.common.commands.skills.Requirement;
-import net.bandit.reskillable.common.commands.skills.Skill;
-import net.bandit.reskillable.common.commands.skills.SkillAttributeBonus;
+import net.bandit.reskillable.common.skills.Requirement;
+import net.bandit.reskillable.common.skills.Skill;
+import net.bandit.reskillable.common.skills.SkillAttributeBonus;
 import net.bandit.reskillable.common.network.payload.SyncToClient;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -24,7 +24,6 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.neoforged.neoforge.event.entity.living.*;
 import net.neoforged.neoforge.event.entity.player.AttackEntityEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
@@ -247,22 +246,26 @@ public class EventHandler {
         }
     }
 
-
     @SubscribeEvent
     public void onBreakSpeed(PlayerEvent.BreakSpeed event) {
         Player player = event.getEntity();
         SkillModel model = SkillModel.get(player);
-        if (model != null) {
-            int miningLevel = model.getSkillLevel(Skill.MINING);
-            if (miningLevel >= 5) {
-                var bonus = SkillAttributeBonus.getBySkill(Skill.MINING);
-                if (bonus != null && model.isPerkEnabled(Skill.MINING)) {
-                    float multiplier = 1.0f + (miningLevel / 5f) * (float) bonus.getBonusPerStep();
-                    event.setNewSpeed(event.getNewSpeed() * multiplier);
-                }
-            }
-        }
+        if (model == null) return;
+
+        if (!model.isPerkEnabled(Skill.MINING)) return;
+
+        int miningLevel = model.getSkillLevel(Skill.MINING);
+        int steps = miningLevel / 5;
+        if (steps <= 0) return;
+
+        SkillAttributeBonus bonus = SkillAttributeBonus.getBySkill(Skill.MINING);
+        if (bonus == null) return;
+
+        float perStep = (float) bonus.getBonusPerStep();
+        float totalBonus = steps * perStep;
+        event.setNewSpeed(event.getNewSpeed() * (1.0f + totalBonus));
     }
+
 
     @SubscribeEvent
     public void onCropGrow(CropGrowEvent.Pre event) {

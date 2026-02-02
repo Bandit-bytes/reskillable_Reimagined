@@ -1,11 +1,10 @@
 package net.bandit.reskillable.client;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.PoseStack;
 import net.bandit.reskillable.Configuration;
 import net.bandit.reskillable.client.screen.SkillScreen;
-import net.bandit.reskillable.common.commands.skills.Requirement;
-import net.bandit.reskillable.common.commands.skills.RequirementType;
+import net.bandit.reskillable.common.skills.Requirement;
+import net.bandit.reskillable.common.skills.RequirementType;
 import net.bandit.reskillable.common.capabilities.SkillModel;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;

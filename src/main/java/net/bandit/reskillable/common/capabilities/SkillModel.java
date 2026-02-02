@@ -1,10 +1,10 @@
 package net.bandit.reskillable.common.capabilities;
 
 import net.bandit.reskillable.Configuration;
-import net.bandit.reskillable.common.commands.skills.Requirement;
-import net.bandit.reskillable.common.commands.skills.RequirementType;
-import net.bandit.reskillable.common.commands.skills.Skill;
-import net.bandit.reskillable.common.commands.skills.SkillAttributeBonus;
+import net.bandit.reskillable.common.skills.Requirement;
+import net.bandit.reskillable.common.skills.RequirementType;
+import net.bandit.reskillable.common.skills.Skill;
+import net.bandit.reskillable.common.skills.SkillAttributeBonus;
 import net.bandit.reskillable.common.network.payload.SyncToClient;
 import net.bandit.reskillable.event.SkillAttachments;
 import net.minecraft.core.Holder;

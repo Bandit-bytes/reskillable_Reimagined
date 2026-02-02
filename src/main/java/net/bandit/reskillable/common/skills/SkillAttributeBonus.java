@@ -1,4 +1,4 @@
-package net.bandit.reskillable.common.commands.skills;
+package net.bandit.reskillable.common.skills;
 
 import net.bandit.reskillable.Configuration;
 import net.bandit.reskillable.common.capabilities.SkillModel;
