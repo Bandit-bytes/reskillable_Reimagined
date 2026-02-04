@@ -48,7 +48,7 @@ public record SyncGateStatus(int skillIndex, boolean blocked, Component missing)
     public static void sendAll(ServerPlayer player) {
         for (Skill s : Skill.values()) send(player, s);
     }
-    // CLIENT: apply cache
+
     public static void handleClient(SyncGateStatus msg) {
         if (msg.skillIndex < 0 || msg.skillIndex >= Skill.values().length) return;
         Skill skill = Skill.values()[msg.skillIndex];

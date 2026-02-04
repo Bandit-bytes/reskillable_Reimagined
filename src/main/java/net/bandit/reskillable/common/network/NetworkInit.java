@@ -28,12 +28,6 @@ public class NetworkInit {
                 }
             });
         });
-
-//
-//        // Client-bound channels must still be registered on the server
-//        registrar.playToClient(NotifyWarning.TYPE, NotifyWarning.STREAM_CODEC, (payload, context) -> {});
-//        registrar.playToClient(SyncSkillConfig.TYPE, SyncSkillConfig.STREAM_CODEC, (payload, context) -> {});
-//        registrar.playToClient(SyncToClient.TYPE, SyncToClient.STREAM_CODEC, (payload, context) -> {});
     }
 }
 

@@ -88,7 +88,6 @@ public class SkillButton extends Button {
             g.drawString(font, "🔒", getX() + width - 12, getY() + 3, 0xFFDCA64A, false);
         }
 
-        // Cache tooltip lines when hovered (optional convenience)
         if (isMouseOver(mouseX, mouseY)) {
             this.tooltipLines = getTooltipLines(clientPlayer);
         } else {
@@ -184,7 +183,6 @@ public class SkillButton extends Button {
                                 .withStyle(ChatFormatting.DARK_GRAY)
                 );
             } else if (gateMissing != null) {
-                // Expanded requirements
                 lines.add(Component.empty());
 
                 lines.add(

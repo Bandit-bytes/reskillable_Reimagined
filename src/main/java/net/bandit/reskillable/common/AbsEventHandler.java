@@ -11,11 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-///**
-// * oh no
-// * @see SkillModel#checkRequirements(Player, ResourceLocation, RequirementType)
-// * @see SkillModel#sendSkillRequirementMessage(Player, RequirementType, List)
-// */
+
 public class AbsEventHandler {
 
     public static boolean checkRequirements(SkillModel skillModel, Player player, ResourceLocation resource) {

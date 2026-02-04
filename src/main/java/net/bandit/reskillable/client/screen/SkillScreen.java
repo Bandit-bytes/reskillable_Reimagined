@@ -166,7 +166,7 @@ public class SkillScreen extends Screen {
                             lines.stream().map(Component::getVisualOrderText).toList(),
                             mouseX, mouseY
                     );
-                    break; // don't render multiple tooltips
+                    break;
                 }
             }
         }
