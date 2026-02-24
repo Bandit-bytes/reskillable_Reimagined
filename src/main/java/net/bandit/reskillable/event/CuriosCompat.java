@@ -9,7 +9,6 @@ import top.theillusivec4.curios.api.event.CurioChangeEvent;
 
 public class CuriosCompat
 {
-    // Change Curio
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public void onChangeCurio(CurioChangeEvent event)
@@ -20,7 +19,6 @@ public class CuriosCompat
             {
                 ItemStack item = event.getTo();
 
-                // Check if the player cannot use the item
                 if (!SkillModel.get(player).canUseItem(player, item))
                 {
                     player.drop(item.copy(), false);

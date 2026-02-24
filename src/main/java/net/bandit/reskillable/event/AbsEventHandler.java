@@ -11,11 +11,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-///**
-// * oh no
-// * @see SkillModel#checkRequirements(Player, ResourceLocation, RequirementType)
-// * @see SkillModel#sendSkillRequirementMessage(Player, RequirementType, List)
-// */
 public class AbsEventHandler {
 
     protected boolean checkRequirements(SkillModel skillModel, Player player, ResourceLocation resource) {
@@ -48,8 +43,8 @@ public class AbsEventHandler {
 
         List<Component> formattedRequirements = new ArrayList<>();
         for (Requirement req : unmetRequirements) {
-            String skillTranslationKey = "skill." + req.skill.name().toLowerCase(); // Ensure key matches lang file
-            Component translatedSkillName = Component.translatable(skillTranslationKey); // Retrieve translated name
+            String skillTranslationKey = "skill." + req.skill.name().toLowerCase();
+            Component translatedSkillName = Component.translatable(skillTranslationKey);
             formattedRequirements.add(
                     Component.literal("")
                             .append(translatedSkillName)
