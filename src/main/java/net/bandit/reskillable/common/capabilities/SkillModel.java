@@ -57,26 +57,22 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
             int newLevel = skillLevels[skill.index];
             if (newLevel % 5 == 0) {
                 SkillAttributeBonus bonus = SkillAttributeBonus.getBySkill(skill);
-                Attribute attr = bonus.getAttribute();
-                if (bonus != null && attr != null) {
-                    double amount = bonus.getBonusPerStep();
-                    String attributeName = attr.getDescriptionId().replace("attribute.name.", "");
-
-//                    player.displayClientMessage(Component.literal(
-//                             skill.name().toLowerCase() + " level " + newLevel +
-//                                    "! Bonus: +" + amount + " to " + attributeName), false);
+                if (bonus != null) {
+                    Attribute attr = bonus.getAttribute();
+                    if (attr != null) {
+                        double amount = bonus.getBonusPerStep();
+                        String attributeName = attr.getDescriptionId().replace("attribute.name.", "");
+                    }
                 }
             }
         }
     }
 
-    // Add Experience to Skill
     public void addExperience(Skill skill, int experience) {
         skillExperience[skill.index] += experience;
         checkForLevelUp(skill);
     }
 
-    // Check for Level Up
     private void checkForLevelUp(Skill skill) {
         int level = skillLevels[skill.index];
         int xp = skillExperience[skill.index];
@@ -90,7 +86,6 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
         skillLevels[skill.index] = level;
     }
 
-    // Check if a Player Has Sufficient XP
     public boolean hasSufficientXP(Player player, Skill skill) {
         if (player.isCreative() || player.level().isClientSide) return true;
 
@@ -99,14 +94,12 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
 
     }
 
-    // Calculate Total XP for a Player
     private int calculateTotalXPFromPlayer(Player player) {
         int level = player.experienceLevel;
         int progress = Math.round(player.experienceProgress * Configuration.calculateExperienceCost(level));
         return Configuration.getCumulativeXpForLevel(level) + progress;
     }
 
-    // Can Use Item/Block/Entity
     public boolean canUseItem(Player player, ItemStack item) {
         return canUse(player, item.getItem().builtInRegistryHolder().key().location());
     }
@@ -287,7 +280,7 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
                             modifierId,
                             "Reskillable Bonus: " + bonus.skill.name(),
                             totalBonus,
-                            bonus.operation
+                            bonus.getOperation()
                     );
                     attrInstance.addTransientModifier(modifier);
                 }

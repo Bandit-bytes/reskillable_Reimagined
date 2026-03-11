@@ -10,6 +10,8 @@ import net.bandit.reskillable.common.commands.skills.Skill;
 import net.bandit.reskillable.common.commands.skills.SkillAttributeBonus;
 import net.bandit.reskillable.common.network.RequestLevelUp;
 import net.minecraft.ChatFormatting;
+import net.minecraft.advancements.Advancement;
+import net.minecraft.advancements.DisplayInfo;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -21,8 +23,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.NotNull;
-import net.minecraft.network.chat.Style;
-
 
 import java.util.*;
 
@@ -39,7 +39,6 @@ public class SkillScreen extends Screen {
 
     private int gatePreviewCooldownTicks = 0;
     private int lastTotalSkillLevels = -1;
-
 
     private final Map<Skill, String> xpCostDisplay = new HashMap<>();
     private final Map<Skill, Integer> xpCostColor = new HashMap<>();
@@ -69,6 +68,7 @@ public class SkillScreen extends Screen {
                 addRenderableWidget(new SkillButton(x, y, skill));
             }
         }
+
         int guiLeft = (width - 176) / 2;
         int guiTop = (height - 166) / 2;
 
@@ -120,7 +120,6 @@ public class SkillScreen extends Screen {
         renderBackground(guiGraphics);
         guiGraphics.blit(background, left, top, 0, 0, 176, 166);
 
-
         if (page == 0) {
             int i = 0;
             for (Skill skill : Skill.values()) {
@@ -169,15 +168,12 @@ public class SkillScreen extends Screen {
             int boxX = left + PERK_BOX_X;
             int boxY = top + PERK_BOX_Y + (row * PERK_ROW_HEIGHT);
 
-            int iconX = boxX + 1;
-            int iconY = boxY + 1;
-
             int textX = boxX + PERK_TEXT_OFFSET_X;
             int textY = boxY + 5;
 
             Component line = buildSinglePerkLine(skill, skillLevel);
 
-            float scale = 0.85f; // adjust: 0.75–0.9
+            float scale = 0.85f;
 
             gui.pose().pushPose();
             gui.pose().translate(textX, textY, 0);
@@ -193,22 +189,22 @@ public class SkillScreen extends Screen {
         Component skillName = Component.translatable("skill." + skill.name().toLowerCase())
                 .withStyle(ChatFormatting.GOLD);
 
-        boolean locked = skillLevel < 5;
-
         Component amount;
         Component effect;
 
         switch (skill) {
             case AGILITY -> {
-                int steps = skillLevel / 5;
-                double perStep = Configuration.MOVEMENT_SPEED_BONUS.get();
-                double pct = steps * perStep * 100.0;
+                SkillAttributeBonus bonus = SkillAttributeBonus.getBySkill(skill);
+                double perStep = bonus != null ? bonus.getBonusPerStep() : 0.0;
+                double pct = skillLevel >= 5 ? (skillLevel / 5.0) * perStep * 100.0 : 0;
 
                 amount = Component.literal(String.format("+%.0f%%", pct))
                         .withStyle(ChatFormatting.AQUA);
 
-                effect = Component.translatable("tooltip.rereskillable.run_speed")
-                        .withStyle(ChatFormatting.GRAY);
+                Attribute attr = bonus != null ? bonus.getAttribute() : null;
+                effect = attr != null
+                        ? Component.translatable(attr.getDescriptionId()).withStyle(ChatFormatting.GRAY)
+                        : Component.translatable("tooltip.rereskillable.run_speed").withStyle(ChatFormatting.GRAY);
             }
 
             case MINING -> {
@@ -220,22 +216,27 @@ public class SkillScreen extends Screen {
                 effect = Component.translatable("tooltip.rereskillable.break_speed")
                         .withStyle(ChatFormatting.GRAY);
             }
+
             case GATHERING -> {
-                double pct = skillLevel >= 5
-                        ? (skillLevel / 5.0) * Configuration.GATHERING_XP_BONUS.get() * 100.0
-                        : 0;
+                SkillAttributeBonus bonus = SkillAttributeBonus.getBySkill(skill);
+                double perStep = bonus != null ? bonus.getBonusPerStep() : 0.0;
+                double pct = skillLevel >= 5 ? (skillLevel / 5.0) * perStep * 100.0 : 0;
+
                 amount = Component.literal(String.format("+%.0f%%", pct))
                         .withStyle(ChatFormatting.AQUA);
+
                 effect = Component.translatable("tooltip.rereskillable.bonus_xp_orbs")
                         .withStyle(ChatFormatting.GRAY);
             }
+
             case FARMING -> {
-                double perStep = Configuration.CROP_GROWTH_CHANCE.get();
-                double pct = skillLevel >= 5
-                        ? (skillLevel / 5.0) * perStep * 100.0
-                        : 0;
+                SkillAttributeBonus bonus = SkillAttributeBonus.getBySkill(skill);
+                double perStep = bonus != null ? bonus.getBonusPerStep() : 0.0;
+                double pct = skillLevel >= 5 ? (skillLevel / 5.0) * perStep * 100.0 : 0;
+
                 amount = Component.literal(String.format("+%.0f%%", pct))
                         .withStyle(ChatFormatting.AQUA);
+
                 effect = Component.translatable("tooltip.rereskillable.crop_growth")
                         .withStyle(ChatFormatting.GRAY);
             }
@@ -259,17 +260,13 @@ public class SkillScreen extends Screen {
             }
         }
 
-        MutableComponent line = Component.literal("")
+        return Component.literal("")
                 .append(skillName)
                 .append(": ")
                 .append(amount)
                 .append(" ")
                 .append(effect);
-
-
-        return line;
     }
-
 
     private int calculateTotalXP(Player player) {
         int level = player.experienceLevel;
@@ -316,6 +313,7 @@ public class SkillScreen extends Screen {
 
         boolean levelingEnabled = Configuration.isSkillLevelingEnabled();
         int max = Configuration.getMaxLevel();
+
         if (page == 0) {
             int total = 0;
             for (Skill s : Skill.values()) total += model.getSkillLevel(s);
@@ -385,10 +383,12 @@ public class SkillScreen extends Screen {
 
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
+
     private static class TabButton extends Button {
         public TabButton(int x, int y, int width, int height, OnPress onPress) {
             super(x, y, width, height, Component.empty(), onPress, DEFAULT_NARRATION);
         }
+
         @Override
         public void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
         }
@@ -401,6 +401,7 @@ public class SkillScreen extends Screen {
         } catch (Throwable t) {
             return GateUiResult.allowed();
         }
+
         if (rules == null || rules.isEmpty()) return GateUiResult.allowed();
 
         int totalLevels = 0;
@@ -425,29 +426,28 @@ public class SkillScreen extends Screen {
                     missing.add(MissingUiReq.skill(e.getKey(), e.getValue()));
                 }
             }
+
+            // Do not check advancement completion on the client for 1.20.1.
+// The server preview packet handles advancement gate blocking and tooltip text.
         }
 
         if (missing.isEmpty()) return GateUiResult.allowed();
 
-        // dedupe: keep highest requirement per key
         Map<String, MissingUiReq> best = new LinkedHashMap<>();
         for (MissingUiReq req : missing) {
             String key = req.key();
             MissingUiReq existing = best.get(key);
-            if (existing == null || req.required > existing.required) best.put(key, req);
+            if (existing == null || req.required > existing.required) {
+                best.put(key, req);
+            }
         }
 
         return GateUiResult.blocked(new ArrayList<>(best.values()));
     }
-//    private static boolean hasAdvancementClient(ResourceLocation id) {
-//        Minecraft mc = Minecraft.getInstance();
-//        if (mc.player == null || mc.player.connection == null) return false;
-//
-//        var clientAdvancements = mc.player.connection.getAdvancements();
-//        var holder = clientAdvancements.getAdvancements().get(id);
-//        if (holder == null) return false;
-//        return clientAdvancements.getProgress(holder).isDone();
-//    }
+
+    private static boolean hasAdvancementClient(ResourceLocation id) {
+        return true;
+    }
 
     private static final class GateUiRule {
         final Skill skill;
@@ -511,17 +511,13 @@ public class SkillScreen extends Screen {
                         continue;
                     }
 
-                    // NEW: ADV requirement (string value, not int)
                     if (key.equals("ADV") || key.equals("ADVANCEMENT")) {
                         try {
                             advReqs.add(new ResourceLocation(value));
-                        } catch (Exception ignored) {
-                            // invalid RL -> ignore
-                        }
+                        } catch (Exception ignored) {}
                         continue;
                     }
 
-                    // skill reqs (int)
                     try {
                         int val = Integer.parseInt(value);
                         Skill reqSkill = Skill.valueOf(key);
@@ -533,7 +529,6 @@ public class SkillScreen extends Screen {
             return new GateUiRule(skill, Math.max(0, minLevel), totalReq, skillReqs, advReqs);
         }
     }
-
 
     private static final class GateUiResult {
         final boolean allowed;
@@ -597,7 +592,7 @@ public class SkillScreen extends Screen {
         Component toComponent() {
             if (advId != null) {
                 return Component.literal("Advancement: ")
-                        .append(prettyAdvancement(advId))
+                        .append(getAdvancementDescription(advId))
                         .withStyle(ChatFormatting.YELLOW);
             }
 
@@ -613,24 +608,45 @@ public class SkillScreen extends Screen {
             ).withStyle(ChatFormatting.YELLOW);
         }
     }
+
     private void requestGatePreview() {
         if (this.minecraft == null || this.minecraft.player == null) return;
         if (Reskillable.NETWORK == null) return;
 
         Reskillable.NETWORK.sendToServer(new RequestLevelUp.RequestGatePreviewPacket());
     }
+
+    private static Component getAdvancementDescription(ResourceLocation id) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || mc.player.connection == null) {
+            return prettyAdvancement(id);
+        }
+
+        var clientAdvancements = mc.player.connection.getAdvancements();
+        Advancement advancement = clientAdvancements.getAdvancements().get(id);
+        if (advancement == null) {
+            return prettyAdvancement(id);
+        }
+
+        DisplayInfo display = advancement.getDisplay();
+        if (display != null) {
+            return display.getDescription().copy();
+        }
+
+        return prettyAdvancement(id);
+    }
+
     private static Component prettyAdvancement(ResourceLocation id) {
-        // minecraft:story/mine_diamond -> Mine Diamonds
-        String path = id.getPath(); // story/mine_diamond
+        String path = id.getPath();
         String name = path.substring(path.lastIndexOf('/') + 1)
                 .replace('_', ' ');
 
         String pretty = Arrays.stream(name.split(" "))
+                .filter(s -> !s.isEmpty())
                 .map(w -> w.substring(0, 1).toUpperCase(Locale.ROOT) + w.substring(1))
                 .reduce((a, b) -> a + " " + b)
                 .orElse(name);
 
         return Component.literal(pretty);
     }
-
 }

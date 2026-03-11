@@ -9,6 +9,7 @@ import net.bandit.reskillable.common.commands.skills.Requirement;
 import net.bandit.reskillable.common.commands.skills.Skill;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.ai.attributes.Attribute;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.*;
 import net.minecraftforge.common.ForgeConfigSpec;
@@ -25,6 +26,7 @@ import java.io.IOException;
 import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 
@@ -55,6 +57,16 @@ public class Configuration {
     public static ForgeConfigSpec.DoubleValue CROP_GROWTH_CHANCE;
     public static final ForgeConfigSpec.DoubleValue GATHERING_XP_BONUS;
     public static final ForgeConfigSpec.ConfigValue<String> MAGIC_ATTRIBUTE_ID;
+    public static ForgeConfigSpec.ConfigValue<String> ATTACK_ATTRIBUTE_ID;
+    public static ForgeConfigSpec.ConfigValue<String> DEFENSE_ATTRIBUTE_ID;
+    public static ForgeConfigSpec.ConfigValue<String> AGILITY_ATTRIBUTE_ID;
+    public static ForgeConfigSpec.ConfigValue<String> BUILDING_ATTRIBUTE_ID;
+
+    public static ForgeConfigSpec.ConfigValue<String> ATTACK_OPERATION;
+    public static ForgeConfigSpec.ConfigValue<String> DEFENSE_OPERATION;
+    public static ForgeConfigSpec.ConfigValue<String> AGILITY_OPERATION;
+    public static ForgeConfigSpec.ConfigValue<String> BUILDING_OPERATION;
+    public static ForgeConfigSpec.ConfigValue<String> MAGIC_OPERATION;
 
 
 
@@ -155,20 +167,52 @@ public class Configuration {
 
         SKILL_ALIAS = builder.defineList("skillAliases", List.of("defense=defense"), obj -> true);
 
+        ATTACK_ATTRIBUTE_ID = builder
+                .comment("The registry ID of the attribute to use for the Attack skill.")
+                .define("attackAttribute", "minecraft:generic.attack_damage");
+
+        ATTACK_OPERATION = builder
+                .comment("Operation for the Attack skill perk. Valid: ADDITION, MULTIPLY_BASE, MULTIPLY_TOTAL")
+                .define("attackOperation", "MULTIPLY_TOTAL");
+
         ATTACK_DAMAGE_BONUS = builder.defineInRange("attackDamageBonus", 0.15, 0.0, 10.0);
+        DEFENSE_ATTRIBUTE_ID = builder
+                .comment("The registry ID of the attribute to use for the Defense skill.")
+                .define("defenseAttribute", "minecraft:generic.armor");
+
+        DEFENSE_OPERATION = builder
+                .comment("Operation for the Defense skill perk. Valid: ADDITION, MULTIPLY_BASE, MULTIPLY_TOTAL")
+                .define("defenseOperation", "MULTIPLY_TOTAL");
         ARMOR_BONUS = builder.defineInRange("armorBonus", 0.15, 0.0, 10.0);
-        MOVEMENT_SPEED_BONUS = builder.defineInRange("movementSpeedBonus", 0.05, 0.0, 1.0);
+        AGILITY_ATTRIBUTE_ID = builder
+                .comment("The registry ID of the attribute to use for the Agility skill.")
+                .define("agilityAttribute", "minecraft:generic.movement_speed");
+
+        AGILITY_OPERATION = builder
+                .comment("Operation for the Agility skill perk. Valid: ADDITION, MULTIPLY_BASE, MULTIPLY_TOTAL")
+                .define("agilityOperation", "MULTIPLY_TOTAL");
+        MOVEMENT_SPEED_BONUS = builder.defineInRange("Agility bonus", 0.05, 0.0, 1.0);
         MAGIC_ATTRIBUTE_ID = builder
                 .comment("The registry ID of the attribute to use for the Magic skill (e.g. 'modid:spell_power')")
                 .define("magicAttribute", "minecraft:generic.luck");
-        LUCK_BONUS = builder.defineInRange("MagicBonus", 0.05, 0.0, 10.0);
-        BLOCK_REACH_BONUS = builder.defineInRange("blockReachBonus", 0.25, 0.0, 5.0);
+        MAGIC_OPERATION = builder
+                .comment("Operation for the Magic skill perk. Valid: ADDITION, MULTIPLY_BASE, MULTIPLY_TOTAL")
+                .define("magicOperation", "MULTIPLY_TOTAL");
+        LUCK_BONUS = builder.defineInRange("Magic Bonus", 0.05, 0.0, 10.0);
+        BUILDING_ATTRIBUTE_ID = builder
+                .comment("The registry ID of the attribute to use for the Building skill.")
+                .define("buildingAttribute", "forge:block_reach");
+
+        BUILDING_OPERATION = builder
+                .comment("Operation for the Building skill perk. Valid: ADDITION, MULTIPLY_BASE, MULTIPLY_TOTAL")
+                .define("buildingOperation", "ADDITION");
+        BLOCK_REACH_BONUS = builder.defineInRange("Building Bonus", 0.25, 0.0, 5.0);
 
         MINING_SPEED_MULTIPLIER = builder.defineInRange("miningSpeedMultiplier", 0.25, 0.0, 5.0);
-        CROP_GROWTH_CHANCE = builder.defineInRange("cropGrowthChancePer5Levels", 0.25, 0.0, 1.0);
+        CROP_GROWTH_CHANCE = builder.defineInRange("Farming Bonus", 0.25, 0.0, 1.0);
         GATHERING_XP_BONUS = builder
                 .comment("Bonus XP multiplier per 5 levels of Gathering (e.g., 0.05 = +5% XP per step)")
-                .defineInRange("gatheringXpBonus", 0.05, 0.0, 1.0);
+                .defineInRange("gathering Bonus", 0.05, 0.0, 1.0);
 
         LEVELS_PER_HEART = builder
                 .comment("How many total skill levels are required for each heart gained.")
@@ -191,6 +235,48 @@ public class Configuration {
 
 
         CONFIG_SPEC = builder.build();
+    }
+    public static Attribute getConfiguredAttribute(Skill skill) {
+        try {
+            String raw = switch (skill) {
+                case ATTACK -> ATTACK_ATTRIBUTE_ID.get();
+                case DEFENSE -> DEFENSE_ATTRIBUTE_ID.get();
+                case AGILITY -> AGILITY_ATTRIBUTE_ID.get();
+                case BUILDING -> BUILDING_ATTRIBUTE_ID.get();
+                case MAGIC -> MAGIC_ATTRIBUTE_ID.get();
+                default -> null;
+            };
+
+            if (raw == null || raw.isBlank() || raw.equalsIgnoreCase("none")) {
+                return null;
+            }
+
+            return ForgeRegistries.ATTRIBUTES.getValue(new ResourceLocation(raw));
+        } catch (Exception e) {
+            System.err.println("[Reskillable] Invalid attribute ID for skill " + skill.name());
+            return null;
+        }
+    }
+    public static AttributeModifier.Operation getConfiguredOperation(Skill skill, AttributeModifier.Operation fallback) {
+        try {
+            String raw = switch (skill) {
+                case ATTACK -> ATTACK_OPERATION.get();
+                case DEFENSE -> DEFENSE_OPERATION.get();
+                case AGILITY -> AGILITY_OPERATION.get();
+                case BUILDING -> BUILDING_OPERATION.get();
+                case MAGIC -> MAGIC_OPERATION.get();
+                default -> null;
+            };
+
+            if (raw == null || raw.isBlank()) {
+                return fallback;
+            }
+
+            return AttributeModifier.Operation.valueOf(raw.toUpperCase(Locale.ROOT));
+        } catch (Exception e) {
+            System.err.println("[Reskillable] Invalid operation for skill " + skill.name());
+            return fallback;
+        }
     }
 
     // Initialize

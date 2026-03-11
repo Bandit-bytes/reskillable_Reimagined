@@ -237,7 +237,8 @@ public class EventHandler {
     @SubscribeEvent
     public void onCropGrow(BlockEvent.CropGrowEvent.Pre event) {
         if (!(event.getLevel() instanceof ServerLevel level)) return;
-        float chancePerStep = Configuration.CROP_GROWTH_CHANCE.get().floatValue();
+        var farmingBonus = SkillAttributeBonus.getBySkill(Skill.FARMING);
+        float chancePerStep = farmingBonus != null ? (float) farmingBonus.getBonusPerStep() : 0.0f;
 
         level.players().forEach(player -> {
             if (player.distanceToSqr(Vec3.atCenterOf(event.getPos())) < 64) {

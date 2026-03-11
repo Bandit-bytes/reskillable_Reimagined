@@ -5,6 +5,8 @@ import net.bandit.reskillable.Reskillable;
 import net.bandit.reskillable.common.capabilities.SkillModel;
 import net.bandit.reskillable.common.commands.skills.Skill;
 import net.bandit.reskillable.event.SoundRegistry;
+import net.minecraft.advancements.Advancement;
+import net.minecraft.advancements.DisplayInfo;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
@@ -12,6 +14,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
 import net.minecraftforge.network.NetworkEvent;
+import net.minecraftforge.network.PacketDistributor;
 
 import java.util.*;
 import java.util.function.Supplier;
@@ -61,7 +64,7 @@ public class RequestLevelUp {
                 player.sendSystemMessage(Component.translatable(
                         "message.reskillable.gate_blocked",
                         Component.translatable("skill.reskillable." + skill.name().toLowerCase(Locale.ROOT)),
-                        gate.missingListComponent()
+                        gate.missingListComponent(player)
                 ));
                 return;
             }
@@ -85,7 +88,6 @@ public class RequestLevelUp {
             model.increaseSkillLevel(skill, player);
             int newLevel = model.getSkillLevel(skill);
 
-            // SFX
             player.level().playSound(
                     null,
                     player.blockPosition(),
@@ -108,13 +110,14 @@ public class RequestLevelUp {
 
             SyncToClient.send(player);
             Reskillable.NETWORK.send(
-                    net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> player),
+                    PacketDistributor.PLAYER.with(() -> player),
                     new SyncGatePreviewPacket(buildPreview(player, model))
             );
         });
 
         ctx.setPacketHandled(true);
     }
+
     private static Map<Skill, GatePreview> buildPreview(ServerPlayer player, SkillModel model) {
         Map<Skill, GatePreview> preview = new EnumMap<>(Skill.class);
 
@@ -123,14 +126,13 @@ public class RequestLevelUp {
             GateResult r = SkillGateRules.check(player, model, s, lvl);
 
             boolean blocked = !r.allowed;
-            Component missing = blocked ? r.missingListComponent() : Component.empty();
+            Component missing = blocked ? r.missingListComponent(player) : Component.empty();
 
             preview.put(s, new GatePreview(blocked, missing));
         }
 
         return preview;
     }
-
 
     private static Skill getSkillSafe(int idx) {
         Skill[] values = Skill.values();
@@ -208,9 +210,6 @@ public class RequestLevelUp {
                 if (rule == null) continue;
 
                 if (rule.skill != levelingSkill) continue;
-
-                // Only enforce this rule once you're at/above the specified current level.
-                // Example: minCurrentLevel=10 means "to go from 10 -> 11 (and beyond), you must meet reqs"
                 if (currentLevel < rule.minCurrentLevel) continue;
 
                 if (rule.minTotalLevels != null && totalLevels < rule.minTotalLevels) {
@@ -238,7 +237,7 @@ public class RequestLevelUp {
         }
 
         private static boolean hasAdvancement(ServerPlayer player, ResourceLocation id) {
-            var adv = player.server.getAdvancements().getAdvancement(id);
+            Advancement adv = player.server.getAdvancements().getAdvancement(id);
             if (adv == null) return false;
 
             return player.getAdvancements().getOrStartProgress(adv).isDone();
@@ -258,8 +257,6 @@ public class RequestLevelUp {
                 String key = req.key();
                 MissingReq existing = best.get(key);
 
-                // For TOTAL and SKILL, keep the highest required level.
-                // For ADV, duplicates aren't useful anyway (same key).
                 if (existing == null) {
                     best.put(key, req);
                 } else if (req.requiredLevel > existing.requiredLevel) {
@@ -296,7 +293,6 @@ public class RequestLevelUp {
             line = line.trim();
             if (line.isEmpty() || line.startsWith("#")) return null;
 
-            // SKILL:MINLEVEL:REQS
             String[] parts = line.split(":", 3);
             if (parts.length < 3) return null;
 
@@ -332,7 +328,6 @@ public class RequestLevelUp {
                     String valStr = kv[1].trim();
                     if (valStr.isEmpty()) continue;
 
-                    // ADV is not an int; parse it first
                     if (key.equals("ADV") || key.equals("ADVANCEMENT")) {
                         try {
                             advReqs.add(new ResourceLocation(valStr));
@@ -357,7 +352,6 @@ public class RequestLevelUp {
                         Skill reqSkill = Skill.valueOf(key);
                         skillReqs.put(reqSkill, val);
                     } catch (IllegalArgumentException ignored) {
-                        // unknown token -> ignore
                     }
                 }
             }
@@ -383,7 +377,7 @@ public class RequestLevelUp {
             return new GateResult(false, missing);
         }
 
-        MutableComponent missingListComponent() {
+        MutableComponent missingListComponent(ServerPlayer player) {
             if (missing == null || missing.isEmpty()) {
                 return Component.translatable("message.reskillable.gate_missing_unknown");
             }
@@ -391,16 +385,16 @@ public class RequestLevelUp {
             MutableComponent out = Component.empty();
             for (int i = 0; i < missing.size(); i++) {
                 if (i > 0) out.append(Component.literal(", "));
-                out.append(missing.get(i).toComponent());
+                out.append(missing.get(i).toComponent(player));
             }
             return out;
         }
     }
 
     private static final class MissingReq {
-        final Skill skill;                 // non-null for SKILL requirements
-        final int requiredLevel;           // used for TOTAL and SKILL
-        final ResourceLocation advancementId; // non-null for ADV requirements
+        final Skill skill;
+        final int requiredLevel;
+        final ResourceLocation advancementId;
 
         private MissingReq(Skill skill, int requiredLevel, ResourceLocation advancementId) {
             this.skill = skill;
@@ -425,11 +419,12 @@ public class RequestLevelUp {
             return (skill == null) ? "TOTAL" : skill.name();
         }
 
-        Component toComponent() {
+        Component toComponent(ServerPlayer player) {
             if (advancementId != null) {
-                // Best effort: show the id (you can later enhance this to show the advancement title)
-                return Component.translatable("message.reskillable.req_advancement",
-                        Component.literal(advancementId.toString()));
+                return Component.translatable(
+                        "message.reskillable.req_advancement",
+                        getAdvancementDescription(player, advancementId)
+                );
             }
 
             if (skill == null) {
@@ -443,6 +438,34 @@ public class RequestLevelUp {
             );
         }
     }
+
+    private static Component getAdvancementDescription(ServerPlayer player, ResourceLocation id) {
+        Advancement advancement = player.server.getAdvancements().getAdvancement(id);
+        if (advancement == null) {
+            return prettyAdvancement(id);
+        }
+
+        DisplayInfo display = advancement.getDisplay();
+        if (display != null) {
+            return display.getDescription().copy();
+        }
+
+        return prettyAdvancement(id);
+    }
+
+    private static Component prettyAdvancement(ResourceLocation id) {
+        String path = id.getPath();
+        String name = path.substring(path.lastIndexOf('/') + 1).replace('_', ' ');
+
+        String pretty = Arrays.stream(name.split(" "))
+                .filter(s -> !s.isEmpty())
+                .map(w -> w.substring(0, 1).toUpperCase(Locale.ROOT) + w.substring(1))
+                .reduce((a, b) -> a + " " + b)
+                .orElse(name);
+
+        return Component.literal(pretty);
+    }
+
     private static final Map<Skill, GatePreview> CLIENT_GATE_PREVIEW = new EnumMap<>(Skill.class);
 
     public static GatePreview getClientGatePreview(Skill skill) {
@@ -453,7 +476,6 @@ public class RequestLevelUp {
         CLIENT_GATE_PREVIEW.clear();
     }
 
-    // simple holder
     public static final class GatePreview {
         public final boolean blocked;
         public final Component missing;
@@ -463,6 +485,7 @@ public class RequestLevelUp {
             this.missing = missing;
         }
     }
+
     public static class RequestGatePreviewPacket {
         public RequestGatePreviewPacket() {}
         public RequestGatePreviewPacket(FriendlyByteBuf buf) {}
@@ -485,13 +508,13 @@ public class RequestLevelUp {
                     GateResult r = SkillGateRules.check(player, model, s, lvl);
 
                     boolean blocked = !r.allowed;
-                    Component missing = blocked ? r.missingListComponent() : Component.empty();
+                    Component missing = blocked ? r.missingListComponent(player) : Component.empty();
 
                     preview.put(s, new GatePreview(blocked, missing));
                 }
 
                 Reskillable.NETWORK.send(
-                        net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> player),
+                        PacketDistributor.PLAYER.with(() -> player),
                         new SyncGatePreviewPacket(preview)
                 );
 
