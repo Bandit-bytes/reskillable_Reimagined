@@ -8,14 +8,11 @@ import net.bandit.reskillable.common.skills.SkillAttributeBonus;
 import net.bandit.reskillable.common.network.payload.SyncToClient;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
-import net.minecraft.world.entity.ai.attributes.AttributeModifier;
-import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.animal.Sheep;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -31,7 +28,6 @@ import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerXpEvent;
 import net.neoforged.neoforge.event.level.BlockEvent;
 import net.neoforged.neoforge.event.level.block.CropGrowEvent;
-import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 
 import java.util.Map;
 import java.util.UUID;
@@ -189,22 +185,23 @@ public class EventHandler {
         SkillModel model = SkillModel.get(player);
         if (model != null) {
             SyncToClient.send(player);
+            model.updateSkillAttributeBonuses(player);
         }
     }
 
-    @SubscribeEvent(priority = EventPriority.HIGHEST)
-    public void onUseItemStart(LivingEntityUseItemEvent.Start event) {
-        if (!(event.getEntity() instanceof Player player)) return;
-
-        SkillModel model = SkillModel.get(player);
-        if (model == null || player.isCreative()) return;
-
-        ItemStack item = event.getItem();
-        if (!model.canUseItem(player, item)) {
-            player.sendSystemMessage(Component.literal("You lack the skill to use this item.").withStyle(ChatFormatting.RED));
-            event.setCanceled(true);
-        }
-    }
+//    @SubscribeEvent(priority = EventPriority.HIGHEST)
+//    public void onUseItemStart(LivingEntityUseItemEvent.Start event) {
+//        if (!(event.getEntity() instanceof Player player)) return;
+//
+//        SkillModel model = SkillModel.get(player);
+//        if (model == null || player.isCreative()) return;
+//
+//        ItemStack item = event.getItem();
+//        if (!model.canUseItem(player, item)) {
+//            player.sendSystemMessage(Component.literal("You lack the skill to use this item.").withStyle(ChatFormatting.RED));
+//            event.setCanceled(true);
+//        }
+//    }
 
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
@@ -270,7 +267,8 @@ public class EventHandler {
     @SubscribeEvent
     public void onCropGrow(CropGrowEvent.Pre event) {
         if (!(event.getLevel() instanceof ServerLevel level)) return;
-        float chancePerStep = Configuration.CROP_GROWTH_CHANCE.get().floatValue();
+        SkillAttributeBonus farmingBonus = SkillAttributeBonus.getBySkill(Skill.FARMING);
+        float chancePerStep = farmingBonus != null ? (float) farmingBonus.getBonusPerStep() : 0.0f;
 
         level.players().forEach(player -> {
             if (player.distanceToSqr(Vec3.atCenterOf(event.getPos())) < 64) {
@@ -324,39 +322,39 @@ public class EventHandler {
 
         model.updateSkillAttributeBonuses(player);
     }
-    @SubscribeEvent
-    public void onPlayerTickAgility(PlayerTickEvent.Post event) {
-        Player player = event.getEntity();
-        SkillModel model = SkillModel.get(player);
-        if (model == null) return;
-
-        var attribute = player.getAttributes().getInstance(Attributes.MOVEMENT_SPEED);
-        if (attribute == null) return;
-
-        var bonus = SkillAttributeBonus.getBySkill(Skill.AGILITY);
-        if (bonus == null) return;
-
-        ResourceLocation id = ResourceLocation.fromNamespaceAndPath("reskillable", "agility");
-
-        attribute.getModifiers().stream()
-                .filter(mod -> mod.id().equals(id))
-                .findFirst()
-                .ifPresent(attribute::removeModifier);
-
-        int agilityLevel = model.getSkillLevel(Skill.AGILITY);
-        if (agilityLevel >= 5 && model.isPerkEnabled(Skill.AGILITY)) {
-            double multiplier = (agilityLevel / 5.0) * bonus.getBonusPerStep();
-
-            if (multiplier > 0) {
-                AttributeModifier mod = new AttributeModifier(
-                        id,
-                        multiplier,
-                        AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL
-                );
-                attribute.addTransientModifier(mod);
-            }
-        }
-    }
+//    @SubscribeEvent
+//    public void onPlayerTickAgility(PlayerTickEvent.Post event) {
+//        Player player = event.getEntity();
+//        SkillModel model = SkillModel.get(player);
+//        if (model == null) return;
+//
+//        var attribute = player.getAttributes().getInstance(Attributes.MOVEMENT_SPEED);
+//        if (attribute == null) return;
+//
+//        var bonus = SkillAttributeBonus.getBySkill(Skill.AGILITY);
+//        if (bonus == null) return;
+//
+//        ResourceLocation id = ResourceLocation.fromNamespaceAndPath("reskillable", "agility");
+//
+//        attribute.getModifiers().stream()
+//                .filter(mod -> mod.id().equals(id))
+//                .findFirst()
+//                .ifPresent(attribute::removeModifier);
+//
+//        int agilityLevel = model.getSkillLevel(Skill.AGILITY);
+//        if (agilityLevel >= 5 && model.isPerkEnabled(Skill.AGILITY)) {
+//            double multiplier = (agilityLevel / 5.0) * bonus.getBonusPerStep();
+//
+//            if (multiplier > 0) {
+//                AttributeModifier mod = new AttributeModifier(
+//                        id,
+//                        multiplier,
+//                        AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL
+//                );
+//                attribute.addTransientModifier(mod);
+//            }
+//        }
+//    }
     @SubscribeEvent
     public void onUseTotem(LivingUseTotemEvent event) {
         if (!(event.getEntity() instanceof Player player)) return;

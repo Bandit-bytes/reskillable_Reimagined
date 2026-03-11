@@ -3,6 +3,7 @@ package net.bandit.reskillable.common.gating;
 import net.bandit.reskillable.Configuration;
 import net.bandit.reskillable.common.capabilities.SkillModel;
 import net.bandit.reskillable.common.skills.Skill;
+import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
@@ -16,7 +17,7 @@ public final class SkillLevelGate {
         public static GateResult allow() { return new GateResult(true, List.of()); }
         public static GateResult block(List<MissingReq> missing) { return new GateResult(false, missing); }
 
-        public Component missingListComponent() {
+        public Component missingListComponent(ServerPlayer player) {
             if (missing == null || missing.isEmpty()) {
                 return Component.translatable("message.reskillable.gate_missing_unknown");
             }
@@ -24,10 +25,28 @@ public final class SkillLevelGate {
             var out = Component.empty();
             for (int i = 0; i < missing.size(); i++) {
                 if (i > 0) out = out.append(Component.literal(", "));
-                out = out.append(missing.get(i).toComponent());
+                out = out.append(missing.get(i).toComponent(player));
             }
             return out;
         }
+    }
+
+    private static Component getAdvancementDescription(ServerPlayer player, ResourceLocation id) {
+        if (player == null || player.server == null) {
+            return prettyAdvName(id);
+        }
+
+        AdvancementHolder holder = player.server.getAdvancements().get(id);
+        if (holder == null) {
+            return prettyAdvName(id);
+        }
+
+        var display = holder.value().display();
+        if (display.isPresent()) {
+            return display.get().getDescription().copy();
+        }
+
+        return prettyAdvName(id);
     }
 
     public record MissingReq(Skill skill, int required, ResourceLocation advId) {
@@ -40,10 +59,9 @@ public final class SkillLevelGate {
             return skill == null ? "TOTAL" : skill.name();
         }
 
-        Component toComponent() {
+        Component toComponent(ServerPlayer player) {
             if (advId != null) {
-                // Show a clean-ish requirement. You can later swap this to the real advancement title in the UI layer.
-                return Component.translatable("message.reskillable.req_adv", prettyAdvName(advId));
+                return Component.translatable("message.reskillable.req_adv", getAdvancementDescription(player, advId));
             }
             if (skill == null) {
                 return Component.translatable("message.reskillable.req_total", required);
@@ -54,18 +72,15 @@ public final class SkillLevelGate {
                     required
             );
         }
-
-        private static Component prettyAdvName(ResourceLocation id) {
-            // Fallback formatting: use last path segment, Title Case-ish
-            String path = id.getPath();
-            String last = path.contains("/") ? path.substring(path.lastIndexOf('/') + 1) : path;
-            String pretty = last.replace('_', ' ');
-            if (!pretty.isEmpty()) {
-                pretty = pretty.substring(0, 1).toUpperCase(Locale.ROOT) + pretty.substring(1);
-            }
-            // Include namespace so it's not ambiguous in modpacks
-            return Component.literal(id.getNamespace() + ":" + pretty);
+    }
+    private static Component prettyAdvName(ResourceLocation id) {
+        String path = id.getPath();
+        String last = path.contains("/") ? path.substring(path.lastIndexOf('/') + 1) : path;
+        String pretty = last.replace('_', ' ');
+        if (!pretty.isEmpty()) {
+            pretty = pretty.substring(0, 1).toUpperCase(Locale.ROOT) + pretty.substring(1);
         }
+        return Component.literal(id.getNamespace() + ":" + pretty);
     }
 
     /**
@@ -220,4 +235,5 @@ public final class SkillLevelGate {
             return new Rule(skill, Math.max(0, minLevel), totalReq, skillReqs, advReqs);
         }
     }
+
 }

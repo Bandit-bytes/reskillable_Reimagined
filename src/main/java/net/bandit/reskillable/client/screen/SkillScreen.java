@@ -217,13 +217,17 @@ public class SkillScreen extends Screen {
 
         switch (skill) {
             case AGILITY -> {
-                int steps = skillLevel / 5;
-                double perStep = Configuration.MOVEMENT_SPEED_BONUS.get();
-                double pct = steps * perStep * 100.0;
+                SkillAttributeBonus bonus = SkillAttributeBonus.getBySkill(skill);
+                double perStep = bonus != null ? bonus.getBonusPerStep() : 0.0;
+                double pct = skillLevel >= 5 ? (skillLevel / 5.0) * perStep * 100.0 : 0;
+
                 amount = Component.literal(String.format("+%.0f%%", pct))
                         .withStyle(ChatFormatting.AQUA);
-                effect = Component.translatable("tooltip.rereskillable.run_speed")
-                        .withStyle(ChatFormatting.GRAY);
+
+                Attribute attr = bonus != null ? bonus.getAttribute() : null;
+                effect = (attr != null)
+                        ? Component.translatable(attr.getDescriptionId()).withStyle(ChatFormatting.GRAY)
+                        : Component.translatable("tooltip.rereskillable.run_speed").withStyle(ChatFormatting.GRAY);
             }
             case MINING -> {
                 SkillAttributeBonus bonus = SkillAttributeBonus.getBySkill(skill);
@@ -235,33 +239,37 @@ public class SkillScreen extends Screen {
                         .withStyle(ChatFormatting.GRAY);
             }
             case GATHERING -> {
-                double pct = skillLevel >= 5
-                        ? (skillLevel / 5.0) * Configuration.GATHERING_XP_BONUS.get() * 100.0
-                        : 0;
+                SkillAttributeBonus bonus = SkillAttributeBonus.getBySkill(skill);
+                double perStep = bonus != null ? bonus.getBonusPerStep() : 0.0;
+                double pct = skillLevel >= 5 ? (skillLevel / 5.0) * perStep * 100.0 : 0;
+
                 amount = Component.literal(String.format("+%.0f%%", pct))
                         .withStyle(ChatFormatting.AQUA);
                 effect = Component.translatable("tooltip.rereskillable.bonus_xp_orbs")
                         .withStyle(ChatFormatting.GRAY);
             }
             case FARMING -> {
-                double perStep = Configuration.CROP_GROWTH_CHANCE.get();
-                double pct = skillLevel >= 5
-                        ? (skillLevel / 5.0) * perStep * 100.0
-                        : 0;
+                SkillAttributeBonus bonus = SkillAttributeBonus.getBySkill(skill);
+                double perStep = bonus != null ? bonus.getBonusPerStep() : 0.0;
+                double pct = skillLevel >= 5 ? (skillLevel / 5.0) * perStep * 100.0 : 0;
+
                 amount = Component.literal(String.format("+%.0f%%", pct))
                         .withStyle(ChatFormatting.AQUA);
                 effect = Component.translatable("tooltip.rereskillable.crop_growth")
                         .withStyle(ChatFormatting.GRAY);
             }
             case BUILDING -> {
-                double perStep = Configuration.BLOCK_REACH_BONUS.get();
-                double blocks = skillLevel >= 5
-                        ? (skillLevel / 5.0) * perStep
-                        : 0;
-                amount = Component.literal(String.format("+%.1f", blocks))
+                SkillAttributeBonus bonus = SkillAttributeBonus.getBySkill(skill);
+                double perStep = bonus != null ? bonus.getBonusPerStep() : 0.0;
+                double total = skillLevel >= 5 ? (skillLevel / 5.0) * perStep : 0;
+
+                amount = Component.literal(String.format("+%.1f", total))
                         .withStyle(ChatFormatting.AQUA);
-                effect = Component.translatable("tooltip.rereskillable.block_reach")
-                        .withStyle(ChatFormatting.GRAY);
+
+                Attribute attr = bonus != null ? bonus.getAttribute() : null;
+                effect = (attr != null)
+                        ? Component.translatable(attr.getDescriptionId()).withStyle(ChatFormatting.GRAY)
+                        : Component.translatable("tooltip.rereskillable.block_reach").withStyle(ChatFormatting.GRAY);
             }
 
             default -> {

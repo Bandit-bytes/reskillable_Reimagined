@@ -64,10 +64,6 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
                 if (bonus != null && attr != null) {
                     double amount = bonus.getBonusPerStep();
                     String attributeName = attr.getDescriptionId().replace("attribute.name.", "");
-
-//                    player.displayClientMessage(Component.literal(
-//                             skill.name().toLowerCase() + " level " + newLevel +
-//                                    "! Bonus: +" + amount + " to " + attributeName), false);
                 }
             }
         }
@@ -242,7 +238,7 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
                     AttributeModifier modifier = new AttributeModifier(
                             id,
                             totalBonus,
-                            bonus.operation
+                            bonus.getOperation()
                     );
                     attrInstance.addTransientModifier(modifier);
                 }

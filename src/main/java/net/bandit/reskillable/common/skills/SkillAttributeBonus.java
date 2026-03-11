@@ -24,13 +24,13 @@ public enum SkillAttributeBonus {
     public final Skill skill;
     private final Supplier<Attribute> attributeSupplier;
     private final Supplier<Double> bonusSupplier;
-    public final AttributeModifier.Operation operation;
+    private final AttributeModifier.Operation defaultOperation;
 
     SkillAttributeBonus(Skill skill, Supplier<Attribute> attributeSupplier, Supplier<Double> bonusSupplier, AttributeModifier.Operation operation) {
         this.skill = skill;
         this.attributeSupplier = attributeSupplier;
         this.bonusSupplier = bonusSupplier;
-        this.operation = operation;
+        this.defaultOperation = operation;
     }
 
     public double getBonusPerStep() {
@@ -38,7 +38,11 @@ public enum SkillAttributeBonus {
     }
 
     public Attribute getAttribute() {
-        return attributeSupplier.get();
+        Attribute configured = Configuration.getConfiguredAttribute(this.skill);
+        return configured != null ? configured : attributeSupplier.get();
+    }
+    public AttributeModifier.Operation getOperation() {
+        return Configuration.getConfiguredOperation(this.skill, defaultOperation);
     }
 
     public static @Nullable SkillAttributeBonus getBySkill(Skill skill) {

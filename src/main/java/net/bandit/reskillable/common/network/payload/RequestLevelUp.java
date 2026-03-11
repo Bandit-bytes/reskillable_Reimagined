@@ -11,6 +11,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.sounds.SoundSource;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.bandit.reskillable.common.gating.SkillLevelGate;
 
@@ -56,7 +57,7 @@ public record RequestLevelUp(int skillIndex) implements CustomPacketPayload {
             player.sendSystemMessage(
                     Component.translatable("message.reskillable.gate_blocked_short")
                             .append(Component.literal(" "))
-                            .append(gate.missingListComponent())
+                            .append(gate.missingListComponent(player))
             );
             return;
         }
@@ -69,10 +70,10 @@ public record RequestLevelUp(int skillIndex) implements CustomPacketPayload {
 
             model.increaseSkillLevel(skill, player);
 
-            player.level().playSound(null, player.blockPosition(), SoundRegistry.LEVEL_UP_EVENT.get(), net.minecraft.sounds.SoundSource.PLAYERS, 1.0F, 1.0F);
+            player.level().playSound(null, player.blockPosition(), SoundRegistry.LEVEL_UP_EVENT.get(), SoundSource.PLAYERS, 1.0F, 1.0F);
 
             if (model.getSkillLevel(skill) % 5 == 0) {
-                player.level().playSound(null, player.blockPosition(), SoundRegistry.MILESTONE_EVENT.get(), net.minecraft.sounds.SoundSource.PLAYERS, 1.0F, 1.2F);
+                player.level().playSound(null, player.blockPosition(), SoundRegistry.MILESTONE_EVENT.get(), SoundSource.PLAYERS, 1.0F, 1.2F);
             }
 
             SyncToClient.send(player);

@@ -40,7 +40,7 @@ public record SyncGateStatus(int skillIndex, boolean blocked, Component missing)
 
         SkillLevelGate.GateResult gate = SkillLevelGate.check(player, model, skill, level);
         boolean blocked = !gate.allowed();
-        Component missing = blocked ? gate.missingListComponent() : Component.empty();
+        Component missing = blocked ? gate.missingListComponent(player) : Component.empty();
 
         PacketDistributor.sendToPlayer(player, new SyncGateStatus(skill.index, blocked, missing));
     }
