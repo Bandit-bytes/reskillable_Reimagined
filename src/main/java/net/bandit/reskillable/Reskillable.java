@@ -95,6 +95,10 @@ public class Reskillable {
                     RequestLevelUp.SyncGatePreviewPacket::new,
                     RequestLevelUp.SyncGatePreviewPacket::handle,
                     Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+
+            NETWORK.registerMessage(8, ToggleCustomPerkPacket.class,
+                    ToggleCustomPerkPacket::encode, ToggleCustomPerkPacket::new, ToggleCustomPerkPacket::handle,
+                    Optional.of(NetworkDirection.PLAY_TO_SERVER));
         });
 
         if (ModList.get().isLoaded("curios")) {

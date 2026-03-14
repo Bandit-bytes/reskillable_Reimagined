@@ -1,10 +1,11 @@
 package net.bandit.reskillable.client;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.PoseStack;
 import net.bandit.reskillable.Configuration;
+import net.bandit.reskillable.Configuration.CustomSkillSlot;
 import net.bandit.reskillable.client.screen.SkillScreen;
 import net.bandit.reskillable.common.capabilities.SkillCapability;
+import net.bandit.reskillable.common.capabilities.SkillModel;
 import net.bandit.reskillable.common.commands.skills.Requirement;
 import net.bandit.reskillable.common.commands.skills.RequirementType;
 import net.minecraft.client.Minecraft;
@@ -31,7 +32,8 @@ public class Overlay implements IGuiOverlay {
     }
 
     public static void showWarning(ResourceLocation resource, RequirementType type) {
-        requirements = Arrays.asList(type.getRequirements(resource));
+        Requirement[] reqs = type.getRequirements(resource);
+        requirements = reqs == null ? List.of() : Arrays.asList(reqs);
         messageKey = "overlay.message." + type.name().toLowerCase(Locale.ROOT);
         showTicks = 60;
     }
@@ -40,36 +42,85 @@ public class Overlay implements IGuiOverlay {
     public void render(ForgeGui gui, GuiGraphics guiGraphics, float partialTick, int screenWidth, int screenHeight) {
         Minecraft minecraft = Minecraft.getInstance();
 
-        if (showTicks > 0 && minecraft.player != null && minecraft.player.getCapability(SkillCapability.INSTANCE).isPresent()) {
-            PoseStack stack = guiGraphics.pose();
+        if (showTicks <= 0 || minecraft.player == null || !minecraft.player.getCapability(SkillCapability.INSTANCE).isPresent()) {
+            return;
+        }
 
-            RenderSystem.setShaderTexture(0, SkillScreen.RESOURCES);
-            RenderSystem.enableBlend();
+        if (requirements == null || requirements.isEmpty()) {
+            return;
+        }
 
-            int cx = minecraft.getWindow().getGuiScaledWidth() / 2;
-            int cy = minecraft.getWindow().getGuiScaledHeight() / 4;
+        SkillModel model = ClientUtils.getClientSkillModel();
+        if (model == null) {
+            return;
+        }
 
-            guiGraphics.blit(SkillScreen.RESOURCES, cx - 71, cy - 4, 0, 194, 142, 40);
+        RenderSystem.setShaderTexture(0, SkillScreen.RESOURCES);
+        RenderSystem.enableBlend();
 
-            String message = Component.translatable(messageKey).getString();
-            guiGraphics.drawString(minecraft.font, message, cx - minecraft.font.width(message) / 2, cy, 0xFF5555, false);
+        int cx = minecraft.getWindow().getGuiScaledWidth() / 2;
+        int cy = minecraft.getWindow().getGuiScaledHeight() / 4;
 
-            for (int i = 0; i < requirements.size(); i++) {
-                Requirement requirement = requirements.get(i);
-                int maxLevel = Configuration.getMaxLevel();
+        guiGraphics.blit(SkillScreen.RESOURCES, cx - 71, cy - 4, 0, 194, 142, 40);
 
-                int x = cx + i * 20 - requirements.size() * 10 + 2;
-                int y = cy + 15;
-                int u = Math.min(requirement.level, maxLevel - 1) / (maxLevel / 4) * 16 + 176;
+        String message = Component.translatable(messageKey).getString();
+        guiGraphics.drawString(minecraft.font, message, cx - minecraft.font.width(message) / 2, cy, 0xFF5555, false);
+
+        for (int i = 0; i < requirements.size(); i++) {
+            Requirement requirement = requirements.get(i);
+            if (requirement == null) continue;
+
+            int maxLevel = Configuration.getMaxLevel();
+
+            int x = cx + i * 20 - requirements.size() * 10 + 2;
+            int y = cy + 15;
+
+            boolean met = false;
+
+            if (requirement.isVanillaSkill()) {
+                int u = Math.min(requirement.level, maxLevel - 1) / Math.max(1, (maxLevel / 4)) * 16 + 176;
                 int v = requirement.skill.index * 16 + 128;
 
                 RenderSystem.setShaderTexture(0, SkillScreen.RESOURCES);
                 guiGraphics.blit(SkillScreen.RESOURCES, x, y, u, v, 16, 16);
 
-                String level = Integer.toString(requirement.level);
-                boolean met = ClientUtils.getClientSkillModel().getSkillLevel(requirement.skill) >= requirement.level;
-                guiGraphics.drawString(minecraft.font, level, x + 17 - minecraft.font.width(level), y + 9, met ? 0x55FF55 : 0xFF5555, false);
+                met = model.getSkillLevel(requirement.skill) >= requirement.level;
+            } else if (requirement.isCustomSkill()) {
+                guiGraphics.fill(x, y, x + 16, y + 16, 0xCC2B2B2B);
+
+                String letter = getCustomSkillLetter(requirement.customSkillId);
+                int letterX = x + 8 - (minecraft.font.width(letter) / 2);
+                int letterY = y + 4;
+
+                guiGraphics.drawString(minecraft.font, letter, letterX, letterY, 0xFFFFFF, false);
+
+                met = model.getCustomSkillLevel(requirement.customSkillId) >= requirement.level;
             }
+
+            String level = Integer.toString(requirement.level);
+            guiGraphics.drawString(
+                    minecraft.font,
+                    level,
+                    x + 17 - minecraft.font.width(level),
+                    y + 9,
+                    met ? 0x55FF55 : 0xFF5555,
+                    false
+            );
         }
+    }
+
+    private static String getCustomSkillLetter(String customSkillId) {
+        if (customSkillId == null || customSkillId.isBlank()) {
+            return "?";
+        }
+
+        CustomSkillSlot slot = Configuration.findCustomSkillById(customSkillId);
+        String display = slot != null ? slot.getDisplayName() : customSkillId;
+
+        if (display == null || display.isBlank()) {
+            return "?";
+        }
+
+        return display.substring(0, 1).toUpperCase(Locale.ROOT);
     }
 }

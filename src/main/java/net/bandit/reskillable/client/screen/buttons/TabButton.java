@@ -88,4 +88,5 @@ public class TabButton extends AbstractWidget {
         public final int iconIndex;
         TabType(int index) { iconIndex = index; }
     }
+
 }

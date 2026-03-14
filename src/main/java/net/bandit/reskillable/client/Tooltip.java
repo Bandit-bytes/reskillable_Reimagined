@@ -5,8 +5,10 @@ import io.redspace.ironsspellbooks.api.spells.ISpellContainer;
 import io.redspace.ironsspellbooks.api.spells.SpellData;
 import io.redspace.ironsspellbooks.item.Scroll;
 import net.bandit.reskillable.Configuration;
+import net.bandit.reskillable.Configuration.CustomSkillSlot;
 import net.bandit.reskillable.common.capabilities.SkillModel;
 import net.bandit.reskillable.common.commands.skills.Requirement;
+import net.bandit.reskillable.common.commands.skills.Skill;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.CompoundTag;
@@ -42,7 +44,6 @@ public class Tooltip {
         if (itemRegistryName == null) return;
 
         // TACZ: tacz:<gun type>__<gunid>
-        // eg:   tacz:modern_kinetic_gun__bf1_tg1918
         if (IS_TACZ_LOADED && Objects.equals(itemRegistryName.getNamespace(), "tacz")) {
             CompoundTag tag = stack.getTag();
             if (tag != null && tag.contains("GunId")) {
@@ -57,7 +58,6 @@ public class Tooltip {
         }
 
         // ISS: irons_spellbooks:scroll__<spell id>_<level>
-        // eg:  irons_spellbooks:scroll__teleport_1
         if (IS_IRONS_LOADED && stack.getItem() instanceof Scroll) {
             SpellData spellAtIndex = ISpellContainer.get(stack).getSpellAtIndex(0);
             if (spellAtIndex != null && spellAtIndex.getSpell() != null) {
@@ -82,11 +82,31 @@ public class Tooltip {
                 .withStyle(ChatFormatting.GRAY));
 
         for (Requirement requirement : requirements) {
-            ChatFormatting colour = skillModel.getSkillLevel(requirement.skill) >= requirement.level
+            if (requirement == null) continue;
+
+            int currentLevel = 0;
+            Component skillName = Component.literal("Unknown Skill");
+
+            if (requirement.isVanillaSkill()) {
+                currentLevel = skillModel.getSkillLevel(requirement.skill);
+                skillName = Component.translatable(requirement.skill.displayName);
+            } else if (requirement.isCustomSkill()) {
+                currentLevel = skillModel.getCustomSkillLevel(requirement.customSkillId);
+
+                CustomSkillSlot slot = Configuration.findCustomSkillById(requirement.customSkillId);
+                if (slot != null) {
+                    skillName = Component.literal(slot.getDisplayName());
+                } else {
+                    skillName = Component.literal(requirement.customSkillId);
+                }
+            }
+
+            ChatFormatting colour = currentLevel >= requirement.level
                     ? ChatFormatting.GREEN
                     : ChatFormatting.RED;
 
-            tooltips.add(Component.translatable(requirement.skill.displayName)
+            tooltips.add(skillName
+                    .copy()
                     .append(" " + requirement.level)
                     .withStyle(colour));
         }

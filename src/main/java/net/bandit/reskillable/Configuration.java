@@ -64,6 +64,10 @@ public class Configuration {
     public static ForgeConfigSpec.ConfigValue<String> AGILITY_OPERATION;
     public static ForgeConfigSpec.ConfigValue<String> BUILDING_OPERATION;
     public static ForgeConfigSpec.ConfigValue<String> MAGIC_OPERATION;
+    private static final ForgeConfigSpec.BooleanValue ENABLE_SECOND_SKILL_PAGE;
+    private static final int MAX_CUSTOM_SKILLS = 8;
+    private static List<CustomSkillSlot> customSkills = new ArrayList<>();
+
 
 
 
@@ -127,6 +131,79 @@ public class Configuration {
               }
             }
             """;
+
+    private static final String DEFAULT_CUSTOM_SKILLS = """
+    {
+      "customSkills": [
+        {
+          "id": "swimming",
+          "displayName": "Swimming",
+          "perkAttribute": "forge:swim_speed",
+          "perkOperation": "ADDITION",
+          "perkAmountPerStep": 0.0,
+          "perkStep": 5
+        },
+        {
+          "id": "",
+          "displayName": "",
+          "perkAttribute": "",
+          "perkOperation": "ADDITION",
+          "perkAmountPerStep": 0.0,
+          "perkStep": 5
+        },
+        {
+          "id": "",
+          "displayName": "",
+          "perkAttribute": "",
+          "perkOperation": "ADDITION",
+          "perkAmountPerStep": 0.0,
+          "perkStep": 5
+        },
+        {
+          "id": "",
+          "displayName": "",
+          "perkAttribute": "",
+          "perkOperation": "ADDITION",
+          "perkAmountPerStep": 0.0,
+          "perkStep": 5
+        },
+        {
+          "id": "",
+          "displayName": "",
+          "perkAttribute": "",
+          "perkOperation": "ADDITION",
+          "perkAmountPerStep": 0.0,
+          "perkStep": 5
+        },
+        {
+          "id": "",
+          "displayName": "",
+          "perkAttribute": "",
+          "perkOperation": "ADDITION",
+          "perkAmountPerStep": 0.0,
+          "perkStep": 5
+        },
+        {
+          "id": "",
+          "displayName": "",
+          "perkAttribute": "",
+          "perkOperation": "ADDITION",
+          "perkAmountPerStep": 0.0,
+          "perkStep": 5
+        },
+        {
+          "id": "",
+          "displayName": "",
+          "perkAttribute": "",
+          "perkOperation": "ADDITION",
+          "perkAmountPerStep": 0.0,
+          "perkStep": 5
+        }
+      ]
+    }
+    """;
+
+
 
     static {
         ForgeConfigSpec.Builder builder = new ForgeConfigSpec.Builder();
@@ -228,6 +305,9 @@ public class Configuration {
                         "Tokens: TOTAL=<n>, OTHER_SKILL=<n>, ADV=<advancement_id>"
                 )
                 .defineListAllowEmpty("skill_level_gates", List.of(), o -> o instanceof String);
+        builder.comment("Enable a second skill page for up to 8 custom skills loaded from custom_skills.json.");
+        ENABLE_SECOND_SKILL_PAGE = builder.define("enableSecondSkillPage", false);
+
 
 
 
@@ -303,11 +383,249 @@ public class Configuration {
                 DEFAULT_ATTACK_SKILL_LOCKS,
                 "attackSkillLocks"
         );
+        customSkills = loadCustomSkills(
+                FMLPaths.CONFIGDIR.get().resolve("reskillable/custom_skills.json").toString(),
+                DEFAULT_CUSTOM_SKILLS
+        );
+
 
         skillLocks = parseSkillLocks(skillData.get("skillLocks"));
         craftSkillLocks = parseSkillLocks(craftData.get("craftSkillLocks"));
         attackSkillLocks = parseSkillLocks(attackData.get("attackSkillLocks"));
     }
+
+    private static List<CustomSkillSlot> loadCustomSkills(String filename, String defaultContent) {
+        File file = new File(filename);
+
+        if (!file.exists()) {
+            if (createDefaultJsonFile(file, defaultContent)) {
+                System.out.println("Default file created: " + filename);
+            } else {
+                System.err.println("Failed to create default file: " + filename);
+            }
+        }
+
+        try (FileReader reader = new FileReader(file)) {
+            JsonObject jsonObject = JsonParser.parseReader(reader).getAsJsonObject();
+
+            if (!jsonObject.has("customSkills")) {
+                System.err.println("Missing 'customSkills' key in JSON: " + filename);
+                return createEmptyCustomSkillSlots();
+            }
+
+            Type listType = new TypeToken<List<CustomSkillSlot>>() {}.getType();
+            List<CustomSkillSlot> loaded = new Gson().fromJson(jsonObject.get("customSkills"), listType);
+
+            if (loaded == null) {
+                return createEmptyCustomSkillSlots();
+            }
+
+            List<CustomSkillSlot> normalized = new ArrayList<>();
+            for (int i = 0; i < MAX_CUSTOM_SKILLS; i++) {
+                CustomSkillSlot slot = i < loaded.size() && loaded.get(i) != null
+                        ? loaded.get(i)
+                        : new CustomSkillSlot("", "", "", "ADDITION", 0.0, 5);
+                normalized.add(normalizeCustomSkillSlot(slot));
+            }
+
+            return normalized;
+        } catch (Exception e) {
+            System.err.println("Error loading custom skills from file: " + filename);
+            e.printStackTrace();
+            return createEmptyCustomSkillSlots();
+        }
+    }
+
+    private static List<CustomSkillSlot> createEmptyCustomSkillSlots() {
+        List<CustomSkillSlot> empty = new ArrayList<>();
+        for (int i = 0; i < MAX_CUSTOM_SKILLS; i++) {
+            empty.add(new CustomSkillSlot("", "", "", "ADDITION", 0.0, 5));
+        }
+        return empty;
+    }
+
+    private static CustomSkillSlot normalizeCustomSkillSlot(CustomSkillSlot slot) {
+        String id = slot.id == null ? "" : slot.id.trim().toLowerCase(Locale.ROOT);
+        String displayName = slot.displayName == null ? "" : slot.displayName.trim();
+        String perkAttribute = slot.perkAttribute == null ? "" : slot.perkAttribute.trim();
+        String perkOperation = slot.perkOperation == null ? "ADDITION" : slot.perkOperation.trim().toUpperCase(Locale.ROOT);
+        double perkAmountPerStep = Math.max(0.0, slot.perkAmountPerStep);
+        int perkStep = Math.max(1, slot.perkStep);
+
+        if (!id.isEmpty() && !id.matches("[a-z0-9_]+")) {
+            System.err.println("[Reskillable] Invalid custom skill id '" + id + "'. Only lowercase letters, numbers, and underscores are allowed.");
+            id = "";
+            displayName = "";
+            perkAttribute = "";
+            perkAmountPerStep = 0.0;
+            perkStep = 5;
+            perkOperation = "ADDITION";
+        }
+
+        if (!perkAttribute.isBlank()) {
+            try {
+                ResourceLocation attrId = new ResourceLocation(perkAttribute);
+                if (!ForgeRegistries.ATTRIBUTES.containsKey(attrId)) {
+                    System.err.println("[Reskillable] Unknown custom perk attribute '" + perkAttribute + "' for skill '" + id + "'.");
+                    perkAttribute = "";
+                }
+            } catch (Exception e) {
+                System.err.println("[Reskillable] Invalid custom perk attribute '" + perkAttribute + "' for skill '" + id + "'.");
+                perkAttribute = "";
+            }
+        }
+
+        try {
+            AttributeModifier.Operation.valueOf(perkOperation);
+        } catch (Exception e) {
+            System.err.println("[Reskillable] Invalid custom perk operation '" + perkOperation + "' for skill '" + id + "'. Defaulting to ADDITION.");
+            perkOperation = "ADDITION";
+        }
+
+        return new CustomSkillSlot(id, displayName, perkAttribute, perkOperation, perkAmountPerStep, perkStep);
+    }
+
+
+    public static boolean isSecondSkillPageEnabled() {
+        return ENABLE_SECOND_SKILL_PAGE.get();
+    }
+
+    public static List<CustomSkillSlot> getCustomSkills() {
+        return Collections.unmodifiableList(customSkills);
+    }
+
+    public static CustomSkillSlot getCustomSkill(int index) {
+        if (index < 0 || index >= customSkills.size()) {
+            return new CustomSkillSlot("", "");
+        }
+        return customSkills.get(index);
+    }
+
+    public static boolean hasEnabledCustomSkills() {
+        if (!isSecondSkillPageEnabled()) {
+            return false;
+        }
+
+        for (CustomSkillSlot slot : customSkills) {
+            if (slot != null && slot.isEnabled()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public static List<CustomSkillSlot> getEnabledCustomSkills() {
+        List<CustomSkillSlot> enabled = new ArrayList<>();
+        if (!isSecondSkillPageEnabled()) {
+            return enabled;
+        }
+
+        for (CustomSkillSlot slot : customSkills) {
+            if (slot != null && slot.isEnabled()) {
+                enabled.add(slot);
+            }
+        }
+
+        return enabled;
+    }
+
+    public static CustomSkillSlot findCustomSkillById(String id) {
+        if (id == null || id.isBlank()) {
+            return null;
+        }
+
+        String normalized = id.trim().toLowerCase(Locale.ROOT);
+        for (CustomSkillSlot slot : customSkills) {
+            if (slot != null && slot.isEnabled() && slot.id.equals(normalized)) {
+                return slot;
+            }
+        }
+
+        return null;
+    }
+
+    public static final class CustomSkillSlot {
+        public String id;
+        public String displayName;
+        public String perkAttribute;
+        public String perkOperation;
+        public double perkAmountPerStep;
+        public int perkStep;
+
+        public CustomSkillSlot() {
+            this("", "", "", "ADDITION", 0.0, 5);
+        }
+
+        public CustomSkillSlot(String id, String displayName) {
+            this(id, displayName, "", "ADDITION", 0.0, 5);
+        }
+
+        public CustomSkillSlot(String id, String displayName, String perkAttribute, String perkOperation, double perkAmountPerStep, int perkStep) {
+            this.id = id == null ? "" : id;
+            this.displayName = displayName == null ? "" : displayName;
+            this.perkAttribute = perkAttribute == null ? "" : perkAttribute;
+            this.perkOperation = perkOperation == null ? "ADDITION" : perkOperation;
+            this.perkAmountPerStep = Math.max(0.0, perkAmountPerStep);
+            this.perkStep = Math.max(1, perkStep);
+        }
+
+        public boolean isEnabled() {
+            return !id.isBlank();
+        }
+
+        public String getId() {
+            return id;
+        }
+
+        public String getDisplayName() {
+            return displayName == null || displayName.isBlank() ? id : displayName;
+        }
+
+        public String getPerkAttribute() {
+            return perkAttribute == null ? "" : perkAttribute.trim();
+        }
+
+        public String getPerkOperation() {
+            return perkOperation == null || perkOperation.isBlank() ? "ADDITION" : perkOperation.trim().toUpperCase(Locale.ROOT);
+        }
+
+        public double getPerkAmountPerStep() {
+            return perkAmountPerStep;
+        }
+
+        public int getPerkStep() {
+            return Math.max(1, perkStep);
+        }
+
+        public boolean hasPerk() {
+            return !getPerkAttribute().isBlank() && perkAmountPerStep > 0.0;
+        }
+
+        public Attribute getResolvedPerkAttribute() {
+            if (!hasPerk()) {
+                return null;
+            }
+
+            try {
+                return ForgeRegistries.ATTRIBUTES.getValue(new ResourceLocation(getPerkAttribute()));
+            } catch (Exception e) {
+                System.err.println("[Reskillable] Invalid custom perk attribute for skill '" + id + "': " + perkAttribute);
+                return null;
+            }
+        }
+
+        public AttributeModifier.Operation getResolvedPerkOperation() {
+            try {
+                return AttributeModifier.Operation.valueOf(getPerkOperation());
+            } catch (Exception e) {
+                System.err.println("[Reskillable] Invalid custom perk operation for skill '" + id + "': " + perkOperation);
+                return AttributeModifier.Operation.ADDITION;
+            }
+        }
+    }
+
+
     public static boolean isSkillLevelingEnabled() {
         return enableSkillLeveling;
     }
@@ -368,10 +686,22 @@ public class Configuration {
                     continue;
                 }
 
-                String skillName = reqParts[0].toUpperCase();
-                int level = Integer.parseInt(reqParts[1]);
+                String skillName = reqParts[0].trim().toLowerCase(Locale.ROOT);
+                int level = Integer.parseInt(reqParts[1].trim());
 
-                parsed.add(new Requirement(Skill.valueOf(skillName), level));
+                Skill builtInSkill = Skill.fromString(skillName);
+                if (builtInSkill != null) {
+                    parsed.add(new Requirement(builtInSkill, level));
+                    continue;
+                }
+
+                CustomSkillSlot customSkill = findCustomSkillById(skillName);
+                if (customSkill != null) {
+                    parsed.add(new Requirement(customSkill.getId(), level));
+                    continue;
+                }
+
+                System.err.println("Unknown skill in requirement: " + rawRequirement);
             } catch (Exception e) {
                 System.err.println("Failed to parse requirement: " + rawRequirement);
                 e.printStackTrace();
@@ -433,27 +763,39 @@ public class Configuration {
             return;
         }
 
-        Map<Skill, Integer> mergedLevels = new EnumMap<>(Skill.class);
+        Map<String, Integer> mergedLevels = new LinkedHashMap<>();
 
         for (Requirement req : existingRequirements) {
             if (req != null) {
-                mergedLevels.merge(req.skill, req.level, Integer::sum);
+                String skillKey = req.getSkillKey();
+                if (!skillKey.isBlank()) {
+                    mergedLevels.merge(skillKey, req.level, Integer::sum);
+                }
             }
         }
 
         for (Requirement req : newRequirements) {
             if (req != null) {
-                mergedLevels.merge(req.skill, req.level, Integer::sum);
+                String skillKey = req.getSkillKey();
+                if (!skillKey.isBlank()) {
+                    mergedLevels.merge(skillKey, req.level, Integer::sum);
+                }
             }
         }
 
         List<Requirement> mergedRequirements = new ArrayList<>();
-        for (Map.Entry<Skill, Integer> entry : mergedLevels.entrySet()) {
-            mergedRequirements.add(new Requirement(entry.getKey(), entry.getValue()));
+        for (Map.Entry<String, Integer> entry : mergedLevels.entrySet()) {
+            Skill builtInSkill = Skill.fromString(entry.getKey());
+            if (builtInSkill != null) {
+                mergedRequirements.add(new Requirement(builtInSkill, entry.getValue()));
+            } else {
+                mergedRequirements.add(new Requirement(entry.getKey(), entry.getValue()));
+            }
         }
 
         locks.put(key, mergedRequirements.toArray(new Requirement[0]));
     }
+
 
     private static Map<String, Map<String, List<String>>> loadJsonConfig(String filename, String defaultContent, String expectedKey) {
         File file = new File(filename);

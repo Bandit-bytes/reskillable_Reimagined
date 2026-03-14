@@ -2,6 +2,7 @@ package net.bandit.reskillable.client.screen;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.bandit.reskillable.Configuration;
+import net.bandit.reskillable.Configuration.CustomSkillSlot;
 import net.bandit.reskillable.Reskillable;
 import net.bandit.reskillable.client.KeyMapping;
 import net.bandit.reskillable.client.screen.buttons.SkillButton;
@@ -9,10 +10,12 @@ import net.bandit.reskillable.common.capabilities.SkillModel;
 import net.bandit.reskillable.common.commands.skills.Skill;
 import net.bandit.reskillable.common.commands.skills.SkillAttributeBonus;
 import net.bandit.reskillable.common.network.RequestLevelUp;
+import net.bandit.reskillable.common.network.ToggleCustomPerkPacket;
 import net.minecraft.ChatFormatting;
 import net.minecraft.advancements.Advancement;
 import net.minecraft.advancements.DisplayInfo;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
@@ -20,6 +23,7 @@ import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.NotNull;
@@ -31,11 +35,17 @@ public class SkillScreen extends Screen {
             new ResourceLocation("reskillable", "textures/gui/skills.png");
     public static final ResourceLocation PERKS_TEXTURE =
             new ResourceLocation("reskillable", "textures/gui/perks.png");
+    public static final ResourceLocation PERKS_ADDITIONAL_TEXTURE =
+            new ResourceLocation("reskillable", "textures/gui/perks_additional.png");
+
 
     private static final int PERK_BOX_X = 12;
     private static final int PERK_BOX_Y = 29;
     private static final int PERK_ROW_HEIGHT = 15;
     private static final int PERK_TEXT_OFFSET_X = 15;
+    private static final int SUBPAGE_NAV_Y = -12;
+    private static final int SUBPAGE_TITLE_Y = -10;
+
 
     private int gatePreviewCooldownTicks = 0;
     private int lastTotalSkillLevels = -1;
@@ -43,9 +53,19 @@ public class SkillScreen extends Screen {
     private final Map<Skill, String> xpCostDisplay = new HashMap<>();
     private final Map<Skill, Integer> xpCostColor = new HashMap<>();
 
+    private final Map<String, String> customXpCostDisplay = new HashMap<>();
+    private final Map<String, Integer> customXpCostColor = new HashMap<>();
+
     private int page = 0;
+    private int skillSubPage = 0;
+    private int perkSubPage = 0;
+
+
     private Button skillsTab;
     private Button perksTab;
+    private Button previousSkillPageButton;
+    private Button nextSkillPageButton;
+
     private static final int TITLE_COLOR = 0xE0D0A0;
 
     public SkillScreen() {
@@ -60,12 +80,22 @@ public class SkillScreen extends Screen {
         this.clearWidgets();
 
         if (page == 0) {
-            for (int i = 0; i < 8; i++) {
-                int x = left + i % 2 * 83;
-                int y = top + i / 2 * 36;
-                Skill skill = Skill.values()[i];
+            if (skillSubPage == 0) {
+                for (int i = 0; i < 8; i++) {
+                    int x = left + i % 2 * 83;
+                    int y = top + i / 2 * 36;
+                    Skill skill = Skill.values()[i];
+                    addRenderableWidget(new SkillButton(x, y, skill));
+                }
+            } else if (skillSubPage == 1 && Configuration.isSecondSkillPageEnabled()) {
+                List<CustomSkillSlot> customSkills = Configuration.getCustomSkills();
+                for (int i = 0; i < 8; i++) {
+                    int x = left + i % 2 * 83;
+                    int y = top + i / 2 * 36;
 
-                addRenderableWidget(new SkillButton(x, y, skill));
+                    CustomSkillSlot slot = i < customSkills.size() ? customSkills.get(i) : null;
+                    addRenderableWidget(new CustomSkillButton(x, y, slot));
+                }
             }
         }
 
@@ -103,6 +133,70 @@ public class SkillScreen extends Screen {
 
         addRenderableWidget(skillsTab);
         addRenderableWidget(perksTab);
+
+        if (Configuration.isSecondSkillPageEnabled()) {
+            int centerX = guiLeft + 88;
+            int navY = guiTop + SUBPAGE_NAV_Y;
+
+            if (page == 0) {
+                previousSkillPageButton = addRenderableWidget(new SubPageButton(
+                        centerX - 52,
+                        navY,
+                        "<",
+                        b -> {
+                            if (skillSubPage > 0) {
+                                skillSubPage--;
+                                init(minecraft, width, height);
+                            }
+                        }
+                ));
+
+                nextSkillPageButton = addRenderableWidget(new SubPageButton(
+                        centerX + 36,
+                        navY,
+                        ">",
+                        b -> {
+                            if (skillSubPage < 1) {
+                                skillSubPage++;
+                                init(minecraft, width, height);
+                            }
+                        }
+                ));
+
+                previousSkillPageButton.active = skillSubPage > 0;
+                nextSkillPageButton.active = skillSubPage < 1;
+            } else if (page == 1) {
+                previousSkillPageButton = addRenderableWidget(new SubPageButton(
+                        centerX - 52,
+                        navY,
+                        "<",
+                        b -> {
+                            if (perkSubPage > 0) {
+                                perkSubPage--;
+                                init(minecraft, width, height);
+                            }
+                        }
+                ));
+
+                nextSkillPageButton = addRenderableWidget(new SubPageButton(
+                        centerX + 36,
+                        navY,
+                        ">",
+                        b -> {
+                            if (perkSubPage < 1) {
+                                perkSubPage++;
+                                init(minecraft, width, height);
+                            }
+                        }
+                ));
+
+                previousSkillPageButton.active = perkSubPage > 0;
+                nextSkillPageButton.active = perkSubPage < 1;
+            }
+        }
+
+
+
         RequestLevelUp.clearClientGatePreview();
         gatePreviewCooldownTicks = 0;
         lastTotalSkillLevels = -1;
@@ -111,7 +205,13 @@ public class SkillScreen extends Screen {
 
     @Override
     public void render(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
-        ResourceLocation background = (page == 0) ? RESOURCES : PERKS_TEXTURE;
+        ResourceLocation background;
+        if (page == 0) {
+            background = RESOURCES;
+        } else {
+            background = (perkSubPage == 0) ? PERKS_TEXTURE : PERKS_ADDITIONAL_TEXTURE;
+        }
+
         RenderSystem.setShaderTexture(0, background);
 
         int left = (width - 176) / 2;
@@ -121,19 +221,54 @@ public class SkillScreen extends Screen {
         guiGraphics.blit(background, left, top, 0, 0, 176, 166);
 
         if (page == 0) {
-            int i = 0;
-            for (Skill skill : Skill.values()) {
-                int x = left + (i % 2) * 83 + 10;
-                int y = top + (i / 2) * 36 + 20;
+            if (skillSubPage == 0) {
+                int i = 0;
+                for (Skill skill : Skill.values()) {
+                    int x = left + (i % 2) * 83 + 10;
+                    int y = top + (i / 2) * 36 + 20;
 
-                String xpCost = xpCostDisplay.getOrDefault(skill, "N/A");
-                int color = xpCostColor.getOrDefault(skill, 0xFFFFFF);
+                    String xpCost = xpCostDisplay.getOrDefault(skill, "N/A");
+                    int color = xpCostColor.getOrDefault(skill, 0xFFFFFF);
 
-                guiGraphics.drawString(font, "XP: " + xpCost, x, y, color, false);
-                i++;
+                    guiGraphics.drawString(font, "XP: " + xpCost, x, y, color, false);
+                    i++;
+                }
+            } else if (skillSubPage == 1 && Configuration.isSecondSkillPageEnabled()) {
+                List<CustomSkillSlot> customSkills = Configuration.getCustomSkills();
+
+                for (int i = 0; i < 8; i++) {
+                    int x = left + (i % 2) * 83 + 10;
+                    int y = top + (i / 2) * 36 + 20;
+
+                    CustomSkillSlot slot = i < customSkills.size() ? customSkills.get(i) : null;
+                    String skillId = slot != null ? slot.getId() : "";
+                    String xpCost = customXpCostDisplay.getOrDefault(skillId, "N/A");
+                    int color = customXpCostColor.getOrDefault(skillId, 0xFFFFFF);
+
+                    if (slot != null && slot.isEnabled()) {
+                        guiGraphics.drawString(font, "XP: " + xpCost, x, y, color, false);
+                    }
+                }
             }
         } else {
-            renderPerksPage(guiGraphics, left, top);
+            if (perkSubPage == 0) {
+                renderPerksPage(guiGraphics, left, top);
+            } else {
+                renderCustomPerksPage(guiGraphics, left, top);
+            }
+        }
+
+        if (Configuration.isSecondSkillPageEnabled()) {
+            Component subPageTitle;
+            if (page == 0) {
+                subPageTitle = Component.literal(skillSubPage == 0 ? "Built-In Skills" : "Custom Skills");
+            } else {
+                subPageTitle = Component.literal(perkSubPage == 0 ? "Built-In Perks" : "Custom Perks");
+            }
+
+            int titleX = left + 88 - (font.width(subPageTitle) / 2);
+            int titleY = top + SUBPAGE_TITLE_Y;
+            guiGraphics.drawString(font, subPageTitle, titleX, titleY, TITLE_COLOR, false);
         }
 
         super.render(guiGraphics, mouseX, mouseY, partialTicks);
@@ -148,10 +283,83 @@ public class SkillScreen extends Screen {
                             mouseX,
                             mouseY
                     );
+                } else if (widget instanceof CustomSkillButton button && button.isMouseOver(mouseX, mouseY)) {
+                    var tooltipLines = button.getTooltipLines(Minecraft.getInstance().player);
+                    guiGraphics.renderTooltip(
+                            font,
+                            tooltipLines.stream().map(Component::getVisualOrderText).toList(),
+                            mouseX,
+                            mouseY
+                    );
                 }
             }
         }
     }
+    private void renderCustomPerksPage(GuiGraphics gui, int left, int top) {
+        Player player = Minecraft.getInstance().player;
+        if (player == null) return;
+
+        SkillModel model = SkillModel.get(player);
+        if (model == null) return;
+
+        int row = 0;
+
+        for (CustomSkillSlot slot : Configuration.getCustomSkills()) {
+            if (slot == null || !slot.isEnabled() || !slot.hasPerk()) {
+                continue;
+            }
+
+            int skillLevel = model.getCustomSkillLevel(slot.getId());
+
+            int boxX = left + PERK_BOX_X;
+            int boxY = top + PERK_BOX_Y + (row * PERK_ROW_HEIGHT);
+
+            int textX = boxX + PERK_TEXT_OFFSET_X;
+            int textY = boxY + 5;
+
+            Component line = buildCustomPerkLine(slot, skillLevel);
+
+            float scale = 0.85f;
+
+            gui.pose().pushPose();
+            gui.pose().translate(textX, textY, 0);
+            gui.pose().scale(scale, scale, 1.0F);
+            gui.drawString(this.font, line, 0, 0, 0xFFFFFF, false);
+            gui.pose().popPose();
+
+            row++;
+        }
+    }
+    private Component buildCustomPerkLine(CustomSkillSlot slot, int skillLevel) {
+        Component skillName = Component.literal(slot.getDisplayName())
+                .withStyle(ChatFormatting.GOLD);
+
+        int step = slot.getPerkStep();
+        int bonusSteps = skillLevel / step;
+        double totalBonus = bonusSteps * slot.getPerkAmountPerStep();
+
+        String amountText;
+        if (slot.getResolvedPerkOperation() == net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.ADDITION) {
+            amountText = String.format("+%.2f", totalBonus);
+        } else {
+            amountText = String.format("+%.0f%%", totalBonus * 100.0);
+        }
+
+        Component amount = Component.literal(amountText).withStyle(ChatFormatting.AQUA);
+
+        Attribute attr = slot.getResolvedPerkAttribute();
+        Component effect = attr != null
+                ? Component.translatable(attr.getDescriptionId()).withStyle(ChatFormatting.GRAY)
+                : Component.literal("No Attribute").withStyle(ChatFormatting.GRAY);
+
+        return Component.literal("")
+                .append(skillName)
+                .append(": ")
+                .append(amount)
+                .append(" ")
+                .append(effect);
+    }
+
 
     private void renderPerksPage(GuiGraphics gui, int left, int top) {
         Player player = Minecraft.getInstance().player;
@@ -281,21 +489,6 @@ public class SkillScreen extends Screen {
         }
     }
 
-    private int getLevelForTotalXP(int totalXP) {
-        int level = 0;
-        while (getCumulativeXPForLevel(level + 1) <= totalXP) {
-            level++;
-        }
-        return level;
-    }
-
-    private int getCumulativeXPForLevel(int level) {
-        if (level <= 0) return 0;
-        if (level <= 16) return (level * (level + 1)) + (level * 6);
-        if (level <= 31) return (int) (2.5 * level * level - 40.5 * level + 360);
-        return (int) (4.5 * level * level - 162.5 * level + 2220);
-    }
-
     @Override
     public boolean isPauseScreen() {
         return false;
@@ -317,6 +510,11 @@ public class SkillScreen extends Screen {
         if (page == 0) {
             int total = 0;
             for (Skill s : Skill.values()) total += model.getSkillLevel(s);
+            for (CustomSkillSlot slot : Configuration.getCustomSkills()) {
+                if (slot != null && slot.isEnabled()) {
+                    total += model.getCustomSkillLevel(slot.getId());
+                }
+            }
 
             if (gatePreviewCooldownTicks > 0) gatePreviewCooldownTicks--;
             boolean totalChanged = (lastTotalSkillLevels != -1 && total != lastTotalSkillLevels);
@@ -330,40 +528,78 @@ public class SkillScreen extends Screen {
         }
 
         for (var widget : this.renderables) {
-            if (!(widget instanceof SkillButton btn)) continue;
+            if (widget instanceof SkillButton btn) {
+                Skill skill = btn.getSkill();
+                int level = model.getSkillLevel(skill);
 
-            Skill skill = btn.getSkill();
-            int level = model.getSkillLevel(skill);
+                int cost = Configuration.calculateCostForLevel(level);
+                int playerTotalXp = calculateTotalXP(player);
+                boolean hasXP = player.isCreative() || playerTotalXp >= cost;
 
-            int cost = Configuration.calculateCostForLevel(level);
-            int playerTotalXp = calculateTotalXP(player);
-            boolean hasXP = player.isCreative() || playerTotalXp >= cost;
+                xpCostDisplay.put(skill, String.valueOf(cost));
+                xpCostColor.put(skill, hasXP ? 0x00FF00 : 0xFF0000);
 
-            xpCostDisplay.put(skill, String.valueOf(cost));
-            xpCostColor.put(skill, hasXP ? 0x00FF00 : 0xFF0000);
+                boolean maxed = level >= max;
 
-            boolean maxed = level >= max;
+                GateUiResult gate = checkGateClient(model, skill, null, level);
 
-            GateUiResult gate = checkGateClient(model, skill, level);
+                btn.active = true;
+                var preview = RequestLevelUp.getClientGatePreview(skill);
 
-            btn.active = true;
-            var preview = RequestLevelUp.getClientGatePreview(skill);
+                boolean blockedClient = !gate.allowed;
+                boolean blockedServer = preview != null && preview.blocked;
 
-            boolean blockedClient = !gate.allowed;
-            boolean blockedServer = preview != null && preview.blocked;
+                boolean blockedByGate = levelingEnabled && !maxed && (blockedClient || blockedServer);
 
-            boolean blockedByGate = levelingEnabled && !maxed && (blockedClient || blockedServer);
-
-            Component tooltip = null;
-            if (blockedByGate) {
-                if (blockedServer && preview.missing != null && !preview.missing.getString().isEmpty()) {
-                    tooltip = preview.missing;
-                } else {
-                    tooltip = gate.missingListComponent();
+                Component tooltip = null;
+                if (blockedByGate) {
+                    if (blockedServer && preview.missing != null && !preview.missing.getString().isEmpty()) {
+                        tooltip = preview.missing;
+                    } else {
+                        tooltip = gate.missingListComponent();
+                    }
                 }
-            }
 
-            btn.setGateBlocked(blockedByGate, tooltip);
+                btn.setGateBlocked(blockedByGate, tooltip);
+            } else if (widget instanceof CustomSkillButton btn) {
+                CustomSkillSlot slot = btn.getSkillSlot();
+                if (slot == null || !slot.isEnabled()) {
+                    btn.active = false;
+                    continue;
+                }
+
+                int level = model.getCustomSkillLevel(slot.getId());
+
+                int cost = Configuration.calculateCostForLevel(level);
+                int playerTotalXp = calculateTotalXP(player);
+                boolean hasXP = player.isCreative() || playerTotalXp >= cost;
+
+                customXpCostDisplay.put(slot.getId(), String.valueOf(cost));
+                customXpCostColor.put(slot.getId(), hasXP ? 0x00FF00 : 0xFF0000);
+
+                boolean maxed = level >= max;
+
+                GateUiResult gate = checkGateClient(model, null, slot.getId(), level);
+
+                btn.active = true;
+                var preview = RequestLevelUp.getClientCustomGatePreview(slot.getId());
+
+                boolean blockedClient = !gate.allowed;
+                boolean blockedServer = preview != null && preview.blocked;
+
+                boolean blockedByGate = levelingEnabled && !maxed && (blockedClient || blockedServer);
+
+                Component tooltip = null;
+                if (blockedByGate) {
+                    if (blockedServer && preview.missing != null && !preview.missing.getString().isEmpty()) {
+                        tooltip = preview.missing;
+                    } else {
+                        tooltip = gate.missingListComponent();
+                    }
+                }
+
+                btn.setGateBlocked(blockedByGate, tooltip);
+            }
         }
     }
 
@@ -393,8 +629,37 @@ public class SkillScreen extends Screen {
         public void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
         }
     }
+    private class SubPageButton extends Button {
+        private final String arrow;
 
-    private static GateUiResult checkGateClient(SkillModel model, Skill levelingSkill, int currentLevel) {
+        public SubPageButton(int x, int y, String arrow, OnPress onPress) {
+            super(x, y, 16, 14, Component.literal(arrow), onPress, DEFAULT_NARRATION);
+            this.arrow = arrow;
+        }
+
+        @Override
+        protected void renderWidget(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
+            boolean hovered = this.isMouseOver(mouseX, mouseY);
+
+            int color;
+            if (!this.active) {
+                color = 0x666666;
+            } else if (hovered) {
+                color = 0xFFFFFF;
+            } else {
+                color = 0xD8C79A;
+            }
+
+            Font font = Minecraft.getInstance().font;
+            int textX = getX() + (width / 2) - (font.width(arrow) / 2);
+            int textY = getY() + (height / 2) - 4;
+
+            guiGraphics.drawString(font, Component.literal(arrow), textX, textY, color, false);
+        }
+
+    }
+
+    private static GateUiResult checkGateClient(SkillModel model, Skill levelingSkill, String customSkillId, int currentLevel) {
         List<? extends String> rules;
         try {
             rules = Configuration.SKILL_LEVEL_GATES.get();
@@ -406,6 +671,11 @@ public class SkillScreen extends Screen {
 
         int totalLevels = 0;
         for (Skill s : Skill.values()) totalLevels += model.getSkillLevel(s);
+        for (CustomSkillSlot slot : Configuration.getCustomSkills()) {
+            if (slot != null && slot.isEnabled()) {
+                totalLevels += model.getCustomSkillLevel(slot.getId());
+            }
+        }
 
         List<MissingUiReq> missing = new ArrayList<>();
 
@@ -413,22 +683,24 @@ public class SkillScreen extends Screen {
             GateUiRule rule = GateUiRule.parse(line);
             if (rule == null) continue;
 
-            if (rule.skill != levelingSkill) continue;
+            if (!rule.matchesTarget(levelingSkill, customSkillId)) continue;
             if (currentLevel < rule.minCurrentLevel) continue;
 
             if (rule.minTotalLevels != null && totalLevels < rule.minTotalLevels) {
                 missing.add(MissingUiReq.total(rule.minTotalLevels));
             }
 
-            for (Map.Entry<Skill, Integer> e : rule.minSkillLevels.entrySet()) {
-                int actual = model.getSkillLevel(e.getKey());
-                if (actual < e.getValue()) {
-                    missing.add(MissingUiReq.skill(e.getKey(), e.getValue()));
+            for (Map.Entry<String, Integer> e : rule.minSkillLevels.entrySet()) {
+                String reqSkillId = e.getKey();
+                int reqLevel = e.getValue();
+
+                Skill builtIn = Skill.fromString(reqSkillId);
+                int actual = builtIn != null ? model.getSkillLevel(builtIn) : model.getCustomSkillLevel(reqSkillId);
+
+                if (actual < reqLevel) {
+                    missing.add(MissingUiReq.skill(reqSkillId, reqLevel));
                 }
             }
-
-            // Do not check advancement completion on the client for 1.20.1.
-// The server preview packet handles advancement gate blocking and tooltip text.
         }
 
         if (missing.isEmpty()) return GateUiResult.allowed();
@@ -445,25 +717,28 @@ public class SkillScreen extends Screen {
         return GateUiResult.blocked(new ArrayList<>(best.values()));
     }
 
-    private static boolean hasAdvancementClient(ResourceLocation id) {
-        return true;
-    }
-
     private static final class GateUiRule {
-        final Skill skill;
+        final String targetSkillId;
         final int minCurrentLevel;
         final Integer minTotalLevels;
-        final Map<Skill, Integer> minSkillLevels;
+        final Map<String, Integer> minSkillLevels;
         final List<ResourceLocation> requiredAdvancements;
 
-        private GateUiRule(Skill skill, int minCurrentLevel, Integer minTotalLevels,
-                           Map<Skill, Integer> minSkillLevels,
+        private GateUiRule(String targetSkillId, int minCurrentLevel, Integer minTotalLevels,
+                           Map<String, Integer> minSkillLevels,
                            List<ResourceLocation> requiredAdvancements) {
-            this.skill = skill;
+            this.targetSkillId = targetSkillId;
             this.minCurrentLevel = minCurrentLevel;
             this.minTotalLevels = minTotalLevels;
             this.minSkillLevels = minSkillLevels;
             this.requiredAdvancements = requiredAdvancements;
+        }
+
+        boolean matchesTarget(Skill builtInSkill, String customSkillId) {
+            if (builtInSkill != null) {
+                return targetSkillId.equals(builtInSkill.getSerializedName());
+            }
+            return customSkillId != null && targetSkillId.equals(customSkillId.toLowerCase(Locale.ROOT));
         }
 
         static GateUiRule parse(String line) {
@@ -474,10 +749,11 @@ public class SkillScreen extends Screen {
             String[] parts = line.split(":", 3);
             if (parts.length < 3) return null;
 
-            Skill skill;
-            try {
-                skill = Skill.valueOf(parts[0].trim().toUpperCase(Locale.ROOT));
-            } catch (IllegalArgumentException ex) {
+            String targetSkillId = parts[0].trim().toLowerCase(Locale.ROOT);
+
+            boolean validBuiltIn = Skill.isBuiltInSkill(targetSkillId);
+            boolean validCustom = Configuration.findCustomSkillById(targetSkillId) != null;
+            if (!validBuiltIn && !validCustom) {
                 return null;
             }
 
@@ -489,7 +765,7 @@ public class SkillScreen extends Screen {
             }
 
             Integer totalReq = null;
-            Map<Skill, Integer> skillReqs = new LinkedHashMap<>();
+            Map<String, Integer> skillReqs = new LinkedHashMap<>();
             List<ResourceLocation> advReqs = new ArrayList<>();
 
             String reqs = parts[2].trim();
@@ -501,17 +777,17 @@ public class SkillScreen extends Screen {
                     String[] kv = tok.split("=", 2);
                     if (kv.length != 2) continue;
 
-                    String key = kv[0].trim().toUpperCase(Locale.ROOT);
+                    String key = kv[0].trim().toLowerCase(Locale.ROOT);
                     String value = kv[1].trim();
 
-                    if (key.equals("TOTAL")) {
+                    if (key.equals("total")) {
                         try {
                             totalReq = Integer.parseInt(value);
                         } catch (NumberFormatException ignored) {}
                         continue;
                     }
 
-                    if (key.equals("ADV") || key.equals("ADVANCEMENT")) {
+                    if (key.equals("adv") || key.equals("advancement")) {
                         try {
                             advReqs.add(new ResourceLocation(value));
                         } catch (Exception ignored) {}
@@ -520,13 +796,14 @@ public class SkillScreen extends Screen {
 
                     try {
                         int val = Integer.parseInt(value);
-                        Skill reqSkill = Skill.valueOf(key);
-                        skillReqs.put(reqSkill, val);
+                        if (Skill.isBuiltInSkill(key) || Configuration.findCustomSkillById(key) != null) {
+                            skillReqs.put(key, val);
+                        }
                     } catch (Exception ignored) {}
                 }
             }
 
-            return new GateUiRule(skill, Math.max(0, minLevel), totalReq, skillReqs, advReqs);
+            return new GateUiRule(targetSkillId, Math.max(0, minLevel), totalReq, skillReqs, advReqs);
         }
     }
 
@@ -562,12 +839,12 @@ public class SkillScreen extends Screen {
     }
 
     private static final class MissingUiReq {
-        final Skill skill;
+        final String skillId;
         final int required;
         final ResourceLocation advId;
 
-        private MissingUiReq(Skill skill, int required, ResourceLocation advId) {
-            this.skill = skill;
+        private MissingUiReq(String skillId, int required, ResourceLocation advId) {
+            this.skillId = skillId;
             this.required = required;
             this.advId = advId;
         }
@@ -576,8 +853,8 @@ public class SkillScreen extends Screen {
             return new MissingUiReq(null, required, null);
         }
 
-        static MissingUiReq skill(Skill skill, int required) {
-            return new MissingUiReq(skill, required, null);
+        static MissingUiReq skill(String skillId, int required) {
+            return new MissingUiReq(skillId, required, null);
         }
 
         static MissingUiReq advancement(ResourceLocation id) {
@@ -586,7 +863,7 @@ public class SkillScreen extends Screen {
 
         String key() {
             if (advId != null) return "ADV:" + advId;
-            return (skill == null) ? "TOTAL" : skill.name();
+            return (skillId == null) ? "TOTAL" : skillId;
         }
 
         Component toComponent() {
@@ -596,16 +873,23 @@ public class SkillScreen extends Screen {
                         .withStyle(ChatFormatting.YELLOW);
             }
 
-            if (skill == null) {
+            if (skillId == null) {
                 return Component.translatable("message.reskillable.req_total", required)
                         .withStyle(ChatFormatting.YELLOW);
             }
 
-            return Component.translatable(
-                    "message.reskillable.req_skill",
-                    Component.translatable("skill.reskillable." + skill.name().toLowerCase(Locale.ROOT)),
-                    required
-            ).withStyle(ChatFormatting.YELLOW);
+            Skill builtIn = Skill.fromString(skillId);
+            if (builtIn != null) {
+                return Component.translatable(
+                        "message.reskillable.req_skill",
+                        Component.translatable("skill.reskillable." + builtIn.name().toLowerCase(Locale.ROOT)),
+                        required
+                ).withStyle(ChatFormatting.YELLOW);
+            }
+
+            CustomSkillSlot slot = Configuration.findCustomSkillById(skillId);
+            String display = slot != null ? slot.getDisplayName() : skillId;
+            return Component.literal(display + " level " + required).withStyle(ChatFormatting.YELLOW);
         }
     }
 
@@ -649,4 +933,212 @@ public class SkillScreen extends Screen {
 
         return Component.literal(pretty);
     }
+
+    private class CustomSkillButton extends Button {
+        private final CustomSkillSlot skillSlot;
+        private boolean gateBlocked = false;
+        private Component gateMissing = null;
+
+        public CustomSkillButton(int x, int y, CustomSkillSlot skillSlot) {
+            super(x, y, 79, 32, Component.empty(), b -> {
+                if (skillSlot != null && skillSlot.isEnabled()) {
+                    RequestLevelUp.sendCustom(skillSlot.getId());
+                }
+            }, DEFAULT_NARRATION);
+            this.skillSlot = skillSlot;
+        }
+
+        public CustomSkillSlot getSkillSlot() {
+            return skillSlot;
+        }
+
+        public void setGateBlocked(boolean blocked, Component missingList) {
+            this.gateBlocked = blocked;
+            this.gateMissing = missingList;
+        }
+
+        @Override
+        protected void renderWidget(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
+            if (skillSlot == null) {
+                return;
+            }
+
+            Minecraft minecraft = Minecraft.getInstance();
+            Player player = minecraft.player;
+            if (player == null) return;
+
+            SkillModel model = SkillModel.get(player);
+            if (model == null) return;
+
+            RenderSystem.setShaderTexture(0, SkillScreen.RESOURCES);
+
+            boolean hover = isMouseOver(mouseX, mouseY);
+            guiGraphics.blit(SkillScreen.RESOURCES, getX(), getY(), 176, hover ? 32 : 0, width, height);
+
+            if (!skillSlot.isEnabled()) {
+                guiGraphics.drawString(font, "-", getX() + 35, getY() + 12, 0x777777, false);
+                return;
+            }
+
+            int level = model.getCustomSkillLevel(skillSlot.getId());
+            int maxLevel = Configuration.getMaxLevel();
+
+            guiGraphics.drawString(font, Component.literal(skillSlot.getDisplayName()), getX() + 8, getY() + 7, 0xFFFFFF, false);
+            guiGraphics.drawString(font, Component.literal(level + "/" + maxLevel), getX() + 8, getY() + 18, 0xBEBEBE, false);
+
+            if (skillSlot.hasPerk() && !model.isCustomPerkEnabled(skillSlot.getId())) {
+                int iconX = getX() + width - 10;
+                int iconY = getY() + height - 10;
+                guiGraphics.drawString(font, "✖", iconX, iconY, 0xFF5555, false);
+            }
+
+            if (gateBlocked) {
+                guiGraphics.fill(getX(), getY(), getX() + width, getY() + height, 0x88000000);
+            }
+        }
+
+        @Override
+        public boolean mouseClicked(double mouseX, double mouseY, int button) {
+            if (!this.visible || !this.isMouseOver(mouseX, mouseY)) return false;
+            if (skillSlot == null || !skillSlot.isEnabled()) return false;
+
+            Minecraft mc = Minecraft.getInstance();
+            Player player = mc.player;
+            if (player == null) return false;
+
+            SkillModel model = SkillModel.get(player);
+            if (model == null) return false;
+
+            int level = model.getCustomSkillLevel(skillSlot.getId());
+            int max = Configuration.getMaxLevel();
+
+            if (button == 1) {
+                if (skillSlot.hasPerk()) {
+                    Reskillable.NETWORK.sendToServer(
+                            new ToggleCustomPerkPacket(skillSlot.getId())
+                    );
+                    player.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 0.6F, 1.0F);
+                    return true;
+                }
+                return false;
+            }
+
+            // LEFT CLICK = level up
+            if (button == 0) {
+                if (!Configuration.isSkillLevelingEnabled()) {
+                    player.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 0.35F, 0.6F);
+                    return true;
+                }
+
+                if (level >= max) {
+                    player.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 0.35F, 0.6F);
+                    return true;
+                }
+
+                if (gateBlocked) {
+                    player.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 0.35F, 0.6F);
+                    return true;
+                }
+
+                int cost = Configuration.calculateCostForLevel(level);
+                int playerXP = calculateTotalXP(player);
+                if (!player.isCreative() && playerXP < cost) {
+                    player.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 0.35F, 0.6F);
+                    return true;
+                }
+
+                RequestLevelUp.sendCustom(skillSlot.getId());
+                return true;
+            }
+
+            return false;
+        }
+
+        @Override
+        public void onPress() {
+            if (skillSlot != null && skillSlot.isEnabled()) {
+                RequestLevelUp.sendCustom(skillSlot.getId());
+            }
+        }
+
+        public List<Component> getTooltipLines(Player player) {
+            List<Component> lines = new ArrayList<>();
+            if (skillSlot == null || !skillSlot.isEnabled()) {
+                return lines;
+            }
+
+            SkillModel model = SkillModel.get(player);
+            if (model == null) return lines;
+
+            int level = model.getCustomSkillLevel(skillSlot.getId());
+            int cost = Configuration.calculateCostForLevel(level);
+            int playerXP = calculateTotalXP(player);
+
+            Component xp = Component.literal(String.valueOf(playerXP))
+                    .withStyle(playerXP >= cost ? ChatFormatting.GREEN : ChatFormatting.RED);
+            Component costC = Component.literal(String.valueOf(cost));
+
+            lines.add(Component.translatable("tooltip.rereskillable.skill_cost", xp, costC));
+
+            if (skillSlot.hasPerk()) {
+                boolean enabled = model.isCustomPerkEnabled(skillSlot.getId());
+                lines.add(Component.literal("➤ ")
+                        .append(Component.translatable("tooltip.rereskillable.right_click").withStyle(ChatFormatting.GOLD))
+                        .append(Component.translatable(enabled
+                                ? "tooltip.rereskillable.disable_perk"
+                                : "tooltip.rereskillable.enable_perk"
+                        ).withStyle(enabled ? ChatFormatting.RED : ChatFormatting.GREEN)));
+            }
+
+            if (!Configuration.isSkillLevelingEnabled()) {
+                lines.add(Component.translatable("message.reskillable.leveling_disabled").withStyle(ChatFormatting.RED));
+                return lines;
+            }
+
+            int maxLevel = Configuration.getMaxLevel();
+            if (level >= maxLevel) {
+                lines.add(Component.translatable("message.reskillable.max_level", maxLevel).withStyle(ChatFormatting.RED));
+                return lines;
+            }
+
+            if (gateBlocked) {
+                boolean shift = Screen.hasShiftDown();
+
+                lines.add(
+                        Component.literal("🔒 ")
+                                .append(Component.translatable("tooltip.reskillable.locked"))
+                                .withStyle(ChatFormatting.RED)
+                );
+
+                if (!shift) {
+                    lines.add(
+                            Component.translatable("tooltip.reskillable.hold_shift")
+                                    .withStyle(ChatFormatting.DARK_GRAY)
+                    );
+                    return lines;
+                }
+
+                if (gateMissing != null) {
+                    lines.add(Component.empty());
+
+                    for (Component c : gateMissing.getSiblings()) {
+                        lines.add(
+                                Component.literal("• ")
+                                        .append(c.copy())
+                                        .withStyle(ChatFormatting.YELLOW)
+                        );
+                    }
+                }
+
+                return lines;
+            }
+
+            lines.add(Component.literal("➤ ")
+                    .append(Component.translatable("tooltip.rereskillable.left_click").withStyle(ChatFormatting.GOLD))
+                    .append(Component.translatable("tooltip.rereskillable.level_up").withStyle(ChatFormatting.AQUA)));
+
+            return lines;
+        }
+    }
+
 }

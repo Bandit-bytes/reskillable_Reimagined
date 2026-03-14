@@ -1,6 +1,7 @@
 package net.bandit.reskillable.common.network;
 
 import net.bandit.reskillable.Configuration;
+import net.bandit.reskillable.Configuration.CustomSkillSlot;
 import net.bandit.reskillable.Reskillable;
 import net.bandit.reskillable.common.capabilities.SkillModel;
 import net.bandit.reskillable.common.commands.skills.Skill;
@@ -20,18 +21,32 @@ import java.util.*;
 import java.util.function.Supplier;
 
 public class RequestLevelUp {
+    private final boolean customSkill;
     private final int skillIndex;
+    private final String customSkillId;
 
     public RequestLevelUp(Skill skill) {
+        this.customSkill = false;
         this.skillIndex = skill.index;
+        this.customSkillId = "";
+    }
+
+    public RequestLevelUp(String customSkillId) {
+        this.customSkill = true;
+        this.skillIndex = -1;
+        this.customSkillId = customSkillId == null ? "" : customSkillId.trim().toLowerCase(Locale.ROOT);
     }
 
     public RequestLevelUp(FriendlyByteBuf buffer) {
+        this.customSkill = buffer.readBoolean();
         this.skillIndex = buffer.readInt();
+        this.customSkillId = buffer.readUtf();
     }
 
     public void encode(FriendlyByteBuf buffer) {
+        buffer.writeBoolean(customSkill);
         buffer.writeInt(skillIndex);
+        buffer.writeUtf(customSkillId == null ? "" : customSkillId);
     }
 
     public void handle(Supplier<NetworkEvent.Context> context) {
@@ -48,74 +63,145 @@ public class RequestLevelUp {
             SkillModel model = SkillModel.get(player);
             if (model == null) return;
 
-            Skill skill = getSkillSafe(skillIndex);
-            if (skill == null) return;
-
-            int currentLevel = model.getSkillLevel(skill);
-            int max = Configuration.getMaxLevel();
-
-            if (currentLevel >= max) {
-                player.sendSystemMessage(Component.translatable("message.reskillable.max_level", max));
-                return;
+            if (customSkill) {
+                handleCustomSkillLevelUp(player, model);
+            } else {
+                handleBuiltInSkillLevelUp(player, model);
             }
-
-            GateResult gate = SkillGateRules.check(player, model, skill, currentLevel);
-            if (!gate.allowed) {
-                player.sendSystemMessage(Component.translatable(
-                        "message.reskillable.gate_blocked",
-                        Component.translatable("skill.reskillable." + skill.name().toLowerCase(Locale.ROOT)),
-                        gate.missingListComponent(player)
-                ));
-                return;
-            }
-
-            int cost = Configuration.calculateCostForLevel(currentLevel);
-
-            if (player.isCreative()) {
-                model.increaseSkillLevel(skill, player);
-                SyncToClient.send(player);
-                return;
-            }
-
-            int totalXp = calculateTotalXp(player);
-            if (totalXp < cost) {
-                player.sendSystemMessage(Component.translatable("message.reskillable.not_enough_xp", cost, totalXp));
-                return;
-            }
-
-            deductXp(player, cost);
-
-            model.increaseSkillLevel(skill, player);
-            int newLevel = model.getSkillLevel(skill);
-
-            player.level().playSound(
-                    null,
-                    player.blockPosition(),
-                    SoundRegistry.LEVEL_UP_EVENT.get(),
-                    SoundSource.PLAYERS,
-                    1.0F,
-                    1.0F
-            );
-
-            if (newLevel % 5 == 0) {
-                player.level().playSound(
-                        null,
-                        player.blockPosition(),
-                        SoundRegistry.MILESTONE_EVENT.get(),
-                        SoundSource.PLAYERS,
-                        1.0F,
-                        1.2F
-                );
-            }
-
-            SyncToClient.send(player);
-            Reskillable.NETWORK.send(
-                    PacketDistributor.PLAYER.with(() -> player),
-                    new SyncGatePreviewPacket(buildPreview(player, model))
-            );
         });
 
         ctx.setPacketHandled(true);
+    }
+
+    private void handleBuiltInSkillLevelUp(ServerPlayer player, SkillModel model) {
+        Skill skill = getSkillSafe(skillIndex);
+        if (skill == null) return;
+
+        int currentLevel = model.getSkillLevel(skill);
+        int max = Configuration.getMaxLevel();
+
+        if (currentLevel >= max) {
+            player.sendSystemMessage(Component.translatable("message.reskillable.max_level", max));
+            return;
+        }
+
+        GateResult gate = SkillGateRules.check(player, model, skill, null, currentLevel);
+        if (!gate.allowed) {
+            player.sendSystemMessage(Component.translatable(
+                    "message.reskillable.gate_blocked",
+                    Component.translatable("skill.reskillable." + skill.name().toLowerCase(Locale.ROOT)),
+                    gate.missingListComponent(player)
+            ));
+            return;
+        }
+
+        int cost = Configuration.calculateCostForLevel(currentLevel);
+
+        if (player.isCreative()) {
+            model.increaseSkillLevel(skill, player);
+            SyncToClient.send(player);
+            sendGatePreview(player, model);
+            return;
+        }
+
+        int totalXp = calculateTotalXp(player);
+        if (totalXp < cost) {
+            player.sendSystemMessage(Component.translatable("message.reskillable.not_enough_xp", cost, totalXp));
+            return;
+        }
+
+        deductXp(player, cost);
+
+        model.increaseSkillLevel(skill, player);
+        int newLevel = model.getSkillLevel(skill);
+
+        playLevelSounds(player, newLevel);
+
+        SyncToClient.send(player);
+        sendGatePreview(player, model);
+    }
+
+    private void handleCustomSkillLevelUp(ServerPlayer player, SkillModel model) {
+        if (customSkillId == null || customSkillId.isBlank()) {
+            return;
+        }
+
+        CustomSkillSlot slot = Configuration.findCustomSkillById(customSkillId);
+        if (slot == null || !slot.isEnabled()) {
+            return;
+        }
+
+        int currentLevel = model.getCustomSkillLevel(slot.getId());
+        int max = Configuration.getMaxLevel();
+
+        if (currentLevel >= max) {
+            player.sendSystemMessage(Component.translatable("message.reskillable.max_level", max));
+            return;
+        }
+
+        GateResult gate = SkillGateRules.check(player, model, null, slot.getId(), currentLevel);
+        if (!gate.allowed) {
+            player.sendSystemMessage(Component.translatable(
+                    "message.reskillable.gate_blocked",
+                    Component.literal(slot.getDisplayName()),
+                    gate.missingListComponent(player)
+            ));
+            return;
+        }
+
+        int cost = Configuration.calculateCostForLevel(currentLevel);
+
+        if (player.isCreative()) {
+            model.increaseCustomSkillLevel(slot.getId(), player);
+            SyncToClient.send(player);
+            sendGatePreview(player, model);
+            return;
+        }
+
+        int totalXp = calculateTotalXp(player);
+        if (totalXp < cost) {
+            player.sendSystemMessage(Component.translatable("message.reskillable.not_enough_xp", cost, totalXp));
+            return;
+        }
+
+        deductXp(player, cost);
+
+        model.increaseCustomSkillLevel(slot.getId(), player);
+        int newLevel = model.getCustomSkillLevel(slot.getId());
+
+        playLevelSounds(player, newLevel);
+
+        SyncToClient.send(player);
+        sendGatePreview(player, model);
+    }
+
+    private static void playLevelSounds(ServerPlayer player, int newLevel) {
+        player.level().playSound(
+                null,
+                player.blockPosition(),
+                SoundRegistry.LEVEL_UP_EVENT.get(),
+                SoundSource.PLAYERS,
+                1.0F,
+                1.0F
+        );
+
+        if (newLevel % 5 == 0) {
+            player.level().playSound(
+                    null,
+                    player.blockPosition(),
+                    SoundRegistry.MILESTONE_EVENT.get(),
+                    SoundSource.PLAYERS,
+                    1.0F,
+                    1.2F
+            );
+        }
+    }
+
+    private static void sendGatePreview(ServerPlayer player, SkillModel model) {
+        Reskillable.NETWORK.send(
+                PacketDistributor.PLAYER.with(() -> player),
+                new SyncGatePreviewPacket(buildPreview(player, model), buildCustomPreview(player, model))
+        );
     }
 
     private static Map<Skill, GatePreview> buildPreview(ServerPlayer player, SkillModel model) {
@@ -123,12 +209,30 @@ public class RequestLevelUp {
 
         for (Skill s : Skill.values()) {
             int lvl = model.getSkillLevel(s);
-            GateResult r = SkillGateRules.check(player, model, s, lvl);
+            GateResult r = SkillGateRules.check(player, model, s, null, lvl);
 
             boolean blocked = !r.allowed;
             Component missing = blocked ? r.missingListComponent(player) : Component.empty();
 
             preview.put(s, new GatePreview(blocked, missing));
+        }
+
+        return preview;
+    }
+
+    private static Map<String, GatePreview> buildCustomPreview(ServerPlayer player, SkillModel model) {
+        Map<String, GatePreview> preview = new LinkedHashMap<>();
+
+        for (CustomSkillSlot slot : Configuration.getCustomSkills()) {
+            if (slot == null || !slot.isEnabled()) continue;
+
+            int lvl = model.getCustomSkillLevel(slot.getId());
+            GateResult r = SkillGateRules.check(player, model, null, slot.getId(), lvl);
+
+            boolean blocked = !r.allowed;
+            Component missing = blocked ? r.missingListComponent(player) : Component.empty();
+
+            preview.put(slot.getId(), new GatePreview(blocked, missing));
         }
 
         return preview;
@@ -178,6 +282,10 @@ public class RequestLevelUp {
         Reskillable.NETWORK.sendToServer(new RequestLevelUp(skill));
     }
 
+    public static void sendCustom(String customSkillId) {
+        Reskillable.NETWORK.sendToServer(new RequestLevelUp(customSkillId));
+    }
+
     public static int getCumulativeXpForLevel(int level) {
         if (level <= 0) return 0;
 
@@ -192,7 +300,7 @@ public class RequestLevelUp {
 
     private static final class SkillGateRules {
 
-        static GateResult check(ServerPlayer player, SkillModel model, Skill levelingSkill, int currentLevel) {
+        static GateResult check(ServerPlayer player, SkillModel model, Skill levelingSkill, String customSkillId, int currentLevel) {
             List<? extends String> rules;
             try {
                 rules = Configuration.SKILL_LEVEL_GATES.get();
@@ -209,19 +317,27 @@ public class RequestLevelUp {
                 GateRule rule = GateRule.parse(line);
                 if (rule == null) continue;
 
-                if (rule.skill != levelingSkill) continue;
+                if (!rule.matchesTarget(levelingSkill, customSkillId)) continue;
                 if (currentLevel < rule.minCurrentLevel) continue;
 
                 if (rule.minTotalLevels != null && totalLevels < rule.minTotalLevels) {
                     missing.add(MissingReq.total(rule.minTotalLevels));
                 }
 
-                for (Map.Entry<Skill, Integer> e : rule.minSkillLevels.entrySet()) {
-                    Skill reqSkill = e.getKey();
+                for (Map.Entry<String, Integer> e : rule.minSkillLevels.entrySet()) {
+                    String reqSkillId = e.getKey();
                     int reqLevel = e.getValue();
-                    int actual = model.getSkillLevel(reqSkill);
+
+                    int actual;
+                    Skill builtIn = Skill.fromString(reqSkillId);
+                    if (builtIn != null) {
+                        actual = model.getSkillLevel(builtIn);
+                    } else {
+                        actual = model.getCustomSkillLevel(reqSkillId);
+                    }
+
                     if (actual < reqLevel) {
-                        missing.add(MissingReq.skill(reqSkill, reqLevel));
+                        missing.add(MissingReq.skill(reqSkillId, reqLevel));
                     }
                 }
 
@@ -248,6 +364,13 @@ public class RequestLevelUp {
             for (Skill s : Skill.values()) {
                 total += model.getSkillLevel(s);
             }
+
+            for (CustomSkillSlot slot : Configuration.getCustomSkills()) {
+                if (slot != null && slot.isEnabled()) {
+                    total += model.getCustomSkillLevel(slot.getId());
+                }
+            }
+
             return total;
         }
 
@@ -268,24 +391,31 @@ public class RequestLevelUp {
     }
 
     private static final class GateRule {
-        final Skill skill;
+        final String targetSkillId;
         final int minCurrentLevel;
         final Integer minTotalLevels;
-        final Map<Skill, Integer> minSkillLevels;
+        final Map<String, Integer> minSkillLevels;
         final List<ResourceLocation> requiredAdvancements;
 
         private GateRule(
-                Skill skill,
+                String targetSkillId,
                 int minCurrentLevel,
                 Integer minTotalLevels,
-                Map<Skill, Integer> minSkillLevels,
+                Map<String, Integer> minSkillLevels,
                 List<ResourceLocation> requiredAdvancements
         ) {
-            this.skill = skill;
+            this.targetSkillId = targetSkillId;
             this.minCurrentLevel = minCurrentLevel;
             this.minTotalLevels = minTotalLevels;
             this.minSkillLevels = minSkillLevels;
             this.requiredAdvancements = requiredAdvancements;
+        }
+
+        boolean matchesTarget(Skill builtInSkill, String customSkillId) {
+            if (builtInSkill != null) {
+                return targetSkillId.equals(builtInSkill.getSerializedName());
+            }
+            return customSkillId != null && targetSkillId.equals(customSkillId.toLowerCase(Locale.ROOT));
         }
 
         static GateRule parse(String line) {
@@ -296,10 +426,11 @@ public class RequestLevelUp {
             String[] parts = line.split(":", 3);
             if (parts.length < 3) return null;
 
-            Skill targetSkill;
-            try {
-                targetSkill = Skill.valueOf(parts[0].trim().toUpperCase(Locale.ROOT));
-            } catch (IllegalArgumentException ex) {
+            String targetSkillId = parts[0].trim().toLowerCase(Locale.ROOT);
+
+            boolean validBuiltIn = Skill.isBuiltInSkill(targetSkillId);
+            boolean validCustom = Configuration.findCustomSkillById(targetSkillId) != null;
+            if (!validBuiltIn && !validCustom) {
                 return null;
             }
 
@@ -311,7 +442,7 @@ public class RequestLevelUp {
             }
 
             Integer totalReq = null;
-            Map<Skill, Integer> skillReqs = new LinkedHashMap<>();
+            Map<String, Integer> skillReqs = new LinkedHashMap<>();
             List<ResourceLocation> advReqs = new ArrayList<>();
 
             String reqs = parts[2].trim();
@@ -324,11 +455,11 @@ public class RequestLevelUp {
                     String[] kv = tok.split("=", 2);
                     if (kv.length != 2) continue;
 
-                    String key = kv[0].trim().toUpperCase(Locale.ROOT);
+                    String key = kv[0].trim().toLowerCase(Locale.ROOT);
                     String valStr = kv[1].trim();
                     if (valStr.isEmpty()) continue;
 
-                    if (key.equals("ADV") || key.equals("ADVANCEMENT")) {
+                    if (key.equals("adv") || key.equals("advancement")) {
                         try {
                             advReqs.add(new ResourceLocation(valStr));
                         } catch (Exception ignored) {
@@ -343,20 +474,18 @@ public class RequestLevelUp {
                         continue;
                     }
 
-                    if (key.equals("TOTAL")) {
+                    if (key.equals("total")) {
                         totalReq = val;
                         continue;
                     }
 
-                    try {
-                        Skill reqSkill = Skill.valueOf(key);
-                        skillReqs.put(reqSkill, val);
-                    } catch (IllegalArgumentException ignored) {
+                    if (Skill.isBuiltInSkill(key) || Configuration.findCustomSkillById(key) != null) {
+                        skillReqs.put(key, val);
                     }
                 }
             }
 
-            return new GateRule(targetSkill, Math.max(0, minLevel), totalReq, skillReqs, advReqs);
+            return new GateRule(targetSkillId, Math.max(0, minLevel), totalReq, skillReqs, advReqs);
         }
     }
 
@@ -392,12 +521,12 @@ public class RequestLevelUp {
     }
 
     private static final class MissingReq {
-        final Skill skill;
+        final String skillId;
         final int requiredLevel;
         final ResourceLocation advancementId;
 
-        private MissingReq(Skill skill, int requiredLevel, ResourceLocation advancementId) {
-            this.skill = skill;
+        private MissingReq(String skillId, int requiredLevel, ResourceLocation advancementId) {
+            this.skillId = skillId;
             this.requiredLevel = requiredLevel;
             this.advancementId = advancementId;
         }
@@ -406,8 +535,8 @@ public class RequestLevelUp {
             return new MissingReq(null, required, null);
         }
 
-        static MissingReq skill(Skill skill, int required) {
-            return new MissingReq(skill, required, null);
+        static MissingReq skill(String skillId, int required) {
+            return new MissingReq(skillId, required, null);
         }
 
         static MissingReq advancement(ResourceLocation id) {
@@ -416,7 +545,7 @@ public class RequestLevelUp {
 
         String key() {
             if (advancementId != null) return "ADV:" + advancementId;
-            return (skill == null) ? "TOTAL" : skill.name();
+            return (skillId == null) ? "TOTAL" : skillId;
         }
 
         Component toComponent(ServerPlayer player) {
@@ -427,15 +556,22 @@ public class RequestLevelUp {
                 );
             }
 
-            if (skill == null) {
+            if (skillId == null) {
                 return Component.translatable("message.reskillable.req_total", requiredLevel);
             }
 
-            return Component.translatable(
-                    "message.reskillable.req_skill",
-                    Component.translatable("skill.reskillable." + skill.name().toLowerCase(Locale.ROOT)),
-                    requiredLevel
-            );
+            Skill builtIn = Skill.fromString(skillId);
+            if (builtIn != null) {
+                return Component.translatable(
+                        "message.reskillable.req_skill",
+                        Component.translatable("skill.reskillable." + builtIn.name().toLowerCase(Locale.ROOT)),
+                        requiredLevel
+                );
+            }
+
+            CustomSkillSlot slot = Configuration.findCustomSkillById(skillId);
+            String display = slot != null ? slot.getDisplayName() : skillId;
+            return Component.literal(display + " level " + requiredLevel);
         }
     }
 
@@ -467,13 +603,22 @@ public class RequestLevelUp {
     }
 
     private static final Map<Skill, GatePreview> CLIENT_GATE_PREVIEW = new EnumMap<>(Skill.class);
+    private static final Map<String, GatePreview> CLIENT_CUSTOM_GATE_PREVIEW = new HashMap<>();
 
     public static GatePreview getClientGatePreview(Skill skill) {
         return CLIENT_GATE_PREVIEW.get(skill);
     }
 
+    public static GatePreview getClientCustomGatePreview(String customSkillId) {
+        if (customSkillId == null || customSkillId.isBlank()) {
+            return null;
+        }
+        return CLIENT_CUSTOM_GATE_PREVIEW.get(customSkillId.toLowerCase(Locale.ROOT));
+    }
+
     public static void clearClientGatePreview() {
         CLIENT_GATE_PREVIEW.clear();
+        CLIENT_CUSTOM_GATE_PREVIEW.clear();
     }
 
     public static final class GatePreview {
@@ -501,21 +646,12 @@ public class RequestLevelUp {
                 SkillModel model = SkillModel.get(player);
                 if (model == null) return;
 
-                Map<Skill, GatePreview> preview = new EnumMap<>(Skill.class);
-
-                for (Skill s : Skill.values()) {
-                    int lvl = model.getSkillLevel(s);
-                    GateResult r = SkillGateRules.check(player, model, s, lvl);
-
-                    boolean blocked = !r.allowed;
-                    Component missing = blocked ? r.missingListComponent(player) : Component.empty();
-
-                    preview.put(s, new GatePreview(blocked, missing));
-                }
+                Map<Skill, GatePreview> preview = buildPreview(player, model);
+                Map<String, GatePreview> customPreview = buildCustomPreview(player, model);
 
                 Reskillable.NETWORK.send(
                         PacketDistributor.PLAYER.with(() -> player),
-                        new SyncGatePreviewPacket(preview)
+                        new SyncGatePreviewPacket(preview, customPreview)
                 );
 
             });
@@ -525,9 +661,11 @@ public class RequestLevelUp {
 
     public static class SyncGatePreviewPacket {
         private final Map<Skill, GatePreview> preview;
+        private final Map<String, GatePreview> customPreview;
 
-        public SyncGatePreviewPacket(Map<Skill, GatePreview> preview) {
+        public SyncGatePreviewPacket(Map<Skill, GatePreview> preview, Map<String, GatePreview> customPreview) {
             this.preview = preview;
+            this.customPreview = customPreview;
         }
 
         public SyncGatePreviewPacket(FriendlyByteBuf buf) {
@@ -539,6 +677,16 @@ public class RequestLevelUp {
                 boolean blocked = buf.readBoolean();
                 Component missing = buf.readComponent();
                 this.preview.put(s, new GatePreview(blocked, missing));
+            }
+
+            int customSize = buf.readVarInt();
+            this.customPreview = new HashMap<>();
+
+            for (int i = 0; i < customSize; i++) {
+                String id = buf.readUtf();
+                boolean blocked = buf.readBoolean();
+                Component missing = buf.readComponent();
+                this.customPreview.put(id.toLowerCase(Locale.ROOT), new GatePreview(blocked, missing));
             }
         }
 
@@ -553,6 +701,14 @@ public class RequestLevelUp {
                 buf.writeBoolean(p.blocked);
                 buf.writeComponent(p.missing == null ? Component.empty() : p.missing);
             }
+
+            buf.writeVarInt(customPreview.size());
+
+            for (var e : customPreview.entrySet()) {
+                buf.writeUtf(e.getKey());
+                buf.writeBoolean(e.getValue().blocked);
+                buf.writeComponent(e.getValue().missing == null ? Component.empty() : e.getValue().missing);
+            }
         }
 
         public void handle(Supplier<NetworkEvent.Context> context) {
@@ -560,6 +716,9 @@ public class RequestLevelUp {
             ctx.enqueueWork(() -> {
                 CLIENT_GATE_PREVIEW.clear();
                 CLIENT_GATE_PREVIEW.putAll(preview);
+
+                CLIENT_CUSTOM_GATE_PREVIEW.clear();
+                CLIENT_CUSTOM_GATE_PREVIEW.putAll(customPreview);
             });
             ctx.setPacketHandled(true);
         }
