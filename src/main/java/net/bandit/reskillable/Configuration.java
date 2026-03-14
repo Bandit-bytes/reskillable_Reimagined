@@ -24,10 +24,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Type;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 
 
 @Mod.EventBusSubscriber
@@ -279,14 +276,12 @@ public class Configuration {
         }
     }
 
-    // Initialize
 
     public static void load() {
         disableWool = DISABLE_WOOL.get();
         showTabButtons = SHOW_TAB_BUTTONS.get();
         deathReset = DEATH_RESET.get();
         healthbonus = HEALTH_BONUS.get();
-//        costIncrease = COST_INCREASE.get();
         xpScalingMultiplier = XP_SCALING_MULTIPLIER.get();
         maximumLevel = MAXIMUM_LEVEL.get();
         enableSkillLeveling = ENABLE_SKILL_LEVELING.get();
@@ -325,7 +320,7 @@ public class Configuration {
             return ForgeRegistries.ATTRIBUTES.getValue(id);
         } catch (Exception e) {
             System.err.println("[Reskillable] Invalid attribute ID in config for magicAttribute: " + MAGIC_ATTRIBUTE_ID.get());
-            return Attributes.LUCK; // fallback
+            return Attributes.LUCK;
         }
     }
 
@@ -338,25 +333,21 @@ public class Configuration {
         }
 
         for (Map.Entry<String, List<String>> entry : data.entrySet()) {
-//            System.out.println("Parsing attack lock for: " + entry.getKey());
             try {
+                String rawKey = entry.getKey();
                 List<String> rawRequirements = entry.getValue();
-                Requirement[] requirements = new Requirement[rawRequirements.size()];
+                Requirement[] requirements = parseRequirements(rawRequirements);
 
-                for (int i = 0; i < rawRequirements.size(); i++) {
-                    String[] reqParts = rawRequirements.get(i).split(":");
-                    if (reqParts.length != 2) {
-                        System.err.println("Invalid requirement format: " + rawRequirements.get(i));
-                        continue;
-                    }
-
-                    String skillName = reqParts[0].toUpperCase();
-                    int level = Integer.parseInt(reqParts[1]);
-
-                    requirements[i] = new Requirement(Skill.valueOf(skillName), level);
+                if (requirements.length == 0) {
+                    System.err.println("No valid requirements found for key: " + rawKey);
+                    continue;
                 }
 
-                locks.put(entry.getKey(), requirements);
+                if (rawKey.contains("*")) {
+                    expandWildcardLock(rawKey, requirements, locks);
+                } else {
+                    mergeRequirementsIntoLock(rawKey, requirements, locks);
+                }
             } catch (Exception e) {
                 System.err.println("Error parsing skill lock for key: " + entry.getKey());
                 e.printStackTrace();
@@ -365,6 +356,105 @@ public class Configuration {
 
         return locks;
     }
+
+    private static Requirement[] parseRequirements(List<String> rawRequirements) {
+        List<Requirement> parsed = new ArrayList<>();
+
+        for (String rawRequirement : rawRequirements) {
+            try {
+                String[] reqParts = rawRequirement.split(":");
+                if (reqParts.length != 2) {
+                    System.err.println("Invalid requirement format: " + rawRequirement);
+                    continue;
+                }
+
+                String skillName = reqParts[0].toUpperCase();
+                int level = Integer.parseInt(reqParts[1]);
+
+                parsed.add(new Requirement(Skill.valueOf(skillName), level));
+            } catch (Exception e) {
+                System.err.println("Failed to parse requirement: " + rawRequirement);
+                e.printStackTrace();
+            }
+        }
+
+        return parsed.toArray(new Requirement[0]);
+    }
+
+    private static void expandWildcardLock(String wildcardKey, Requirement[] requirements, Map<String, Requirement[]> locks) {
+        String[] parts = wildcardKey.split(":", 2);
+        if (parts.length != 2) {
+            System.err.println("Invalid wildcard key format (must be namespace:path): " + wildcardKey);
+            return;
+        }
+
+        String namespace = parts[0];
+        String pathPattern = parts[1];
+
+        int starIndex = pathPattern.indexOf('*');
+
+        if (starIndex == -1) {
+            System.err.println("Wildcard key does not contain '*': " + wildcardKey);
+            return;
+        }
+
+        if (starIndex != pathPattern.length() - 1) {
+            System.err.println("Wildcard '*' is only supported at the end of the path: " + wildcardKey);
+            return;
+        }
+
+        String prefix = pathPattern.substring(0, pathPattern.length() - 1);
+
+        int matches = 0;
+
+        for (ResourceLocation id : ForgeRegistries.ITEMS.getKeys()) {
+            if (!id.getNamespace().equals(namespace)) {
+                continue;
+            }
+
+            if (id.getPath().startsWith(prefix)) {
+                mergeRequirementsIntoLock(id.toString(), requirements, locks);
+                matches++;
+            }
+        }
+
+        if (matches == 0) {
+            System.err.println("Wildcard lock matched no items: " + wildcardKey);
+        } else {
+            System.out.println("Wildcard lock '" + wildcardKey + "' matched " + matches + " item(s).");
+        }
+    }
+
+    private static void mergeRequirementsIntoLock(String key, Requirement[] newRequirements, Map<String, Requirement[]> locks) {
+        Requirement[] existingRequirements = locks.get(key);
+
+        if (existingRequirements == null || existingRequirements.length == 0) {
+            locks.put(key, newRequirements);
+            return;
+        }
+
+        Map<Skill, Integer> mergedLevels = new EnumMap<>(Skill.class);
+
+        for (Requirement req : existingRequirements) {
+            if (req != null) {
+                mergedLevels.merge(req.skill, req.level, Integer::sum);
+            }
+        }
+
+        for (Requirement req : newRequirements) {
+            if (req != null) {
+                mergedLevels.merge(req.skill, req.level, Integer::sum);
+            }
+        }
+
+        List<Requirement> mergedRequirements = new ArrayList<>();
+        for (Map.Entry<Skill, Integer> entry : mergedLevels.entrySet()) {
+            mergedRequirements.add(new Requirement(entry.getKey(), entry.getValue()));
+        }
+
+        locks.put(key, mergedRequirements.toArray(new Requirement[0]));
+    }
+
     private static Map<String, Map<String, List<String>>> loadJsonConfig(String filename, String defaultContent, String expectedKey) {
         File file = new File(filename);
 
@@ -379,13 +469,11 @@ public class Configuration {
         try (FileReader reader = new FileReader(file)) {
             JsonObject jsonObject = JsonParser.parseReader(reader).getAsJsonObject();
 
-            // Validate that the expected key exists
             if (!jsonObject.has(expectedKey)) {
                 System.err.println("Missing '" + expectedKey + "' key in JSON: " + filename);
                 return new HashMap<>();
             }
 
-            // Parse the JSON as a map
             Type mapType = new TypeToken<Map<String, Map<String, List<String>>>>() {}.getType();
             return new Gson().fromJson(jsonObject, mapType);
         } catch (Exception e) {
@@ -411,7 +499,6 @@ public class Configuration {
             return false;
         }
     }
-
 
     public static boolean getDisableWool() {
         return disableWool;
