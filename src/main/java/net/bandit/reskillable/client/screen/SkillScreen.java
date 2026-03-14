@@ -25,6 +25,7 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.ai.attributes.Attribute;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.NotNull;
 
@@ -37,7 +38,8 @@ public class SkillScreen extends Screen {
             new ResourceLocation("reskillable", "textures/gui/perks.png");
     public static final ResourceLocation PERKS_ADDITIONAL_TEXTURE =
             new ResourceLocation("reskillable", "textures/gui/perks_additional.png");
-
+    private static final ResourceLocation LOCK_ICON =
+            new ResourceLocation("reskillable", "textures/gui/lock_icon.png");
 
     private static final int PERK_BOX_X = 12;
     private static final int PERK_BOX_Y = 29;
@@ -314,6 +316,14 @@ public class SkillScreen extends Screen {
             int boxX = left + PERK_BOX_X;
             int boxY = top + PERK_BOX_Y + (row * PERK_ROW_HEIGHT);
 
+            ResourceLocation icon = slot.getResolvedIcon();
+
+            if (icon != null) {
+                RenderSystem.setShaderTexture(0, icon);
+                gui.blit(icon, boxX + 2, boxY + 2, 0, 0, 12, 12, 12, 12);
+                RenderSystem.setShaderTexture(0, SkillScreen.PERKS_ADDITIONAL_TEXTURE);
+            }
+
             int textX = boxX + PERK_TEXT_OFFSET_X;
             int textY = boxY + 5;
 
@@ -339,7 +349,7 @@ public class SkillScreen extends Screen {
         double totalBonus = bonusSteps * slot.getPerkAmountPerStep();
 
         String amountText;
-        if (slot.getResolvedPerkOperation() == net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.ADDITION) {
+        if (slot.getResolvedPerkOperation() == AttributeModifier.Operation.ADDITION) {
             amountText = String.format("+%.2f", totalBonus);
         } else {
             amountText = String.format("+%.0f%%", totalBonus * 100.0);
@@ -983,8 +993,18 @@ public class SkillScreen extends Screen {
             int level = model.getCustomSkillLevel(skillSlot.getId());
             int maxLevel = Configuration.getMaxLevel();
 
-            guiGraphics.drawString(font, Component.literal(skillSlot.getDisplayName()), getX() + 8, getY() + 7, 0xFFFFFF, false);
-            guiGraphics.drawString(font, Component.literal(level + "/" + maxLevel), getX() + 8, getY() + 18, 0xBEBEBE, false);
+            ResourceLocation customIcon = skillSlot.getResolvedIcon();
+
+            if (customIcon != null) {
+                RenderSystem.setShaderTexture(0, customIcon);
+                guiGraphics.blit(customIcon, getX() + 6, getY() + 8, 0, 0, 16, 16, 16, 16);
+                RenderSystem.setShaderTexture(0, SkillScreen.RESOURCES);
+            } else {
+                guiGraphics.drawString(font, "?", getX() + 10, getY() + 10, 0xAAAAAA, false);
+            }
+
+            guiGraphics.drawString(font, Component.literal(skillSlot.getDisplayName()), getX() + 25, getY() + 7, 0xFFFFFF, false);
+            guiGraphics.drawString(font, Component.literal(level + "/" + maxLevel), getX() + 25, getY() + 18, 0xBEBEBE, false);
 
             if (skillSlot.hasPerk() && !model.isCustomPerkEnabled(skillSlot.getId())) {
                 int iconX = getX() + width - 10;
@@ -994,7 +1014,18 @@ public class SkillScreen extends Screen {
 
             if (gateBlocked) {
                 guiGraphics.fill(getX(), getY(), getX() + width, getY() + height, 0x88000000);
+
+                RenderSystem.setShaderTexture(0, LOCK_ICON);
+
+                int iconSize = 16;
+                int iconX = getX() + width - iconSize - 3;
+                int iconY = getY() + 3;
+
+                guiGraphics.blit(LOCK_ICON, iconX, iconY, 0, 0, iconSize, iconSize, iconSize, iconSize);
+
+                RenderSystem.setShaderTexture(0, SkillScreen.RESOURCES);
             }
+
         }
 
         @Override
