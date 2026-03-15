@@ -2,7 +2,6 @@ package net.bandit.reskillable.common.gating;
 
 import net.bandit.reskillable.Configuration;
 import net.bandit.reskillable.common.capabilities.SkillModel;
-import net.bandit.reskillable.common.skills.Skill;
 import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -13,9 +12,18 @@ import java.util.*;
 public final class SkillLevelGate {
     private SkillLevelGate() {}
 
+    private static String normalizeSkillId(String skillId) {
+        return skillId == null ? "" : skillId.trim().toLowerCase(Locale.ROOT);
+    }
+
     public record GateResult(boolean allowed, List<MissingReq> missing) {
-        public static GateResult allow() { return new GateResult(true, List.of()); }
-        public static GateResult block(List<MissingReq> missing) { return new GateResult(false, missing); }
+        public static GateResult allow() {
+            return new GateResult(true, List.of());
+        }
+
+        public static GateResult block(List<MissingReq> missing) {
+            return new GateResult(false, missing);
+        }
 
         public Component missingListComponent(ServerPlayer player) {
             if (missing == null || missing.isEmpty()) {
@@ -24,11 +32,66 @@ public final class SkillLevelGate {
 
             var out = Component.empty();
             for (int i = 0; i < missing.size(); i++) {
-                if (i > 0) out = out.append(Component.literal(", "));
+                if (i > 0) {
+                    out = out.append(Component.literal(", "));
+                }
                 out = out.append(missing.get(i).toComponent(player));
             }
             return out;
         }
+    }
+
+    public record MissingReq(String skillId, int required, ResourceLocation advId) {
+        static MissingReq total(int required) {
+            return new MissingReq(null, required, null);
+        }
+
+        static MissingReq skill(String skillId, int required) {
+            return new MissingReq(normalizeSkillId(skillId), required, null);
+        }
+
+        static MissingReq adv(ResourceLocation id) {
+            return new MissingReq(null, 0, id);
+        }
+
+        String key() {
+            if (advId != null) return "ADV:" + advId;
+            return skillId == null ? "TOTAL" : normalizeSkillId(skillId);
+        }
+
+        Component toComponent(ServerPlayer player) {
+            if (advId != null) {
+                return Component.translatable(
+                        "message.reskillable.req_adv",
+                        getAdvancementDescription(player, advId)
+                );
+            }
+
+            if (skillId == null) {
+                return Component.translatable("message.reskillable.req_total", required);
+            }
+
+            return Component.translatable(
+                    "message.reskillable.req_skill",
+                    getSkillDisplayComponent(skillId),
+                    required
+            );
+        }
+    }
+
+    private static Component getSkillDisplayComponent(String skillId) {
+        String normalized = normalizeSkillId(skillId);
+
+        if (Configuration.isVanillaSkill(normalized)) {
+            return Component.translatable("skill." + normalized);
+        }
+
+        Configuration.CustomSkillSlot customSkill = Configuration.getCustomSkill(normalized);
+        if (customSkill != null && customSkill.displayName != null && !customSkill.displayName.isBlank()) {
+            return Component.literal(customSkill.displayName);
+        }
+
+        return Component.literal(normalized);
     }
 
     private static Component getAdvancementDescription(ServerPlayer player, ResourceLocation id) {
@@ -49,30 +112,6 @@ public final class SkillLevelGate {
         return prettyAdvName(id);
     }
 
-    public record MissingReq(Skill skill, int required, ResourceLocation advId) {
-        static MissingReq total(int required) { return new MissingReq(null, required, null); }
-        static MissingReq skill(Skill skill, int required) { return new MissingReq(skill, required, null); }
-        static MissingReq adv(ResourceLocation id) { return new MissingReq(null, 0, id); }
-
-        String key() {
-            if (advId != null) return "ADV:" + advId;
-            return skill == null ? "TOTAL" : skill.name();
-        }
-
-        Component toComponent(ServerPlayer player) {
-            if (advId != null) {
-                return Component.translatable("message.reskillable.req_adv", getAdvancementDescription(player, advId));
-            }
-            if (skill == null) {
-                return Component.translatable("message.reskillable.req_total", required);
-            }
-            return Component.translatable(
-                    "message.reskillable.req_skill",
-                    Component.translatable("skill." + skill.name().toLowerCase(Locale.ROOT)),
-                    required
-            );
-        }
-    }
     private static Component prettyAdvName(ResourceLocation id) {
         String path = id.getPath();
         String last = path.contains("/") ? path.substring(path.lastIndexOf('/') + 1) : path;
@@ -85,26 +124,28 @@ public final class SkillLevelGate {
 
     /**
      * Back-compat (no ADV checks possible without a ServerPlayer).
-     * Keeps old call sites compiling; ADV tokens will be ignored here.
      */
-    public static GateResult check(SkillModel model, Skill levelingSkill, int currentLevel) {
-        return check(null, model, levelingSkill, currentLevel);
+    public static GateResult check(SkillModel model, String levelingSkillId, int currentLevel) {
+        return check(null, model, levelingSkillId, currentLevel);
     }
 
     /**
-     * Full check including ADV= requirements (when player is provided).
+     * Full check including advancement requirements.
      */
-    public static GateResult check(ServerPlayer player, SkillModel model, Skill levelingSkill, int currentLevel) {
+    public static GateResult check(ServerPlayer player, SkillModel model, String levelingSkillId, int currentLevel) {
         List<? extends String> rules;
         try {
             rules = Configuration.SKILL_LEVEL_GATES.get();
         } catch (Throwable t) {
             return GateResult.allow();
         }
-        if (rules == null || rules.isEmpty()) return GateResult.allow();
 
-        int totalLevels = 0;
-        for (Skill s : Skill.values()) totalLevels += model.getSkillLevel(s);
+        if (rules == null || rules.isEmpty()) {
+            return GateResult.allow();
+        }
+
+        String normalizedLevelingSkill = normalizeSkillId(levelingSkillId);
+        int totalLevels = model.getAllSkillLevels().values().stream().mapToInt(Integer::intValue).sum();
 
         List<MissingReq> missing = new ArrayList<>();
 
@@ -112,21 +153,20 @@ public final class SkillLevelGate {
             Rule rule = Rule.parse(line);
             if (rule == null) continue;
 
-            if (rule.skill != levelingSkill) continue;
+            if (!rule.skillId.equals(normalizedLevelingSkill)) continue;
             if (currentLevel < rule.minCurrentLevel) continue;
 
             if (rule.minTotalLevels != null && totalLevels < rule.minTotalLevels) {
                 missing.add(MissingReq.total(rule.minTotalLevels));
             }
 
-            for (var e : rule.minSkillLevels.entrySet()) {
-                int actual = model.getSkillLevel(e.getKey());
-                if (actual < e.getValue()) {
-                    missing.add(MissingReq.skill(e.getKey(), e.getValue()));
+            for (Map.Entry<String, Integer> entry : rule.minSkillLevels.entrySet()) {
+                int actual = model.getSkillLevel(entry.getKey());
+                if (actual < entry.getValue()) {
+                    missing.add(MissingReq.skill(entry.getKey(), entry.getValue()));
                 }
             }
 
-            // ADV requirements (only enforce if we actually have a server player)
             if (player != null && rule.requiredAdvancements != null && !rule.requiredAdvancements.isEmpty()) {
                 for (ResourceLocation advId : rule.requiredAdvancements) {
                     if (!AdvancementGateUtil.has(player, advId)) {
@@ -136,10 +176,10 @@ public final class SkillLevelGate {
             }
         }
 
-        if (missing.isEmpty()) return GateResult.allow();
+        if (missing.isEmpty()) {
+            return GateResult.allow();
+        }
 
-        // dedupe: keep highest requirement per key.
-        // For ADV entries, we just keep one per advancement id.
         Map<String, MissingReq> best = new LinkedHashMap<>();
         for (MissingReq req : missing) {
             String key = req.key();
@@ -150,7 +190,6 @@ public final class SkillLevelGate {
                 continue;
             }
 
-            // For numeric requirements, keep the highest.
             if (req.advId == null && existing.advId == null && req.required > existing.required) {
                 best.put(key, req);
             }
@@ -160,24 +199,23 @@ public final class SkillLevelGate {
     }
 
     private record Rule(
-            Skill skill,
+            String skillId,
             int minCurrentLevel,
             Integer minTotalLevels,
-            Map<Skill, Integer> minSkillLevels,
+            Map<String, Integer> minSkillLevels,
             List<ResourceLocation> requiredAdvancements
     ) {
         static Rule parse(String line) {
             if (line == null) return null;
+
             line = line.trim();
             if (line.isEmpty() || line.startsWith("#")) return null;
 
             String[] parts = line.split(":", 3);
             if (parts.length < 3) return null;
 
-            Skill skill;
-            try {
-                skill = Skill.valueOf(parts[0].trim().toUpperCase(Locale.ROOT));
-            } catch (IllegalArgumentException ex) {
+            String skillId = normalizeSkillId(parts[0]);
+            if (!Configuration.isKnownSkill(skillId)) {
                 return null;
             }
 
@@ -189,7 +227,7 @@ public final class SkillLevelGate {
             }
 
             Integer totalReq = null;
-            Map<Skill, Integer> skillReqs = new LinkedHashMap<>();
+            Map<String, Integer> skillReqs = new LinkedHashMap<>();
             List<ResourceLocation> advReqs = new ArrayList<>();
 
             String reqs = parts[2].trim();
@@ -204,14 +242,13 @@ public final class SkillLevelGate {
                     String keyRaw = kv[0].trim();
                     String valRaw = kv[1].trim();
 
-                    // ADV token(s)
                     if (keyRaw.equalsIgnoreCase("ADV")) {
                         ResourceLocation id = ResourceLocation.tryParse(valRaw);
-                        if (id != null) advReqs.add(id);
+                        if (id != null) {
+                            advReqs.add(id);
+                        }
                         continue;
                     }
-
-                    String key = keyRaw.toUpperCase(Locale.ROOT);
 
                     int val;
                     try {
@@ -220,20 +257,25 @@ public final class SkillLevelGate {
                         continue;
                     }
 
-                    if (key.equals("TOTAL")) {
+                    if (keyRaw.equalsIgnoreCase("TOTAL")) {
                         totalReq = val;
                         continue;
                     }
 
-                    try {
-                        Skill reqSkill = Skill.valueOf(key);
-                        skillReqs.put(reqSkill, val);
-                    } catch (IllegalArgumentException ignored) {}
+                    String requiredSkillId = normalizeSkillId(keyRaw);
+                    if (Configuration.isKnownSkill(requiredSkillId)) {
+                        skillReqs.put(requiredSkillId, val);
+                    }
                 }
             }
 
-            return new Rule(skill, Math.max(0, minLevel), totalReq, skillReqs, advReqs);
+            return new Rule(
+                    skillId,
+                    Math.max(0, minLevel),
+                    totalReq,
+                    skillReqs,
+                    advReqs
+            );
         }
     }
-
 }

@@ -26,65 +26,147 @@ import net.neoforged.neoforge.common.util.INBTSerializable;
 import org.jetbrains.annotations.UnknownNullability;
 
 import java.util.*;
-import java.util.stream.Collectors;
-
 
 public class SkillModel implements INBTSerializable<CompoundTag> {
-    private static final int DEFAULT_SKILL_COUNT = 8;
-    private int[] skillLevels = new int[DEFAULT_SKILL_COUNT];
-    private int[] skillExperience = new int[DEFAULT_SKILL_COUNT];
-    private final Set<Skill> disabledPerks = new HashSet<>();
-    private static final UUID GLOBAL_HEALTH_BONUS_ID = UUID.nameUUIDFromBytes("reskillable:global_health_bonus".getBytes());
-
+    private final Map<String, Integer> skillLevels = new HashMap<>();
+    private final Map<String, Integer> skillExperience = new HashMap<>();
+    private final Set<String> disabledPerks = new HashSet<>();
 
     public SkillModel() {
         resetSkills();
     }
 
-    public int getSkillLevel(Skill skill) {
-        return skillLevels[skill.index];
+    private static String normalizeSkillId(String skillId) {
+        return skillId == null ? "" : skillId.trim().toLowerCase(Locale.ROOT);
     }
 
-    public void setSkillLevel(Skill skill, int level) {
-        skillLevels[skill.index] = Math.min(level, Configuration.getMaxLevel());
+    public static SkillModel get(Player player) {
+        return player.getData(SkillAttachments.SKILL_MODEL.get());
     }
 
-    public void increaseSkillLevel(Skill skill, Player player) {
-        int currentLevel = skillLevels[skill.index];
-        if (currentLevel < Configuration.getMaxLevel()) {
-            skillLevels[skill.index]++;
-            skillExperience[skill.index] = 0;
-            updateSkillAttributeBonuses(player);
-            syncSkills(player);
-            updateSkillAttributeBonuses(player);
-            int newLevel = skillLevels[skill.index];
-            if (newLevel % 5 == 0) {
-                SkillAttributeBonus bonus = SkillAttributeBonus.getBySkill(skill);
-                Attribute attr = bonus.getAttribute();
-                if (bonus != null && attr != null) {
-                    double amount = bonus.getBonusPerStep();
-                    String attributeName = attr.getDescriptionId().replace("attribute.name.", "");
-                }
+    public void resetSkills() {
+        skillLevels.clear();
+        skillExperience.clear();
+        disabledPerks.clear();
+
+        for (Skill skill : Skill.values()) {
+            String id = normalizeSkillId(skill.name());
+            skillLevels.put(id, 1);
+            skillExperience.put(id, 0);
+        }
+
+        for (Configuration.CustomSkillSlot customSkill : Configuration.getCustomSkills()) {
+            String id = normalizeSkillId(customSkill.id);
+            if (!id.isBlank()) {
+                skillLevels.putIfAbsent(id, 1);
+                skillExperience.putIfAbsent(id, 0);
             }
         }
     }
 
-    public void addExperience(Skill skill, int experience) {
-        skillExperience[skill.index] += experience;
-        checkForLevelUp(skill);
+    public void ensureSkillExists(String skillId) {
+        String normalized = normalizeSkillId(skillId);
+        if (normalized.isBlank()) {
+            return;
+        }
+
+        skillLevels.putIfAbsent(normalized, 1);
+        skillExperience.putIfAbsent(normalized, 0);
     }
 
-    private void checkForLevelUp(Skill skill) {
-        int level = skillLevels[skill.index];
-        int xp = skillExperience[skill.index];
+    public int getSkillLevel(Skill skill) {
+        return getSkillLevel(skill.name());
+    }
+
+    public int getSkillLevel(String skillId) {
+        String normalized = normalizeSkillId(skillId);
+        return skillLevels.getOrDefault(normalized, 1);
+    }
+
+    public void setSkillLevel(Skill skill, int level) {
+        setSkillLevel(skill.name(), level);
+    }
+
+    public void setSkillLevel(String skillId, int level) {
+        String normalized = normalizeSkillId(skillId);
+        if (normalized.isBlank()) {
+            return;
+        }
+
+        skillLevels.put(normalized, Math.min(level, Configuration.getMaxLevel()));
+        skillExperience.putIfAbsent(normalized, 0);
+    }
+
+    public int getSkillExperience(Skill skill) {
+        return getSkillExperience(skill.name());
+    }
+
+    public int getSkillExperience(String skillId) {
+        return skillExperience.getOrDefault(normalizeSkillId(skillId), 0);
+    }
+
+    public void setSkillExperience(Skill skill, int xp) {
+        setSkillExperience(skill.name(), xp);
+    }
+
+    public void setSkillExperience(String skillId, int xp) {
+        String normalized = normalizeSkillId(skillId);
+        if (normalized.isBlank()) {
+            return;
+        }
+
+        skillExperience.put(normalized, Math.max(0, xp));
+        skillLevels.putIfAbsent(normalized, 1);
+    }
+
+    public void increaseSkillLevel(Skill skill, Player player) {
+        increaseSkillLevel(skill.name(), player);
+    }
+
+    public void increaseSkillLevel(String skillId, Player player) {
+        String normalized = normalizeSkillId(skillId);
+        if (normalized.isBlank()) {
+            return;
+        }
+
+        ensureSkillExists(normalized);
+
+        int currentLevel = getSkillLevel(normalized);
+        if (currentLevel < Configuration.getMaxLevel()) {
+            skillLevels.put(normalized, currentLevel + 1);
+            skillExperience.put(normalized, 0);
+
+            updateSkillAttributeBonuses(player);
+            syncSkills(player);
+        }
+    }
+
+    public void addExperience(Skill skill, int experience) {
+        addExperience(skill.name(), experience);
+    }
+
+    public void addExperience(String skillId, int experience) {
+        String normalized = normalizeSkillId(skillId);
+        if (normalized.isBlank()) {
+            return;
+        }
+
+        ensureSkillExists(normalized);
+        skillExperience.put(normalized, getSkillExperience(normalized) + experience);
+        checkForLevelUp(normalized);
+    }
+
+    private void checkForLevelUp(String skillId) {
+        int level = getSkillLevel(skillId);
+        int xp = getSkillExperience(skillId);
 
         while (level < Configuration.getMaxLevel() && xp >= Configuration.calculateExperienceCost(level)) {
             xp -= Configuration.calculateExperienceCost(level);
             level++;
         }
 
-        skillExperience[skill.index] = xp;
-        skillLevels[skill.index] = level;
+        skillLevels.put(skillId, level);
+        skillExperience.put(skillId, xp);
     }
 
     public boolean hasSufficientXP(Player player, Skill skill) {
@@ -92,7 +174,13 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
 
         int totalXP = calculateTotalXPFromPlayer(player);
         return totalXP >= Configuration.calculateCostForLevel(getSkillLevel(skill) + 1);
+    }
 
+    public boolean hasSufficientXP(Player player, String skillId) {
+        if (player.isCreative() || player.level().isClientSide) return true;
+
+        int totalXP = calculateTotalXPFromPlayer(player);
+        return totalXP >= Configuration.calculateCostForLevel(getSkillLevel(skillId) + 1);
     }
 
     private int calculateTotalXPFromPlayer(Player player) {
@@ -111,6 +199,16 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
 
     public boolean canUseEntity(Player player, Entity entity) {
         return canUse(player, entity.getType().builtInRegistryHolder().key().location());
+    }
+
+    public boolean canCraftItem(Player player, ItemStack stack) {
+        ResourceLocation resource = stack.getItem().builtInRegistryHolder().key().location();
+        return checkRequirements(player, resource, RequirementType.CRAFT);
+    }
+
+    public boolean canAttackEntity(Player player, Entity target) {
+        ResourceLocation resource = target.getType().builtInRegistryHolder().key().location();
+        return checkRequirements(player, resource, RequirementType.ATTACK);
     }
 
     private boolean canUse(Player player, ResourceLocation resource) {
@@ -145,70 +243,77 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
             case USE -> "message.reskillable.requirement.use";
         };
 
-        List<Component> formattedRequirements = new ArrayList<>();
+        List<String> formattedRequirements = new ArrayList<>();
         for (Requirement req : unmetRequirements) {
-            String skillTranslationKey = "skill." + req.skill.name().toLowerCase(); // Ensure key matches lang file
-            Component translatedSkillName = Component.translatable(skillTranslationKey); // Retrieve translated name
-            formattedRequirements.add(
-                    Component.literal("")
-                            .append(translatedSkillName)
-                            .append(" level " + req.level)
-            );
+            formattedRequirements.add(getRequirementDisplayName(req.skill) + " level " + req.level);
         }
 
-        Component joinedRequirements = Component.literal(" ")
-                .append(Component.literal(String.join(", ",
-                        formattedRequirements.stream()
-                                .map(Component::getString)
-                                .collect(Collectors.toList()))
-                ));
+        Component joinedRequirements = Component.literal(String.join(", ", formattedRequirements));
         Component message = Component.translatable(translationKey, joinedRequirements);
         player.displayClientMessage(message, true);
     }
 
-    public static SkillModel get(Player player) {
-        return player.getData(SkillAttachments.SKILL_MODEL.get());
-    }
+    private String getRequirementDisplayName(String skillId) {
+        String normalized = normalizeSkillId(skillId);
 
-    public boolean canCraftItem(Player player, ItemStack stack) {
-        ResourceLocation resource = stack.getItem().builtInRegistryHolder().key().location();
-        return checkRequirements(player, resource, RequirementType.CRAFT);
-    }
+        if (Configuration.isVanillaSkill(normalized)) {
+            return Component.translatable("skill." + normalized).getString();
+        }
 
-    public boolean canAttackEntity(Player player, Entity target) {
-        ResourceLocation resource = target.getType().builtInRegistryHolder().key().location();
-        return checkRequirements(player, resource, RequirementType.ATTACK);
+        Configuration.CustomSkillSlot customSkill = Configuration.getCustomSkill(normalized);
+        if (customSkill != null && customSkill.displayName != null && !customSkill.displayName.isBlank()) {
+            return customSkill.displayName;
+        }
+
+        return normalized;
     }
 
     public void syncSkills(Player player) {
-        if (player instanceof ServerPlayer) {
-            SyncToClient.send((ServerPlayer) player);
-        }
-    }
-
-    public void resetSkills() {
-        for (int i = 0; i < DEFAULT_SKILL_COUNT; i++) {
-            skillLevels[i] = 1;
-            skillExperience[i] = 0;
+        if (player instanceof ServerPlayer serverPlayer) {
+            SyncToClient.send(serverPlayer);
         }
     }
 
     public void cloneFrom(SkillModel source) {
-        this.skillLevels = source.skillLevels.clone();
-        this.skillExperience = source.skillExperience.clone();
+        this.skillLevels.clear();
+        this.skillLevels.putAll(source.skillLevels);
+
+        this.skillExperience.clear();
+        this.skillExperience.putAll(source.skillExperience);
+
+        this.disabledPerks.clear();
+        this.disabledPerks.addAll(source.disabledPerks);
     }
 
+    public boolean isPerkEnabled(Skill skill) {
+        return isPerkEnabled(skill.name());
+    }
 
-    private static final UUID[] ATTRIBUTE_MODIFIER_IDS = new UUID[Skill.values().length];
+    public boolean isPerkEnabled(String skillId) {
+        return !disabledPerks.contains(normalizeSkillId(skillId));
+    }
 
-    static {
-        for (int i = 0; i < ATTRIBUTE_MODIFIER_IDS.length; i++) {
-            ATTRIBUTE_MODIFIER_IDS[i] = UUID.nameUUIDFromBytes(("reskillable:skill_bonus_" + i).getBytes());
+    public void togglePerk(Skill skill, Player player) {
+        togglePerk(skill.name(), player);
+    }
+
+    public void togglePerk(String skillId, Player player) {
+        String normalized = normalizeSkillId(skillId);
+        if (normalized.isBlank()) {
+            return;
         }
-    }
-    public void updateSkillAttributeBonuses(Player player) {
-        for (SkillAttributeBonus bonus : SkillAttributeBonus.values()) {
 
+        if (!disabledPerks.add(normalized)) {
+            disabledPerks.remove(normalized);
+        }
+
+        updateSkillAttributeBonuses(player);
+        syncSkills(player);
+    }
+
+    public void updateSkillAttributeBonuses(Player player) {
+        // Built-in skill perks
+        for (SkillAttributeBonus bonus : SkillAttributeBonus.values()) {
             Attribute attribute = bonus.getAttribute();
             if (attribute == null) continue;
 
@@ -222,7 +327,10 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
             var attrInstance = player.getAttributes().getInstance(attr);
             if (attrInstance == null) continue;
 
-            ResourceLocation id = ResourceLocation.fromNamespaceAndPath("reskillable", bonus.skill.name().toLowerCase());
+            ResourceLocation id = ResourceLocation.fromNamespaceAndPath(
+                    "reskillable",
+                    bonus.skill.name().toLowerCase(Locale.ROOT)
+            );
 
             attrInstance.getModifiers().stream()
                     .filter(mod -> mod.id().equals(id))
@@ -244,22 +352,70 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
                 }
             }
         }
+
+        // Custom skill perks
+        for (Configuration.CustomSkillSlot slot : Configuration.getCustomSkills()) {
+            if (slot == null || !slot.isEnabled() || !slot.hasPerk()) {
+                continue;
+            }
+
+            Attribute attribute = slot.getResolvedPerkAttribute();
+            if (attribute == null) {
+                continue;
+            }
+
+            Holder.Reference<Attribute> attr = BuiltInRegistries.ATTRIBUTE
+                    .getResourceKey(attribute)
+                    .flatMap(BuiltInRegistries.ATTRIBUTE::getHolder)
+                    .orElse(null);
+
+            if (attr == null) continue;
+
+            var attrInstance = player.getAttributes().getInstance(attr);
+            if (attrInstance == null) continue;
+
+            String skillId = normalizeSkillId(slot.getId());
+
+            ResourceLocation modifierId = ResourceLocation.fromNamespaceAndPath(
+                    "reskillable",
+                    "custom_" + skillId
+            );
+
+            attrInstance.getModifiers().stream()
+                    .filter(mod -> mod.id().equals(modifierId))
+                    .findFirst()
+                    .ifPresent(attrInstance::removeModifier);
+
+            if (!isPerkEnabled(skillId)) {
+                continue;
+            }
+
+            int skillLevel = getSkillLevel(skillId);
+            int step = Math.max(1, slot.getPerkStep());
+            int bonusSteps = skillLevel / step;
+            double totalBonus = bonusSteps * slot.getPerkAmountPerStep();
+
+            if (totalBonus <= 0) {
+                continue;
+            }
+
+            AttributeModifier modifier = new AttributeModifier(
+                    modifierId,
+                    totalBonus,
+                    slot.getResolvedPerkOperation()
+            );
+
+            attrInstance.addTransientModifier(modifier);
+        }
+
         handleHealthBonus(player);
         forceAttributeSync(player);
-    }
-    private static void forceAttributeSync(Player player) {
-        if (player instanceof ServerPlayer sp) {
-            sp.connection.send(new ClientboundUpdateAttributesPacket(
-                    sp.getId(),
-                    sp.getAttributes().getSyncableAttributes()
-            ));
-        }
     }
 
     private void handleHealthBonus(Player player) {
         if (!Configuration.HEALTH_BONUS.get()) return;
 
-        int totalSkillLevels = Arrays.stream(skillLevels).sum();
+        int totalSkillLevels = skillLevels.values().stream().mapToInt(Integer::intValue).sum();
         int levelsPerHeart = Configuration.LEVELS_PER_HEART.get();
         double healthPerHeart = Configuration.HEALTH_PER_HEART.get();
 
@@ -283,40 +439,41 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
                 );
                 healthAttr.addTransientModifier(healthModifier);
             }
+
             if (player.getHealth() > player.getMaxHealth()) {
                 player.setHealth(player.getMaxHealth());
             }
         }
     }
 
-    public boolean isPerkEnabled(Skill skill) {
-        return !disabledPerks.contains(skill);
-    }
-
-    public void togglePerk(Skill skill, Player player) {
-        if (!disabledPerks.add(skill)) {
-            disabledPerks.remove(skill);
+    private static void forceAttributeSync(Player player) {
+        if (player instanceof ServerPlayer sp) {
+            sp.connection.send(new ClientboundUpdateAttributesPacket(
+                    sp.getId(),
+                    sp.getAttributes().getSyncableAttributes()
+            ));
         }
-        updateSkillAttributeBonuses(player);
-        syncSkills(player);
     }
 
     @Override
     public @UnknownNullability CompoundTag serializeNBT(HolderLookup.Provider provider) {
         CompoundTag compound = new CompoundTag();
-        compound.putIntArray("skillLevels", skillLevels);
-        compound.putIntArray("skillExperience", skillExperience);
 
-        List<String> disabledSkillNames = disabledPerks.stream()
-                .map(skill -> skill.name())
-                .collect(Collectors.toList());
+        CompoundTag levelsTag = new CompoundTag();
+        for (Map.Entry<String, Integer> entry : skillLevels.entrySet()) {
+            levelsTag.putInt(entry.getKey(), entry.getValue());
+        }
+        compound.put("skillLevels", levelsTag);
 
-        compound.putIntArray("skillLevels", skillLevels);
-        compound.putIntArray("skillExperience", skillExperience);
+        CompoundTag xpTag = new CompoundTag();
+        for (Map.Entry<String, Integer> entry : skillExperience.entrySet()) {
+            xpTag.putInt(entry.getKey(), entry.getValue());
+        }
+        compound.put("skillExperience", xpTag);
 
         CompoundTag disabledTag = new CompoundTag();
-        for (Skill skill : disabledPerks) {
-            disabledTag.putBoolean(skill.name(), true);
+        for (String skillId : disabledPerks) {
+            disabledTag.putBoolean(skillId, true);
         }
         compound.put("disabledPerks", disabledTag);
 
@@ -325,40 +482,63 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
 
     @Override
     public void deserializeNBT(HolderLookup.Provider provider, CompoundTag compoundTag) {
-        int[] loadedLevels = compoundTag.getIntArray("skillLevels");
-        int[] loadedExperience = compoundTag.getIntArray("skillExperience");
-
-        if (loadedLevels.length == DEFAULT_SKILL_COUNT) {
-            skillLevels = loadedLevels;
-        }
-
-        if (loadedExperience.length == DEFAULT_SKILL_COUNT) {
-            skillExperience = loadedExperience;
-        }
-
+        skillLevels.clear();
+        skillExperience.clear();
         disabledPerks.clear();
+
+        resetSkills();
+
+        if (compoundTag.contains("skillLevels", CompoundTag.TAG_COMPOUND)) {
+            CompoundTag levelsTag = compoundTag.getCompound("skillLevels");
+            for (String key : levelsTag.getAllKeys()) {
+                skillLevels.put(normalizeSkillId(key), levelsTag.getInt(key));
+            }
+        }
+
+        if (compoundTag.contains("skillExperience", CompoundTag.TAG_COMPOUND)) {
+            CompoundTag xpTag = compoundTag.getCompound("skillExperience");
+            for (String key : xpTag.getAllKeys()) {
+                skillExperience.put(normalizeSkillId(key), xpTag.getInt(key));
+            }
+        }
+
         if (compoundTag.contains("disabledPerks", CompoundTag.TAG_COMPOUND)) {
             CompoundTag disabledTag = compoundTag.getCompound("disabledPerks");
             for (String key : disabledTag.getAllKeys()) {
-                try {
-                    Skill skill = Skill.valueOf(key);
-                    disabledPerks.add(skill);
-                } catch (IllegalArgumentException ignored) {
+                if (disabledTag.getBoolean(key)) {
+                    disabledPerks.add(normalizeSkillId(key));
                 }
             }
         }
     }
+
     public void readFromNetwork(SyncToClient msg) {
-        for (Map.Entry<Skill, Integer> entry : msg.levels().entrySet()) {
-            this.skillLevels[entry.getKey().index] = entry.getValue();
+        this.skillLevels.clear();
+        this.skillExperience.clear();
+        this.disabledPerks.clear();
+
+        resetSkills();
+
+        for (Map.Entry<String, Integer> entry : msg.levels().entrySet()) {
+            this.skillLevels.put(normalizeSkillId(entry.getKey()), entry.getValue());
         }
 
-        this.disabledPerks.clear();
-        for (Map.Entry<Skill, Boolean> entry : msg.disabledPerks().entrySet()) {
+        for (Map.Entry<String, Boolean> entry : msg.disabledPerks().entrySet()) {
             if (entry.getValue()) {
-                this.disabledPerks.add(entry.getKey());
+                this.disabledPerks.add(normalizeSkillId(entry.getKey()));
             }
         }
     }
 
+    public Map<String, Integer> getAllSkillLevels() {
+        return Collections.unmodifiableMap(skillLevels);
+    }
+
+    public Map<String, Integer> getAllSkillExperience() {
+        return Collections.unmodifiableMap(skillExperience);
+    }
+
+    public Set<String> getDisabledPerks() {
+        return Collections.unmodifiableSet(disabledPerks);
+    }
 }

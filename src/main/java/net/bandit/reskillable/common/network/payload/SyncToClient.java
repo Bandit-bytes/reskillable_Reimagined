@@ -1,7 +1,6 @@
 package net.bandit.reskillable.common.network.payload;
 
 import net.bandit.reskillable.common.capabilities.SkillModel;
-import net.bandit.reskillable.common.skills.Skill;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
@@ -10,26 +9,20 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.PacketDistributor;
 
-import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
-
-public record SyncToClient(Map<Skill, Integer> levels, Map<Skill, Boolean> disabledPerks) implements CustomPacketPayload {
+public record SyncToClient(Map<String, Integer> levels, Map<String, Boolean> disabledPerks) implements CustomPacketPayload {
 
     public static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath("reskillable", "sync_to_client");
     public static final Type<SyncToClient> TYPE = new Type<>(ID);
 
-    public static final StreamCodec<FriendlyByteBuf, Skill> SKILL_CODEC =
-            StreamCodec.of(
-                    (buf, skill) -> buf.writeEnum(skill),
-                    buf -> buf.readEnum(Skill.class)
-            );
-
     public static final StreamCodec<FriendlyByteBuf, SyncToClient> STREAM_CODEC =
             StreamCodec.composite(
-                    ByteBufCodecs.map(size -> new EnumMap<>(Skill.class), SKILL_CODEC, ByteBufCodecs.INT),
+                    ByteBufCodecs.map(HashMap::new, ByteBufCodecs.STRING_UTF8, ByteBufCodecs.INT),
                     SyncToClient::levels,
-                    ByteBufCodecs.map(size -> new EnumMap<>(Skill.class), SKILL_CODEC, ByteBufCodecs.BOOL),
+                    ByteBufCodecs.map(HashMap::new, ByteBufCodecs.STRING_UTF8, ByteBufCodecs.BOOL),
                     SyncToClient::disabledPerks,
                     SyncToClient::new
             );
@@ -42,12 +35,16 @@ public record SyncToClient(Map<Skill, Integer> levels, Map<Skill, Boolean> disab
     public static void send(ServerPlayer player) {
         SkillModel model = SkillModel.get(player);
 
-        Map<Skill, Integer> levels = new EnumMap<>(Skill.class);
-        Map<Skill, Boolean> disabled = new EnumMap<>(Skill.class);
+        Map<String, Integer> levels = new HashMap<>();
+        Map<String, Boolean> disabled = new HashMap<>();
 
-        for (Skill skill : Skill.values()) {
-            levels.put(skill, model.getSkillLevel(skill));
-            disabled.put(skill, !model.isPerkEnabled(skill));
+        for (Map.Entry<String, Integer> entry : model.getAllSkillLevels().entrySet()) {
+            levels.put(entry.getKey(), entry.getValue());
+        }
+
+        Set<String> disabledPerkIds = model.getDisabledPerks();
+        for (String skillId : model.getAllSkillLevels().keySet()) {
+            disabled.put(skillId, disabledPerkIds.contains(skillId));
         }
 
         PacketDistributor.sendToPlayer(player, new SyncToClient(levels, disabled));

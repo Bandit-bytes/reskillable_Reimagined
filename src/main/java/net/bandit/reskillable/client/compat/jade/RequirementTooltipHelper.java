@@ -38,7 +38,7 @@ public class RequirementTooltipHelper {
         for (Requirement req : requirements) {
             boolean meets = skillModel.getSkillLevel(req.skill) >= req.level;
 
-            Component line = Component.translatable(req.skill.displayName)
+            Component line = Component.translatable(req.skill)
                     .append(" " + req.level)
                     .withStyle(meets ? ChatFormatting.GREEN : ChatFormatting.RED);
 

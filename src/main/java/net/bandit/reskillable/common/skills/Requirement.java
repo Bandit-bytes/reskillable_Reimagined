@@ -1,28 +1,57 @@
 package net.bandit.reskillable.common.skills;
 
+import java.util.Locale;
 import java.util.Objects;
 
 public class Requirement {
-    public Skill skill;
+    public String skill;
     public int level;
 
     public Requirement() {
-        this.skill = null;
+        this.skill = "";
         this.level = 0;
     }
 
-    public Requirement(Skill skill, int level) {
+    public Requirement(String skill, int level) {
+        if (skill == null || skill.isBlank()) {
+            throw new IllegalArgumentException("Skill ID must not be null or blank.");
+        }
         if (level < 0) {
             throw new IllegalArgumentException("Level must be non-negative.");
         }
-        this.skill = skill;
+
+        this.skill = skill.trim().toLowerCase(Locale.ROOT);
         this.level = level;
+    }
+
+    public Requirement(Skill skill, int level) {
+        if (skill == null) {
+            throw new IllegalArgumentException("Skill must not be null.");
+        }
+        if (level < 0) {
+            throw new IllegalArgumentException("Level must be non-negative.");
+        }
+
+        this.skill = skill.name().toLowerCase(Locale.ROOT);
+        this.level = level;
+    }
+
+    public boolean isVanillaSkill() {
+        return getVanillaSkillOrNull() != null;
+    }
+
+    public Skill getVanillaSkillOrNull() {
+        try {
+            return Skill.valueOf(skill.toUpperCase(Locale.ROOT));
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     @Override
     public String toString() {
         return "Requirement{" +
-                "skill=" + skill +
+                "skill='" + skill + '\'' +
                 ", level=" + level +
                 '}';
     }
@@ -30,9 +59,8 @@ public class Requirement {
     @Override
     public boolean equals(Object obj) {
         if (this == obj) return true;
-        if (obj == null || getClass() != obj.getClass()) return false;
-        Requirement that = (Requirement) obj;
-        return level == that.level && skill == that.skill;
+        if (!(obj instanceof Requirement that)) return false;
+        return level == that.level && Objects.equals(skill, that.skill);
     }
 
     @Override

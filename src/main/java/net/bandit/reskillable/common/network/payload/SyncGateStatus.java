@@ -14,6 +14,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.PacketDistributor;
 
+import java.util.Locale;
+
 public record SyncGateStatus(int skillIndex, boolean blocked, Component missing) implements CustomPacketPayload {
 
     public static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath("reskillable", "sync_gate_status");
@@ -38,7 +40,7 @@ public record SyncGateStatus(int skillIndex, boolean blocked, Component missing)
 
         int level = model.getSkillLevel(skill);
 
-        SkillLevelGate.GateResult gate = SkillLevelGate.check(player, model, skill, level);
+        SkillLevelGate.GateResult gate = SkillLevelGate.check(player, model, skill.name().toLowerCase(Locale.ROOT), level);
         boolean blocked = !gate.allowed();
         Component missing = blocked ? gate.missingListComponent(player) : Component.empty();
 

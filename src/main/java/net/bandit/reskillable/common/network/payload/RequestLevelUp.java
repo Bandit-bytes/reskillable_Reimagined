@@ -2,31 +2,30 @@ package net.bandit.reskillable.common.network.payload;
 
 import net.bandit.reskillable.Configuration;
 import net.bandit.reskillable.common.capabilities.SkillModel;
+import net.bandit.reskillable.common.gating.SkillLevelGate;
 import net.bandit.reskillable.common.skills.Skill;
 import net.bandit.reskillable.event.SoundRegistry;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.sounds.SoundSource;
 import net.neoforged.neoforge.network.PacketDistributor;
-import net.bandit.reskillable.common.gating.SkillLevelGate;
 
+import java.util.Locale;
 
-
-public record RequestLevelUp(int skillIndex) implements CustomPacketPayload {
+public record RequestLevelUp(String skillId) implements CustomPacketPayload {
 
     public static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath("reskillable", "request_levelup");
-
     public static final Type<RequestLevelUp> TYPE = new Type<>(ID);
 
     public static final StreamCodec<FriendlyByteBuf, RequestLevelUp> STREAM_CODEC =
             StreamCodec.composite(
-                    ByteBufCodecs.INT,
-                    RequestLevelUp::skillIndex,
+                    ByteBufCodecs.STRING_UTF8,
+                    RequestLevelUp::skillId,
                     RequestLevelUp::new
             );
 
@@ -41,17 +40,24 @@ public record RequestLevelUp(int skillIndex) implements CustomPacketPayload {
             return;
         }
 
-        SkillModel model = SkillModel.get(player);
-        if (model == null || msg.skillIndex < 0 || msg.skillIndex >= Skill.values().length) return;
+        String skillId = normalize(msg.skillId());
+        if (skillId.isBlank() || !Configuration.isKnownSkill(skillId)) {
+            return;
+        }
 
-        Skill skill = Skill.values()[msg.skillIndex];
-        int currentLevel = model.getSkillLevel(skill);
+        SkillModel model = SkillModel.get(player);
+        if (model == null) {
+            return;
+        }
+
+        int currentLevel = model.getSkillLevel(skillId);
 
         if (currentLevel >= Configuration.getMaxLevel()) {
             player.sendSystemMessage(Component.translatable("reskillable.maxlevel"));
             return;
         }
-        SkillLevelGate.GateResult gate = SkillLevelGate.check(player, model, skill, currentLevel);
+
+        SkillLevelGate.GateResult gate = SkillLevelGate.check(player, model, skillId, currentLevel);
 
         if (!gate.allowed()) {
             player.sendSystemMessage(
@@ -61,25 +67,56 @@ public record RequestLevelUp(int skillIndex) implements CustomPacketPayload {
             );
             return;
         }
-
         int cost = Configuration.calculateCostForLevel(currentLevel);
         int totalXp = getTotalXp(player);
 
         if (player.isCreative() || totalXp >= cost) {
-            if (!player.isCreative()) deductXp(player, cost);
+            if (!player.isCreative()) {
+                deductXp(player, cost);
+            }
 
-            model.increaseSkillLevel(skill, player);
+            model.increaseSkillLevel(skillId, player);
 
-            player.level().playSound(null, player.blockPosition(), SoundRegistry.LEVEL_UP_EVENT.get(), SoundSource.PLAYERS, 1.0F, 1.0F);
+            player.level().playSound(
+                    null,
+                    player.blockPosition(),
+                    SoundRegistry.LEVEL_UP_EVENT.get(),
+                    SoundSource.PLAYERS,
+                    1.0F,
+                    1.0F
+            );
 
-            if (model.getSkillLevel(skill) % 5 == 0) {
-                player.level().playSound(null, player.blockPosition(), SoundRegistry.MILESTONE_EVENT.get(), SoundSource.PLAYERS, 1.0F, 1.2F);
+            if (model.getSkillLevel(skillId) % 5 == 0) {
+                player.level().playSound(
+                        null,
+                        player.blockPosition(),
+                        SoundRegistry.MILESTONE_EVENT.get(),
+                        SoundSource.PLAYERS,
+                        1.0F,
+                        1.2F
+                );
             }
 
             SyncToClient.send(player);
             SyncGateStatus.sendAll(player);
         } else {
             player.sendSystemMessage(Component.translatable("reskillable.not_enough"));
+        }
+    }
+
+    public static void send(String skillId) {
+        PacketDistributor.sendToServer(new RequestLevelUp(normalize(skillId)));
+    }
+
+    private static String normalize(String skillId) {
+        return skillId == null ? "" : skillId.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private static Skill getVanillaSkillOrNull(String skillId) {
+        try {
+            return Skill.valueOf(skillId.toUpperCase(Locale.ROOT));
+        } catch (Exception e) {
+            return null;
         }
     }
 
@@ -115,8 +152,5 @@ public record RequestLevelUp(int skillIndex) implements CustomPacketPayload {
         int base = getXpForLevel(level);
         int next = getXpForLevel(level + 1);
         return (xp - base) / (float) (next - base);
-    }
-    public static void send(Skill skill) {
-        PacketDistributor.sendToServer(new RequestLevelUp(skill.index));
     }
 }
