@@ -36,7 +36,10 @@ public class SetCommand {
                         .then(Commands.argument("targets", EntityArgument.players())
                                 .then(Commands.argument("skill", StringArgumentType.word())
                                         .then(Commands.argument("level", IntegerArgumentType.integer(1))
-                                                .executes(SetCommand::executeSet)))));
+                                                .executes(SetCommand::executeSet)))))
+                .then(Commands.literal("respec")
+                        .then(Commands.argument("targets", EntityArgument.players())
+                                .executes(SetCommand::executeRespec)));
     }
 
     private static int executeAdd(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
@@ -46,12 +49,46 @@ public class SetCommand {
         String skillId = normalizeSkillId(StringArgumentType.getString(context, "skill"));
         int amount = IntegerArgumentType.getInteger(context, "amount");
 
+        int changed = 0;
+
+        if (skillId.equals("all")) {
+            for (ServerPlayer target : targets) {
+                SkillModel model = SkillModel.get(target);
+                if (model == null) continue;
+
+                for (Skill vanilla : Skill.values()) {
+                    String id = normalizeSkillId(vanilla.name());
+                    int currentLevel = model.getSkillLevel(id);
+                    int newLevel = Math.min(currentLevel + amount, Configuration.getMaxLevel());
+                    model.setSkillLevel(id, newLevel);
+                }
+
+                for (Configuration.CustomSkillSlot custom : Configuration.getCustomSkills()) {
+                    if (custom == null || !custom.isEnabled()) continue;
+
+                    String id = normalizeSkillId(custom.id);
+                    int currentLevel = model.getSkillLevel(id);
+                    int newLevel = Math.min(currentLevel + amount, Configuration.getMaxLevel());
+                    model.setSkillLevel(id, newLevel);
+                }
+
+                model.updateSkillAttributeBonuses(target);
+                SyncToClient.send(target);
+                changed++;
+            }
+
+            int finalChanged = changed;
+            source.sendSuccess(
+                    () -> Component.literal("Added " + amount + " to all skills for " + finalChanged + " player(s)."),
+                    true
+            );
+            return changed;
+        }
+
         if (!Configuration.isKnownSkill(skillId)) {
             source.sendFailure(Component.literal("Unknown skill: " + skillId));
             return 0;
         }
-
-        int changed = 0;
 
         for (ServerPlayer target : targets) {
             SkillModel model = SkillModel.get(target);
@@ -61,9 +98,8 @@ public class SetCommand {
             int newLevel = Math.min(currentLevel + amount, Configuration.getMaxLevel());
 
             model.setSkillLevel(skillId, newLevel);
-
-            SyncToClient.send(target);
             model.updateSkillAttributeBonuses(target);
+            SyncToClient.send(target);
 
             changed++;
         }
@@ -85,24 +121,50 @@ public class SetCommand {
         var targets = EntityArgument.getPlayers(context, "targets");
         String skillId = normalizeSkillId(StringArgumentType.getString(context, "skill"));
         int level = IntegerArgumentType.getInteger(context, "level");
+        level = Math.min(level, Configuration.getMaxLevel());
+
+        int changed = 0;
+
+        if (skillId.equals("all")) {
+            for (ServerPlayer target : targets) {
+                SkillModel model = SkillModel.get(target);
+                if (model == null) continue;
+
+                for (Skill vanilla : Skill.values()) {
+                    model.setSkillLevel(normalizeSkillId(vanilla.name()), level);
+                }
+
+                for (Configuration.CustomSkillSlot custom : Configuration.getCustomSkills()) {
+                    if (custom == null || !custom.isEnabled()) continue;
+                    model.setSkillLevel(normalizeSkillId(custom.id), level);
+                }
+
+                model.updateSkillAttributeBonuses(target);
+                SyncToClient.send(target);
+                changed++;
+            }
+
+            int finalChanged = changed;
+            int finalLevel = level;
+            source.sendSuccess(
+                    () -> Component.literal("Set all skills to " + finalLevel + " for " + finalChanged + " player(s)."),
+                    true
+            );
+            return changed;
+        }
 
         if (!Configuration.isKnownSkill(skillId)) {
             source.sendFailure(Component.literal("Unknown skill: " + skillId));
             return 0;
         }
 
-        level = Math.min(level, Configuration.getMaxLevel());
-
-        int changed = 0;
-
         for (ServerPlayer target : targets) {
             SkillModel model = SkillModel.get(target);
             if (model == null) continue;
 
             model.setSkillLevel(skillId, level);
-
-            SyncToClient.send(target);
             model.updateSkillAttributeBonuses(target);
+            SyncToClient.send(target);
 
             changed++;
         }
@@ -113,6 +175,40 @@ public class SetCommand {
                 () -> Component.literal("Set ")
                         .append(getSkillDisplayComponent(skillId))
                         .append(" to " + finalLevel + " for " + finalChanged + " player(s)."),
+                true
+        );
+
+        return changed;
+    }
+
+    private static int executeRespec(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        CommandSourceStack source = context.getSource();
+        var targets = EntityArgument.getPlayers(context, "targets");
+
+        int changed = 0;
+        int totalRefund = 0;
+
+        for (ServerPlayer target : targets) {
+            SkillModel model = SkillModel.get(target);
+            if (model == null) continue;
+
+            int refund = model.resetAllSkillsAndReturnRefund(target);
+            if (refund > 0) {
+                target.giveExperiencePoints(refund);
+            }
+
+            model.updateSkillAttributeBonuses(target);
+            SyncToClient.send(target);
+
+            totalRefund += refund;
+            changed++;
+        }
+
+        int finalChanged = changed;
+        int finalRefund = totalRefund;
+
+        source.sendSuccess(
+                () -> Component.literal("Respecced " + finalChanged + " player(s) and refunded " + finalRefund + " total XP."),
                 true
         );
 

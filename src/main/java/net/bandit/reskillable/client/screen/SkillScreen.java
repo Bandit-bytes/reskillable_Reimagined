@@ -1063,6 +1063,14 @@ public class SkillScreen extends Screen {
                     return true;
                 }
 
+                int maxSpendable = Configuration.getMaxSpendableLevels();
+                int spentLevels = model.getTotalSpentLevels();
+
+                if (maxSpendable >= 0 && spentLevels >= maxSpendable) {
+                    player.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 0.35F, 0.6F);
+                    return true;
+                }
+
                 int cost = Configuration.calculateCostForLevel(level);
                 int playerXP = calculateTotalXP(player);
                 if (!player.isCreative() && playerXP < cost) {
@@ -1079,9 +1087,34 @@ public class SkillScreen extends Screen {
 
         @Override
         public void onPress() {
-            if (skillSlot != null && skillSlot.isEnabled()) {
-                RequestLevelUp.send(normalizeSkillId(skillSlot.id));
+            if (skillSlot == null || !skillSlot.isEnabled()) {
+                return;
             }
+
+            Player player = Minecraft.getInstance().player;
+            if (player == null) {
+                return;
+            }
+
+            SkillModel model = SkillModel.get(player);
+            if (model == null) {
+                return;
+            }
+
+            String skillId = normalizeSkillId(skillSlot.id);
+            int level = model.getSkillLevel(skillId);
+            int max = Configuration.getMaxLevel();
+            int maxSpendable = Configuration.getMaxSpendableLevels();
+            int spentLevels = model.getTotalSpentLevels();
+
+            if (!Configuration.isSkillLevelingEnabled()
+                    || level >= max
+                    || (maxSpendable >= 0 && spentLevels >= maxSpendable)
+                    || gateBlocked) {
+                return;
+            }
+
+            RequestLevelUp.send(skillId);
         }
 
         public List<Component> getTooltipLines(Player player) {
@@ -1122,6 +1155,17 @@ public class SkillScreen extends Screen {
             int maxLevel = Configuration.getMaxLevel();
             if (level >= maxLevel) {
                 lines.add(Component.translatable("message.reskillable.max_level", maxLevel).withStyle(ChatFormatting.RED));
+                return lines;
+            }
+
+            int maxSpendable = Configuration.getMaxSpendableLevels();
+            int spentLevels = model.getTotalSpentLevels();
+
+            if (maxSpendable >= 0 && spentLevels >= maxSpendable) {
+                lines.add(
+                        Component.translatable("message.reskillable.spent_level_cap", spentLevels, maxSpendable)
+                                .withStyle(ChatFormatting.RED)
+                );
                 return lines;
             }
 

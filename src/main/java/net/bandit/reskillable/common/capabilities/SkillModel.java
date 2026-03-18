@@ -131,6 +131,10 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
 
         ensureSkillExists(normalized);
 
+        if (!canSpendAnotherLevel()) {
+            return;
+        }
+
         int currentLevel = getSkillLevel(normalized);
         if (currentLevel < Configuration.getMaxLevel()) {
             skillLevels.put(normalized, currentLevel + 1);
@@ -159,10 +163,15 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
     private void checkForLevelUp(String skillId) {
         int level = getSkillLevel(skillId);
         int xp = getSkillExperience(skillId);
+        int spentLevels = getTotalSpentLevels();
+        int maxSpent = Configuration.getMaxSpendableLevels();
 
-        while (level < Configuration.getMaxLevel() && xp >= Configuration.calculateExperienceCost(level)) {
+        while (level < Configuration.getMaxLevel()
+                && xp >= Configuration.calculateExperienceCost(level)
+                && (maxSpent < 0 || spentLevels < maxSpent)) {
             xp -= Configuration.calculateExperienceCost(level);
             level++;
+            spentLevels++;
         }
 
         skillLevels.put(skillId, level);
@@ -540,5 +549,57 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
 
     public Set<String> getDisabledPerks() {
         return Collections.unmodifiableSet(disabledPerks);
+    }
+    public int getTotalSpentLevels() {
+        int total = 0;
+
+        for (int level : skillLevels.values()) {
+            total += Math.max(0, level - 1);
+        }
+
+        return total;
+    }
+
+    public boolean canSpendAnotherLevel() {
+        int max = Configuration.getMaxSpendableLevels();
+        return max < 0 || getTotalSpentLevels() < max;
+    }
+
+    public int getRemainingSpendableLevels() {
+        int max = Configuration.getMaxSpendableLevels();
+        if (max < 0) {
+            return Integer.MAX_VALUE;
+        }
+        return Math.max(0, max - getTotalSpentLevels());
+    }
+    public int getRefundForLevel(int currentLevel) {
+        int refund = 0;
+
+        for (int lvl = 1; lvl < currentLevel; lvl++) {
+            refund += Configuration.calculateCostForLevel(lvl);
+        }
+
+        return refund;
+    }
+
+    public int getTotalRespecRefund() {
+        int refund = 0;
+
+        for (int level : skillLevels.values()) {
+            refund += getRefundForLevel(level);
+        }
+
+        return refund;
+    }
+
+    public int resetAllSkillsAndReturnRefund(Player player) {
+        int refund = getTotalRespecRefund();
+
+        resetSkills();
+
+        updateSkillAttributeBonuses(player);
+        syncSkills(player);
+
+        return refund;
     }
 }

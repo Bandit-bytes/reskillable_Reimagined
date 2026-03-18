@@ -57,6 +57,18 @@ public record RequestLevelUp(String skillId) implements CustomPacketPayload {
             return;
         }
 
+        int maxSpendable = Configuration.getMaxSpendableLevels();
+        int spentLevels = model.getTotalSpentLevels();
+
+        if (maxSpendable >= 0 && spentLevels >= maxSpendable) {
+            player.sendSystemMessage(Component.translatable(
+                    "message.reskillable.spent_level_cap",
+                    spentLevels,
+                    maxSpendable
+            ));
+            return;
+        }
+
         SkillLevelGate.GateResult gate = SkillLevelGate.check(player, model, skillId, currentLevel);
 
         if (!gate.allowed()) {
@@ -67,6 +79,7 @@ public record RequestLevelUp(String skillId) implements CustomPacketPayload {
             );
             return;
         }
+
         int cost = Configuration.calculateCostForLevel(currentLevel);
         int totalXp = getTotalXp(player);
 

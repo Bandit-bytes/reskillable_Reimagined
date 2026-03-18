@@ -42,6 +42,7 @@ public class Configuration {
     private static final ModConfigSpec.BooleanValue ENABLE_SKILL_UP_MESSAGE;
     public static final ModConfigSpec.IntValue LEVELS_PER_HEART;
     public static final ModConfigSpec.DoubleValue HEALTH_PER_HEART;
+    public static ModConfigSpec.IntValue MAX_TOTAL_SPENT_LEVELS;
 
     public static ModConfigSpec.DoubleValue ATTACK_DAMAGE_BONUS;
     public static ModConfigSpec.DoubleValue ARMOR_BONUS;
@@ -323,6 +324,11 @@ public class Configuration {
 
         builder.comment("Enable a second skill page for up to 8 custom skills loaded from custom_skills.json.");
         ENABLE_SECOND_SKILL_PAGE = builder.define("enableSecondSkillPage", false);
+
+        MAX_TOTAL_SPENT_LEVELS = builder
+                .comment("Maximum total number of skill levels a player can spend across all skills. Set to -1 for unlimited.")
+                .defineInRange("maxTotalSpentLevels", -1, -1, Integer.MAX_VALUE);
+
 
         CONFIG_SPEC = builder.build();
     }
@@ -1206,6 +1212,9 @@ public class Configuration {
         if (harvestLevel < 2) return 5;
         if (harvestLevel == 2) return 15;
         return 30;
+    }
+    public static int getMaxSpendableLevels() {
+        return MAX_TOTAL_SPENT_LEVELS.get();
     }
 
     private static class ArmorStats {

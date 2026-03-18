@@ -162,6 +162,14 @@ public class SkillButton extends Button {
                 return true;
             }
 
+            int maxSpendable = Configuration.getMaxSpendableLevels();
+            int spentLevels = model.getTotalSpentLevels();
+
+            if (maxSpendable >= 0 && spentLevels >= maxSpendable) {
+                player.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 0.35F, 0.6F);
+                return true;
+            }
+
             if (gateBlocked) {
                 player.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 0.35F, 0.6F);
                 return true;
@@ -217,6 +225,16 @@ public class SkillButton extends Button {
         int maxLevel = Configuration.getMaxLevel();
         if (level >= maxLevel) {
             lines.add(Component.translatable("message.reskillable.max_level", maxLevel).withStyle(ChatFormatting.RED));
+            return lines;
+        }
+        int maxSpendable = Configuration.getMaxSpendableLevels();
+        int spentLevels = model.getTotalSpentLevels();
+
+        if (maxSpendable >= 0 && spentLevels >= maxSpendable) {
+            lines.add(
+                    Component.translatable("message.reskillable.spent_level_cap", spentLevels, maxSpendable)
+                            .withStyle(ChatFormatting.RED)
+            );
             return lines;
         }
 

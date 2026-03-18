@@ -57,6 +57,7 @@
   "tooltip.reskillable.locked": "Locked",
   "tooltip.reskillable.hold_shift": "Hold Shift for details",
   "config.jade.plugin_reskillable.requirements_block": "Show Skill Requirements Blocks",
-  "config.jade.plugin_reskillable.requirements_entity": "Show Skill Requirements Entities"
+  "config.jade.plugin_reskillable.requirements_entity": "Show Skill Requirements Entities",
+  "message.reskillable.spent_level_cap": "You have reached the maximum spendable skill levels (%s/%s)."
 
 }
