@@ -1,5 +1,7 @@
 ---
+title: Reskillable Reimagined
 description: "Reskillable Reimagined Wiki"
+icon: trending
 ---
 
 # Reskillable Reimagined
@@ -43,7 +45,67 @@ Each player has multiple skills they can level up using experience.
 | **Agility** | Grants movement and mobility perks |
 | **Magic** | Controls magical items & spell-based gear |
 
----
+# 🧪 Custom Skills
+
+Reskillable also supports **custom skills**, allowing modpacks and servers to add their own progression categories beyond the built-in skills.
+
+Custom skills are defined in:
+
+Example:
+config/reskillable/custom_skills.json
+```json
+{
+  "id": "swimming",
+  "displayName": "Swimming",
+  "perkAttribute": "forge:swim_speed",
+  "icon": "reskillable:textures/gui/custom_skills/swimming.png",
+  "perkOperation": "ADDITION",
+  "perkAmountPerStep": 0.1,
+  "perkStep": 5
+}
+```
+### Field Breakdown
+
+| Field | Description |
+|------|-------------|
+| `id` | Internal skill ID used by the mod, commands, locks, and gates |
+| `displayName` | Name shown in the skill screen |
+| `perkAttribute` | Attribute granted by this skill's perk |
+| `icon` | Texture path used for the skill icon |
+| `perkOperation` | Attribute modifier operation, such as `ADDITION` |
+| `perkAmountPerStep` | How much bonus is granted each milestone |
+| `perkStep` | How many levels are required per perk milestone |
+
+### Notes
+
+- `id` should be lowercase and unique.
+- The `id` is what you use in:
+  - skill locks
+  - skill level gates
+  - commands
+- Custom skills start at **level 1**, just like built-in skills.
+- If a custom skill has a valid perk setup, it can also appear in the **custom perks** page.
+- Custom skill icons should point to a valid texture path.
+
+### Using Custom Skills in Locks or Gates
+
+Example skill lock:
+
+```json
+{
+  "skillLocks": {
+    "minecraft:trident": ["swimming:10"]
+  }
+}
+```
+
+Example skill gate:
+```toml
+skill_level_gates = [
+  "SWIMMING:10:TOTAL=25"
+]
+
+```
 
 ## 📈 Leveling & XP System
 
@@ -178,26 +240,96 @@ The main config controls mod behavior.
 
 ### Important Config Options
 
-| Config | Description |
-|--------|------------|
-| `disableWoolDrops` | Disables wool drops unless shears are used |
-| `deathSkillReset` | Reset skills on player death |
-| `startingCost` | XP cost to reach level 2 |
-| `maximumLevel` | Max level a skill can reach |
-| `xpScalingMultiplier` | Global XP scaling multiplier |
-| `enableSkillLeveling` | Toggle leveling entirely |
-| `enableSkillUpMessage` | Shows skill-up chat messages |
-| `levelsPerHeart` | Total levels required per extra heart |
-| `healthPerHeart` | Amount of health per milestone |
-| `magicAttribute` | Attribute ID used for magic skill |
-| `attackDamageBonus` | Attack attribute scaling |
-| `armorBonus` | Defense attribute scaling |
-| `movementSpeedBonus` | Agility speed bonus |
-| `blockReachBonus` | Building reach bonus |
-| `miningSpeedMultiplier` | Mining efficiency scaling |
-| `cropGrowthChancePer5Levels` | Farming growth bonus |
-| `gatheringXpBonus` | Extra XP from gathering |
+| Config | Description                                                                      |
+|--------|----------------------------------------------------------------------------------|
+| `disableWoolDrops` | Disables wool drops unless shears are used                                       |
+| `deathSkillReset` | Reset skills on player death                                                     |
+| `maxSpendableLevels` | Maximum total levels a player can spend across all skills                        |
+| `maximumLevel` | Max level a skill can reach                                                      |
+| `xpScalingMultiplier` | Global XP scaling multiplier                                                     |
+| `enableSkillLeveling` | Toggle skill leveling entirely                                                   |
+| `enableSecondSkillPage` | Toggle second page for custom skills!                                            |
+| `enableSkillUpMessage` | Shows skill-up chat messages                                                     |
+| `levelsPerHeart` | Total combined skill levels required per extra heart                             |
+| `healthPerHeart` | Amount of health gained per heart milestone                                      |
+| `magicAttribute` | Attribute ID used for the Magic skill                                            |
+| `attackDamageBonus` | Attack damage bonus per milestone                                                |
+| `armorBonus` | Defense armor bonus per milestone                                                |
+| `movementSpeedBonus` | Agility movement speed bonus                                                     |
+| `blockReachBonus` | Building block reach bonus                                                       |
+| `miningSpeedMultiplier` | Mining speed bonus per milestone                                                 |
+| `cropGrowthChancePer5Levels` | Farming crop growth bonus                                                        |
+| `gatheringXpBonus` | Bonus XP gained from gathering actions                                           |
+| `skill_level_gates` | Defines progression gates that restrict skill leveling until requirements are met |
 
+---
+
+## 🔒 Skill Level Gating
+
+Reskillable supports **skill level gating**, allowing you to prevent players from leveling a skill until certain progression requirements are met.
+
+This is configured using the `skill_level_gates` option in the main config.
+
+Skill gates do **not** prevent XP gain — they only prevent leveling up until requirements are satisfied.
+
+---
+
+### 📄 Config Format
+
+```toml
+# "Format: SKILL:MIN_CURRENT_LEVEL:REQS",
+# "Example: ATTACK:10:TOTAL=30,MINING=5,DEFENSE=5",
+# "New token: ADV=<namespace:path> (player must have completed the advancement)",
+# "You can include multiple: ADV=minecraft:story/mine_diamond,ADV=minecraft:nether/root",
+# "Tokens: TOTAL=<n>, OTHER_SKILL=<n>, ADV=<advancement_id>"
+```
+
+skill_level_gates = []
+
+### Example's:
+
+```toml
+skill_level_gates = [
+  "ATTACK:15:ADV=minecraft:story/mine_diamond"
+]
+```
+### Prevents leveling after ATTACK 15 until mine diamonds advancement has been completed:
+
+- you can use custom advancements or default ones
+- graet for ftbquests or other ways of preventing skill leveling
+
+
+```toml
+skill_level_gates = [
+  "ATTACK:10:TOTAL=30"
+]
+```
+- Attack can be leveled freely up to level 10
+- from level 10 onward, the player must have 30 total skill levels
+
+```toml
+skill_level_gates = [
+  "ATTACK:15:TOTAL=40,MINING=10,DEFENSE=10"
+]
+```
+### Attack level 15+ requires:
+- 40 total skill levels
+- MINING level 10
+- DEFENSE level 10
+`all Requirements must be met to level attack past level 15`
+
+```toml
+skill_level_gates = [
+  "ATTACK:10:TOTAL=25",
+  "ATTACK:20:TOTAL=50",
+  "MAGIC:15:ATTACK=10"
+]
+```
+
+### Example of Multiple settings and 2 for 1:
+- To level ATTACK past 10 you need 25 levels 
+- To level ATTACK past 20 you need 50 levels
+- to level MAGIC past 15 you need 10 ATTACK levels
 ---
 
 ## ❤️ Health Scaling
@@ -239,6 +371,14 @@ Base command
 
 Set a player's skill level manually.
 
+### `/skills set <player> all <level>`
+
+Sets all built-in and enabled custom skills to the same level.
+
+### `/skills add <player> all <amount>`
+
+Adds levels to all built-in and custom skills (in enabled).
+
 ### `/skills get`
 
 Check a player's skill levels.
@@ -254,6 +394,25 @@ Automatically scans a mod and adds all its items into your skill lock config. (S
 (1.21.1 adds all items/1.20.1 only adds weapons/tools/armor. Values added(if any)are merely placeholders
 you should triple check anything this mod command adds(it does not overwrite existing.))
 
+### `/skills respec <player>`
+
+Resets all built-in and custom skills back to level 1 and refunds the XP spent on leveling them.
+
+Example:
+```mcfunction
+/skills respec PlayerName
+```
+This command:
+
+resets built-in skills
+
+resets custom skills
+
+clears stored skill XP
+
+refunds spent XP
+
+reapplies perks and attributes
 ---
 
 ## 🔍 JSON Presets & Defaults
@@ -261,6 +420,7 @@ you should triple check anything this mod command adds(it does not overwrite exi
 Reskillable automatically generates:
 
 - `skill_locks.json`
+- `custom_skills.json`
 - `attack_skill_locks.json`
 - `craft_skill_locks.json`
 
