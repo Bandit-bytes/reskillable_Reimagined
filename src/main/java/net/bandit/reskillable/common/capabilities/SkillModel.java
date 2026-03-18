@@ -78,13 +78,21 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
     }
 
     public void increaseSkillLevel(Skill skill, Player player) {
+        if (skill == null || player == null) {
+            return;
+        }
+
+        if (!canSpendAnotherLevel()) {
+            return;
+        }
+
         int currentLevel = skillLevels[skill.index];
         if (currentLevel < Configuration.getMaxLevel()) {
             skillLevels[skill.index]++;
             skillExperience[skill.index] = 0;
+
             updateSkillAttributeBonuses(player);
             syncSkills(player);
-            updateSkillAttributeBonuses(player);
 
             int newLevel = skillLevels[skill.index];
             if (newLevel % 5 == 0) {
@@ -101,7 +109,11 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
     }
 
     public void increaseCustomSkillLevel(String customSkillId, Player player) {
-        if (customSkillId == null || customSkillId.isBlank()) {
+        if (customSkillId == null || customSkillId.isBlank() || player == null) {
+            return;
+        }
+
+        if (!canSpendAnotherLevel()) {
             return;
         }
 
@@ -133,10 +145,15 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
     private void checkForLevelUp(Skill skill) {
         int level = skillLevels[skill.index];
         int xp = skillExperience[skill.index];
+        int spentLevels = getTotalSpentLevels();
+        int maxSpent = Configuration.getMaxSpendableLevels();
 
-        while (level < Configuration.getMaxLevel() && xp >= Configuration.calculateExperienceCost(level)) {
+        while (level < Configuration.getMaxLevel()
+                && xp >= Configuration.calculateExperienceCost(level)
+                && (maxSpent < 0 || spentLevels < maxSpent)) {
             xp -= Configuration.calculateExperienceCost(level);
             level++;
+            spentLevels++;
         }
 
         skillExperience[skill.index] = xp;
@@ -146,10 +163,15 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
     private void checkForCustomLevelUp(String customSkillId) {
         int level = getCustomSkillLevel(customSkillId);
         int xp = getCustomSkillExperience(customSkillId);
+        int spentLevels = getTotalSpentLevels();
+        int maxSpent = Configuration.getMaxSpendableLevels();
 
-        while (level < Configuration.getMaxLevel() && xp >= Configuration.calculateExperienceCost(level)) {
+        while (level < Configuration.getMaxLevel()
+                && xp >= Configuration.calculateExperienceCost(level)
+                && (maxSpent < 0 || spentLevels < maxSpent)) {
             xp -= Configuration.calculateExperienceCost(level);
             level++;
+            spentLevels++;
         }
 
         customSkillLevels.put(customSkillId, level);
@@ -577,4 +599,92 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
         updateSkillAttributeBonuses(player);
         syncSkills(player);
     }
+    public int getTotalSpentLevels() {
+        int total = 0;
+
+        // Built-in skills
+        for (int level : skillLevels) {
+            total += Math.max(0, level - 1);
+        }
+
+        // Custom skills
+        for (CustomSkillSlot slot : Configuration.getCustomSkills()) {
+            if (slot != null && slot.isEnabled()) {
+                total += Math.max(0, getCustomSkillLevel(slot.getId()) - 1);
+            }
+        }
+
+        return total;
+    }
+
+    public boolean hasSpentLevelCap() {
+        int max = Configuration.getMaxSpendableLevels();
+        return max >= 0 && getTotalSpentLevels() >= max;
+    }
+
+    public boolean canSpendAnotherLevel() {
+        int max = Configuration.getMaxSpendableLevels();
+        return max < 0 || getTotalSpentLevels() < max;
+    }
+
+    public int getRemainingSpendableLevels() {
+        int max = Configuration.getMaxSpendableLevels();
+        if (max < 0) {
+            return Integer.MAX_VALUE;
+        }
+        return Math.max(0, max - getTotalSpentLevels());
+    }
+    public int getRefundForLevel(int currentLevel) {
+        int refund = 0;
+
+        for (int lvl = 1; lvl < currentLevel; lvl++) {
+            refund += Configuration.calculateCostForLevel(lvl);
+        }
+
+        return refund;
+    }
+
+    public int getTotalRespecRefund() {
+        int refund = 0;
+
+        for (Skill skill : Skill.values()) {
+            refund += getRefundForLevel(getSkillLevel(skill));
+        }
+
+        for (CustomSkillSlot slot : Configuration.getCustomSkills()) {
+            if (slot != null && slot.isEnabled()) {
+                refund += getRefundForLevel(getCustomSkillLevel(slot.getId()));
+            }
+        }
+
+        return refund;
+    }
+
+    public int resetAllSkillsAndReturnRefund(Player player) {
+        int refund = getTotalRespecRefund();
+
+        for (int i = 0; i < DEFAULT_SKILL_COUNT; i++) {
+            skillLevels[i] = 1;
+            skillExperience[i] = 0;
+        }
+
+        customSkillLevels.clear();
+        customSkillExperience.clear();
+
+        for (CustomSkillSlot slot : Configuration.getCustomSkills()) {
+            if (slot != null && slot.isEnabled()) {
+                customSkillLevels.put(slot.getId(), 1);
+                customSkillExperience.put(slot.getId(), 0);
+            }
+        }
+
+        disabledPerks.clear();
+        disabledCustomPerks.clear();
+
+        updateSkillAttributeBonuses(player);
+        syncSkills(player);
+
+        return refund;
+    }
+
 }

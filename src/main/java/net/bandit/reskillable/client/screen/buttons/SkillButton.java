@@ -24,9 +24,7 @@ import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Locale;
 
 public class SkillButton extends Button {
     private final Skill skill;
@@ -114,33 +112,6 @@ public class SkillButton extends Button {
 
             List<Component> tooltipLines = new ArrayList<>();
             tooltipLines.add(tooltip);
-
-//            if (SkillAttributeBonus.getBySkill(skill) != null) {
-//                boolean enabled = skillModel.isPerkEnabled(skill);
-//                tooltipLines.add(Component.literal("➤ ")
-//                        .append(Component.literal("Right-click: ").withStyle(ChatFormatting.GOLD))
-//                        .append(Component.literal(enabled ? "Disable skill perk" : "Enable skill perk").withStyle(enabled ? ChatFormatting.RED : ChatFormatting.GREEN)));
-//            }
-//
-//            tooltipLines.add(Component.literal("➤ ")
-//                    .append(Component.literal("Left-click: ").withStyle(ChatFormatting.GOLD))
-//                    .append(Component.literal("Level up this skill").withStyle(ChatFormatting.AQUA)));
-//
-//
-//            int screenHeight = Minecraft.getInstance().getWindow().getGuiScaledHeight();
-//            int tooltipHeight = 10 + tooltipLines.size() * 10; // estimated height
-//            int tooltipY = mouseY;
-//            if (mouseY + tooltipHeight > screenHeight) {
-//                tooltipY = mouseY - tooltipHeight - 4;
-//            }
-//
-//            guiGraphics.renderTooltip(
-//                    Minecraft.getInstance().font,
-//                    tooltipLines.stream().map(Component::getVisualOrderText).toList(),
-//                    mouseX,
-//                    tooltipY
-//            );
-
         }
     }
 
@@ -201,6 +172,14 @@ public class SkillButton extends Button {
                 return true;
             }
 
+            int maxSpendable = Configuration.getMaxSpendableLevels();
+            int spentLevels = model.getTotalSpentLevels();
+
+            if (maxSpendable >= 0 && spentLevels >= maxSpendable) {
+                player.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 0.35F, 0.6F);
+                return true;
+            }
+
             int cost = Configuration.calculateCostForLevel(level);
             int playerXP = getPlayerTotalXP(player);
             if (!player.isCreative() && playerXP < cost) {
@@ -241,7 +220,6 @@ public class SkillButton extends Button {
                             : "tooltip.rereskillable.enable_perk"
                     ).withStyle(enabled ? ChatFormatting.RED : ChatFormatting.GREEN)));
         }
-
         if (!Configuration.isSkillLevelingEnabled()) {
             lines.add(Component.translatable("message.reskillable.leveling_disabled").withStyle(ChatFormatting.RED));
             return lines;
@@ -250,6 +228,17 @@ public class SkillButton extends Button {
         int maxLevel = Configuration.getMaxLevel();
         if (level >= maxLevel) {
             lines.add(Component.translatable("message.reskillable.max_level", maxLevel).withStyle(ChatFormatting.RED));
+            return lines;
+        }
+
+        int maxSpendable = Configuration.getMaxSpendableLevels();
+        int spentLevels = model.getTotalSpentLevels();
+
+        if (maxSpendable >= 0 && spentLevels >= maxSpendable) {
+            lines.add(
+                    Component.translatable("message.reskillable.spent_level_cap", spentLevels, maxSpendable)
+                            .withStyle(ChatFormatting.RED)
+            );
             return lines;
         }
 
@@ -270,7 +259,6 @@ public class SkillButton extends Button {
                 return lines;
             }
 
-            // Shift held → show detailed requirements
             if (gateMissing != null) {
                 lines.add(Component.empty());
 

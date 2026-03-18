@@ -85,6 +85,16 @@ public class RequestLevelUp {
             return;
         }
 
+        int maxSpent = Configuration.getMaxSpendableLevels();
+        int spent = model.getTotalSpentLevels();
+
+        if (maxSpent >= 0 && spent >= maxSpent) {
+            player.sendSystemMessage(Component.literal(
+                    "You have reached the maximum number of spendable skill levels (" + maxSpent + ")."
+            ));
+            return;
+        }
+
         GateResult gate = SkillGateRules.check(player, model, skill, null, currentLevel);
         if (!gate.allowed) {
             player.sendSystemMessage(Component.translatable(
@@ -135,7 +145,20 @@ public class RequestLevelUp {
         int max = Configuration.getMaxLevel();
 
         if (currentLevel >= max) {
-            player.sendSystemMessage(Component.translatable("message.reskillable.max_level", max));
+            player.sendSystemMessage(Component.translatable(
+                    "message.reskillable.spent_level_cap",
+                    max
+            ));
+            return;
+        }
+        int maxSpent = Configuration.getMaxSpendableLevels();
+        int spent = model.getTotalSpentLevels();
+
+        if (maxSpent >= 0 && spent >= maxSpent) {
+            player.sendSystemMessage(Component.translatable(
+                    "message.reskillable.spent_level_cap",
+                    maxSpent
+            ));
             return;
         }
 

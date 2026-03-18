@@ -55,6 +55,7 @@
   "tooltip.reskillable.locked_title": "Locked",
   "tooltip.reskillable.locked_reqs": "Requirements: %s",
   "tooltip.reskillable.locked": "Locked",
-  "tooltip.reskillable.hold_shift": "Hold Shift for details"
+  "tooltip.reskillable.hold_shift": "Hold Shift for details",
+  "message.reskillable.spent_level_cap": "You have reached the maximum spendable skill levels (%s)."
 
 }

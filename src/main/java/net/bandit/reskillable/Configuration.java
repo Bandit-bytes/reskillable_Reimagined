@@ -44,6 +44,8 @@ public class Configuration {
     private static final ForgeConfigSpec.BooleanValue ENABLE_SKILL_LEVELING;
     private static final ForgeConfigSpec.BooleanValue ENABLE_SKILL_UP_MESSAGE;
     public static final ForgeConfigSpec.IntValue LEVELS_PER_HEART;
+    public static ForgeConfigSpec.IntValue MAX_TOTAL_SPENT_LEVELS;
+
     public static final ForgeConfigSpec.DoubleValue HEALTH_PER_HEART;
     public static ForgeConfigSpec.DoubleValue ATTACK_DAMAGE_BONUS;
     public static ForgeConfigSpec.DoubleValue ARMOR_BONUS;
@@ -211,8 +213,6 @@ public class Configuration {
     }
     """;
 
-
-
     static {
         ForgeConfigSpec.Builder builder = new ForgeConfigSpec.Builder();
 
@@ -316,7 +316,9 @@ public class Configuration {
         builder.comment("Enable a second skill page for up to 8 custom skills loaded from custom_skills.json.");
         ENABLE_SECOND_SKILL_PAGE = builder.define("enableSecondSkillPage", false);
 
-
+        MAX_TOTAL_SPENT_LEVELS = builder
+                .comment("Maximum total number of skill levels a player can spend across all skills. Set to -1 for unlimited.")
+                .defineInRange("maxTotalSpentLevels", -1, -1, Integer.MAX_VALUE);
 
 
         CONFIG_SPEC = builder.build();
@@ -1141,9 +1143,9 @@ public class Configuration {
         return 30;
     }
 
-    /**
-     * Helper class for armor stats comparison.
-     */
+    public static int getMaxSpendableLevels() {
+        return MAX_TOTAL_SPENT_LEVELS.get();
+    }
     private static class ArmorStats {
         int totalDefense;
         double toughness;

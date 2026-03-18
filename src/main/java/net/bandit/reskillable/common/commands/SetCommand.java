@@ -36,7 +36,10 @@ public class SetCommand {
                         .then(Commands.argument("player", EntityArgument.player())
                                 .then(Commands.argument("skill", StringArgumentType.word())
                                         .then(Commands.argument("level", IntegerArgumentType.integer(1, Configuration.getMaxLevel()))
-                                                .executes(SetCommand::executeSet)))));
+                                                .executes(SetCommand::executeSet)))))
+                .then(Commands.literal("respec")
+                        .then(Commands.argument("player", EntityArgument.player())
+                                .executes(SetCommand::executeRespec)));
     }
 
     private static int executeAdd(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
@@ -50,11 +53,46 @@ public class SetCommand {
             return 0;
         }
 
+        if (skillName.equals("all")) {
+            int changed = 0;
+
+            for (Skill skill : Skill.values()) {
+                int current = model.getSkillLevel(skill);
+                int newLevel = Math.min(current + amount, Configuration.getMaxLevel());
+                if (newLevel != current) {
+                    model.setSkillLevel(skill, newLevel);
+                    changed++;
+                }
+            }
+
+            for (CustomSkillSlot slot : Configuration.getCustomSkills()) {
+                if (slot != null && slot.isEnabled()) {
+                    int current = model.getCustomSkillLevel(slot.getId());
+                    int newLevel = Math.min(current + amount, Configuration.getMaxLevel());
+                    if (newLevel != current) {
+                        model.setCustomSkillLevel(slot.getId(), newLevel);
+                        changed++;
+                    }
+                }
+            }
+
+            model.updateSkillAttributeBonuses(player);
+            SyncToClient.send(player);
+
+            int finalChanged = changed;
+            context.getSource().sendSuccess(() -> Component.literal("Increased all skills for ")
+                    .append(player.getName())
+                    .append(" by " + amount + " (" + finalChanged + " skills affected)"), true);
+
+            return 1;
+        }
+
         Skill builtInSkill = Skill.fromString(skillName);
         if (builtInSkill != null) {
             int current = model.getSkillLevel(builtInSkill);
             int newLevel = Math.min(current + amount, Configuration.getMaxLevel());
             model.setSkillLevel(builtInSkill, newLevel);
+            model.updateSkillAttributeBonuses(player);
             SyncToClient.send(player);
 
             context.getSource().sendSuccess(() -> Component.literal("Increased ")
@@ -71,6 +109,7 @@ public class SetCommand {
             int current = model.getCustomSkillLevel(customSkill.getId());
             int newLevel = Math.min(current + amount, Configuration.getMaxLevel());
             model.setCustomSkillLevel(customSkill.getId(), newLevel);
+            model.updateSkillAttributeBonuses(player);
             SyncToClient.send(player);
 
             context.getSource().sendSuccess(() -> Component.literal("Increased ")
@@ -97,9 +136,40 @@ public class SetCommand {
             return 0;
         }
 
+        if (skillName.equals("all")) {
+            int changed = 0;
+
+            for (Skill skill : Skill.values()) {
+                if (model.getSkillLevel(skill) != level) {
+                    model.setSkillLevel(skill, level);
+                    changed++;
+                }
+            }
+
+            for (CustomSkillSlot slot : Configuration.getCustomSkills()) {
+                if (slot != null && slot.isEnabled()) {
+                    if (model.getCustomSkillLevel(slot.getId()) != level) {
+                        model.setCustomSkillLevel(slot.getId(), level);
+                        changed++;
+                    }
+                }
+            }
+
+            model.updateSkillAttributeBonuses(player);
+            SyncToClient.send(player);
+
+            int finalChanged = changed;
+            context.getSource().sendSuccess(() -> Component.literal("Set all skills for ")
+                    .append(player.getName())
+                    .append(" to " + level + " (" + finalChanged + " skills affected)"), true);
+
+            return 1;
+        }
+
         Skill builtInSkill = Skill.fromString(skillName);
         if (builtInSkill != null) {
             model.setSkillLevel(builtInSkill, level);
+            model.updateSkillAttributeBonuses(player);
             SyncToClient.send(player);
 
             context.getSource().sendSuccess(() -> Component.literal("Set ")
@@ -114,6 +184,7 @@ public class SetCommand {
         CustomSkillSlot customSkill = Configuration.findCustomSkillById(skillName);
         if (customSkill != null) {
             model.setCustomSkillLevel(customSkill.getId(), level);
+            model.updateSkillAttributeBonuses(player);
             SyncToClient.send(player);
 
             context.getSource().sendSuccess(() -> Component.literal("Set ")
@@ -127,6 +198,30 @@ public class SetCommand {
 
         context.getSource().sendFailure(Component.literal("Unknown skill: " + skillName));
         return 0;
+    }
+
+    private static int executeRespec(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ServerPlayer player = EntityArgument.getPlayer(context, "player");
+
+        SkillModel model = SkillModel.get(player);
+        if (model == null) {
+            context.getSource().sendFailure(Component.literal("Could not access the player's skill data."));
+            return 0;
+        }
+
+        int refund = model.resetAllSkillsAndReturnRefund(player);
+        if (refund > 0) {
+            player.giveExperiencePoints(refund);
+        }
+
+        model.updateSkillAttributeBonuses(player);
+        SyncToClient.send(player);
+
+        context.getSource().sendSuccess(() -> Component.literal("Respecced ")
+                .append(player.getName())
+                .append(" and refunded " + refund + " XP."), true);
+
+        return 1;
     }
 
     @SubscribeEvent
