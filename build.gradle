@@ -154,7 +154,7 @@ dependencies {
     compileOnly fg.deobf('curse.maven:curios-309927:5175956')
     compileOnly fg.deobf('curse.maven:timeless-and-classics-zero-1028108:6069384')
     compileOnly fg.deobf('curse.maven:irons-spells-n-spellbooks-855414:6488484')
-
+    compileOnly fg.deobf("curse.maven:tinkers-construct-74072:7449219")
     // Example mod dependency with JEI - using fg.deobf() ensures the dependency is remapped to your development mappings
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime
     // compileOnly fg.deobf("mezz.jei:jei-${mc_version}-common-api:${jei_version}")
