@@ -1137,6 +1137,15 @@ public class SkillScreen extends Screen {
 
             lines.add(Component.translatable("tooltip.rereskillable.skill_cost", xp, costC));
 
+            int maxSpendable = Configuration.getMaxSpendableLevels();
+            int spentLevels = model.getTotalSpentLevels();
+
+            if (maxSpendable < 0) {
+                lines.add(Component.literal("Spendable Levels: " + spentLevels + "/∞").withStyle(ChatFormatting.GRAY));
+            } else {
+                lines.add(Component.literal("Spendable Levels: " + spentLevels + "/" + maxSpendable).withStyle(ChatFormatting.GRAY));
+            }
+
             if (skillSlot.hasPerk()) {
                 boolean enabled = model.isPerkEnabled(skillId);
                 lines.add(Component.literal("➤ ")
@@ -1158,8 +1167,6 @@ public class SkillScreen extends Screen {
                 return lines;
             }
 
-            int maxSpendable = Configuration.getMaxSpendableLevels();
-            int spentLevels = model.getTotalSpentLevels();
 
             if (maxSpendable >= 0 && spentLevels >= maxSpendable) {
                 lines.add(
