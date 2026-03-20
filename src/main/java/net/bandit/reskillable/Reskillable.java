@@ -1,12 +1,10 @@
 package net.bandit.reskillable;
 
 import net.bandit.reskillable.client.ClientInitializer;
-import net.bandit.reskillable.event.CuriosCompat;
-import net.bandit.reskillable.event.EventHandler;
+import net.bandit.reskillable.event.*;
 import net.bandit.reskillable.common.capabilities.SkillModel;
 import net.bandit.reskillable.common.commands.Commands;
 import net.bandit.reskillable.common.network.*;
-import net.bandit.reskillable.event.SoundRegistry;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
@@ -21,8 +19,6 @@ import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.network.NetworkDirection;
 import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.simple.SimpleChannel;
-import net.bandit.reskillable.event.IronsSpellbooksEventHandler;
-import net.bandit.reskillable.event.TaczEventHandler;
 
 import java.util.Optional;
 
@@ -48,6 +44,10 @@ public class Reskillable {
         // irons_spellbooks
         if (ModList.get().isLoaded("irons_spellbooks")) {
             MinecraftForge.EVENT_BUS.register(new IronsSpellbooksEventHandler());
+        }
+        // tconstruct
+        if (ModList.get().isLoaded("tconstruct")) {
+            MinecraftForge.EVENT_BUS.register(new TinkersEventHandler());
         }
 
         DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> ClientInitializer::registerClientEvents);

@@ -12,6 +12,8 @@ import net.bandit.reskillable.common.commands.skills.Skill;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
@@ -30,6 +32,7 @@ public class Tooltip {
 
     private static final boolean IS_TACZ_LOADED = ModList.get().isLoaded("tacz");
     private static final boolean IS_IRONS_LOADED = ModList.get().isLoaded("irons_spellbooks");
+    private static final boolean IS_TCONSTRUCT_LOADED = ModList.get().isLoaded("tconstruct");
 
     @SubscribeEvent
     public void onTooltipDisplay(ItemTooltipEvent event) {
@@ -54,6 +57,32 @@ public class Tooltip {
                                 tag.getString("GunId").replace(":", "_")
                         )
                 );
+            }
+        }
+
+        // TConstruct: tconstruct:<tool>__<material1>__<material2>__...
+        if (IS_TCONSTRUCT_LOADED) {
+            CompoundTag tag = stack.getTag();
+            if (tag != null && tag.contains("tic_materials", Tag.TAG_LIST)) {
+                ListTag materials = tag.getList("tic_materials", Tag.TAG_STRING);
+
+                if (!materials.isEmpty()) {
+                    StringBuilder path = new StringBuilder(itemRegistryName.getPath());
+
+                    for (int i = 0; i < materials.size(); i++) {
+                        String materialId = materials.getString(i);
+                        path.append("__").append(
+                                materialId.replace(":", "_")
+                                        .replace("/", "_")
+                                        .replace("#", "_")
+                        );
+                    }
+
+                    itemRegistryName = new ResourceLocation(
+                            itemRegistryName.getNamespace(),
+                            path.toString()
+                    );
+                }
             }
         }
 

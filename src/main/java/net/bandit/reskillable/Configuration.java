@@ -265,7 +265,7 @@ public class Configuration {
         DEFENSE_OPERATION = builder
                 .comment("Operation for the Defense skill perk. Valid: ADDITION, MULTIPLY_BASE, MULTIPLY_TOTAL")
                 .define("defenseOperation", "MULTIPLY_TOTAL");
-        ARMOR_BONUS = builder.defineInRange("armorBonus", 0.15, 0.0, 10.0);
+        ARMOR_BONUS = builder.defineInRange("DefenseBonus", 0.15, 0.0, 10.0);
         AGILITY_ATTRIBUTE_ID = builder
                 .comment("The registry ID of the attribute to use for the Agility skill.")
                 .define("agilityAttribute", "minecraft:generic.movement_speed");

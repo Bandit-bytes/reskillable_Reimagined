@@ -296,6 +296,17 @@ public class SkillScreen extends Screen {
                 }
             }
         }
+        if (page == 1) {
+            Component perkTooltip = getHoveredPerkTooltip(mouseX, mouseY, left, top);
+            if (perkTooltip != null) {
+                guiGraphics.renderTooltip(
+                        font,
+                        List.of(perkTooltip.getVisualOrderText()),
+                        mouseX,
+                        mouseY
+                );
+            }
+        }
     }
     private void renderCustomPerksPage(GuiGraphics gui, int left, int top) {
         Player player = Minecraft.getInstance().player;
@@ -329,14 +340,19 @@ public class SkillScreen extends Screen {
 
             Component line = buildCustomPerkLine(slot, skillLevel);
 
-            float scale = 0.85f;
+            int panelRight = left + 176 - 8;
+            int maxTextWidth = panelRight - textX;
 
-            gui.pose().pushPose();
-            gui.pose().translate(textX, textY, 0);
-            gui.pose().scale(scale, scale, 1.0F);
-            gui.drawString(this.font, line, 0, 0, 0xFFFFFF, false);
-            gui.pose().popPose();
-
+            drawScaledClippedRowText(
+                    gui,
+                    line,
+                    textX,
+                    boxY + 4,
+                    maxTextWidth,
+                    boxY + 1,
+                    boxY + PERK_ROW_HEIGHT - 1,
+                    0xFFFFFF
+            );
             row++;
         }
     }
@@ -370,7 +386,6 @@ public class SkillScreen extends Screen {
                 .append(effect);
     }
 
-
     private void renderPerksPage(GuiGraphics gui, int left, int top) {
         Player player = Minecraft.getInstance().player;
         if (player == null) return;
@@ -387,20 +402,72 @@ public class SkillScreen extends Screen {
             int boxY = top + PERK_BOX_Y + (row * PERK_ROW_HEIGHT);
 
             int textX = boxX + PERK_TEXT_OFFSET_X;
-            int textY = boxY + 5;
-
             Component line = buildSinglePerkLine(skill, skillLevel);
 
-            float scale = 0.85f;
+            int panelRight = left + 176 - 8;
+            int maxTextWidth = panelRight - textX;
 
-            gui.pose().pushPose();
-            gui.pose().translate(textX, textY, 0);
-            gui.pose().scale(scale, scale, 1.0F);
-            gui.drawString(this.font, line, 0, 0, 0xFFFFFF, false);
-            gui.pose().popPose();
-
+            drawScaledClippedRowText(
+                    gui,
+                    line,
+                    textX,
+                    boxY + 4,
+                    maxTextWidth,
+                    boxY + 1,
+                    boxY + PERK_ROW_HEIGHT - 1,
+                    0xFFFFFF
+            );
             row++;
         }
+    }
+    private Component getHoveredPerkTooltip(int mouseX, int mouseY, int left, int top) {
+        Player player = Minecraft.getInstance().player;
+        if (player == null) return null;
+
+        SkillModel model = SkillModel.get(player);
+        if (model == null) return null;
+
+        if (perkSubPage == 0) {
+            int row = 0;
+            for (Skill skill : Skill.values()) {
+                int boxX = left + PERK_BOX_X;
+                int boxY = top + PERK_BOX_Y + (row * PERK_ROW_HEIGHT);
+                int boxWidth = 176 - PERK_BOX_X - 8;
+                int boxHeight = PERK_ROW_HEIGHT;
+
+                if (isMouseOverRect(mouseX, mouseY, boxX, boxY, boxWidth, boxHeight)) {
+                    int skillLevel = model.getSkillLevel(skill);
+                    return buildSinglePerkLine(skill, skillLevel);
+                }
+
+                row++;
+            }
+        } else {
+            int row = 0;
+            for (CustomSkillSlot slot : Configuration.getCustomSkills()) {
+                if (slot == null || !slot.isEnabled() || !slot.hasPerk()) {
+                    continue;
+                }
+
+                int boxX = left + PERK_BOX_X;
+                int boxY = top + PERK_BOX_Y + (row * PERK_ROW_HEIGHT);
+                int boxWidth = 176 - PERK_BOX_X - 8;
+                int boxHeight = PERK_ROW_HEIGHT;
+
+                if (isMouseOverRect(mouseX, mouseY, boxX, boxY, boxWidth, boxHeight)) {
+                    int skillLevel = model.getCustomSkillLevel(slot.getId());
+                    return buildCustomPerkLine(slot, skillLevel);
+                }
+
+                row++;
+            }
+        }
+
+        return null;
+    }
+
+    private boolean isMouseOverRect(int mouseX, int mouseY, int x, int y, int width, int height) {
+        return mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + height;
     }
 
     private Component buildSinglePerkLine(Skill skill, int skillLevel) {
@@ -414,10 +481,15 @@ public class SkillScreen extends Screen {
             case AGILITY -> {
                 SkillAttributeBonus bonus = SkillAttributeBonus.getBySkill(skill);
                 double perStep = bonus != null ? bonus.getBonusPerStep() : 0.0;
-                double pct = skillLevel >= 5 ? (skillLevel / 5.0) * perStep * 100.0 : 0;
+                double totalBonus = skillLevel >= 5 ? (skillLevel / 5.0) * perStep : 0.0;
 
-                amount = Component.literal(String.format("+%.0f%%", pct))
-                        .withStyle(ChatFormatting.AQUA);
+                if (bonus != null && bonus.getOperation() == AttributeModifier.Operation.ADDITION) {
+                    amount = Component.literal(String.format("+%.2f", totalBonus))
+                            .withStyle(ChatFormatting.AQUA);
+                } else {
+                    amount = Component.literal(String.format("+%.0f%%", totalBonus * 100.0))
+                            .withStyle(ChatFormatting.AQUA);
+                }
 
                 Attribute attr = bonus != null ? bonus.getAttribute() : null;
                 effect = attr != null
@@ -428,8 +500,9 @@ public class SkillScreen extends Screen {
             case MINING -> {
                 SkillAttributeBonus bonus = SkillAttributeBonus.getBySkill(skill);
                 double perStep = bonus != null ? bonus.getBonusPerStep() : 0.0;
-                double pct = skillLevel >= 5 ? (skillLevel / 5.0) * perStep * 100.0 : 0;
-                amount = Component.literal(String.format("+%.0f%%", pct))
+                double totalBonus = skillLevel >= 5 ? (skillLevel / 5.0) * perStep : 0.0;
+
+                amount = Component.literal(String.format("+%.0f%%", totalBonus * 100.0))
                         .withStyle(ChatFormatting.AQUA);
                 effect = Component.translatable("tooltip.rereskillable.break_speed")
                         .withStyle(ChatFormatting.GRAY);
@@ -438,11 +511,10 @@ public class SkillScreen extends Screen {
             case GATHERING -> {
                 SkillAttributeBonus bonus = SkillAttributeBonus.getBySkill(skill);
                 double perStep = bonus != null ? bonus.getBonusPerStep() : 0.0;
-                double pct = skillLevel >= 5 ? (skillLevel / 5.0) * perStep * 100.0 : 0;
+                double totalBonus = skillLevel >= 5 ? (skillLevel / 5.0) * perStep : 0.0;
 
-                amount = Component.literal(String.format("+%.0f%%", pct))
+                amount = Component.literal(String.format("+%.0f%%", totalBonus * 100.0))
                         .withStyle(ChatFormatting.AQUA);
-
                 effect = Component.translatable("tooltip.rereskillable.bonus_xp_orbs")
                         .withStyle(ChatFormatting.GRAY);
             }
@@ -450,11 +522,10 @@ public class SkillScreen extends Screen {
             case FARMING -> {
                 SkillAttributeBonus bonus = SkillAttributeBonus.getBySkill(skill);
                 double perStep = bonus != null ? bonus.getBonusPerStep() : 0.0;
-                double pct = skillLevel >= 5 ? (skillLevel / 5.0) * perStep * 100.0 : 0;
+                double totalBonus = skillLevel >= 5 ? (skillLevel / 5.0) * perStep : 0.0;
 
-                amount = Component.literal(String.format("+%.0f%%", pct))
+                amount = Component.literal(String.format("+%.0f%%", totalBonus * 100.0))
                         .withStyle(ChatFormatting.AQUA);
-
                 effect = Component.translatable("tooltip.rereskillable.crop_growth")
                         .withStyle(ChatFormatting.GRAY);
             }
@@ -465,11 +536,15 @@ public class SkillScreen extends Screen {
                     return Component.empty();
                 }
 
-                double perStep = bonus.getBonusPerStep();
-                double pct = skillLevel >= 5 ? (skillLevel / 5.0) * perStep * 100.0 : 0;
+                double totalBonus = skillLevel >= 5 ? (skillLevel / 5.0) * bonus.getBonusPerStep() : 0.0;
 
-                amount = Component.literal(String.format("+%.0f%%", pct))
-                        .withStyle(ChatFormatting.AQUA);
+                if (bonus.getOperation() == AttributeModifier.Operation.ADDITION) {
+                    amount = Component.literal(String.format("+%.2f", totalBonus))
+                            .withStyle(ChatFormatting.AQUA);
+                } else {
+                    amount = Component.literal(String.format("+%.0f%%", totalBonus * 100.0))
+                            .withStyle(ChatFormatting.AQUA);
+                }
 
                 Attribute attr = bonus.getAttribute();
                 effect = attr != null
@@ -902,6 +977,20 @@ public class SkillScreen extends Screen {
             return Component.literal(display + " level " + required).withStyle(ChatFormatting.YELLOW);
         }
     }
+    private void drawScaledClippedRowText(GuiGraphics gui, Component text, int x, int y, int maxWidth, int rowTop, int rowBottom, int color) {
+        float scale = 0.85F;
+
+        gui.enableScissor(x, rowTop, x + maxWidth, rowBottom);
+        try {
+            gui.pose().pushPose();
+            gui.pose().translate(x, y, 0);
+            gui.pose().scale(scale, scale, 1.0F);
+            gui.drawString(this.font, text, 0, 0, color, false);
+            gui.pose().popPose();
+        } finally {
+            gui.disableScissor();
+        }
+    }
 
     private void requestGatePreview() {
         if (this.minecraft == null || this.minecraft.player == null) return;
@@ -966,6 +1055,29 @@ public class SkillScreen extends Screen {
             this.gateBlocked = blocked;
             this.gateMissing = missingList;
         }
+        private void drawScaledToFitText(GuiGraphics guiGraphics, Font font, Component text, int x, int y, int maxWidth, int color) {
+            int textWidth = font.width(text);
+
+            if (textWidth <= maxWidth) {
+                guiGraphics.drawString(font, text, x, y, color, false);
+                return;
+            }
+
+            float scale = (float) maxWidth / (float) textWidth;
+            float minScale = 0.72F;
+            scale = Math.max(scale, minScale);
+
+            guiGraphics.enableScissor(x, y - 1, x + maxWidth, y + font.lineHeight + 2);
+            try {
+                guiGraphics.pose().pushPose();
+                guiGraphics.pose().translate(x, y, 0);
+                guiGraphics.pose().scale(scale, scale, 1.0F);
+                guiGraphics.drawString(font, text, 0, 0, color, false);
+                guiGraphics.pose().popPose();
+            } finally {
+                guiGraphics.disableScissor();
+            }
+        }
 
         @Override
         protected void renderWidget(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
@@ -1003,7 +1115,12 @@ public class SkillScreen extends Screen {
                 guiGraphics.drawString(font, "?", getX() + 10, getY() + 10, 0xAAAAAA, false);
             }
 
-            guiGraphics.drawString(font, Component.literal(skillSlot.getDisplayName()), getX() + 25, getY() + 7, 0xFFFFFF, false);
+            int nameX = getX() + 25;
+            int nameY = getY() + 7;
+            int rightPadding = gateBlocked ? 22 : 6;
+            int maxNameWidth = width - (nameX - getX()) - rightPadding;
+
+            drawScaledToFitText(guiGraphics, font, Component.literal(skillSlot.getDisplayName()), nameX, nameY, maxNameWidth, 0xFFFFFF);
             guiGraphics.drawString(font, Component.literal(level + "/" + maxLevel), getX() + 25, getY() + 18, 0xBEBEBE, false);
 
             if (skillSlot.hasPerk() && !model.isCustomPerkEnabled(skillSlot.getId())) {
@@ -1122,10 +1239,11 @@ public class SkillScreen extends Screen {
             int maxSpendable = Configuration.getMaxSpendableLevels();
             int spentLevels = model.getTotalSpentLevels();
 
-            if (maxSpendable < 0) {
-                lines.add(Component.literal("Spendable Levels: " + spentLevels + "/∞").withStyle(ChatFormatting.GRAY));
-            } else {
-                lines.add(Component.literal("Spendable Levels: " + spentLevels + "/" + maxSpendable).withStyle(ChatFormatting.GRAY));
+            if (maxSpendable >= 0) {
+                lines.add(
+                        Component.literal("Spendable Levels: " + spentLevels + "/" + maxSpendable)
+                                .withStyle(ChatFormatting.GRAY)
+                );
             }
 
             if (skillSlot.hasPerk()) {
