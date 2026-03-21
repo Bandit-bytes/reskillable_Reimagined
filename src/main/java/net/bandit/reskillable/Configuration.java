@@ -710,6 +710,7 @@ public class Configuration {
 
     private static Requirement[] parseRequirements(List<String> rawRequirements) {
         List<Requirement> parsed = new ArrayList<>();
+        Map<String, String> aliases = getSkillAliasMap();
 
         for (String rawRequirement : rawRequirements) {
             try {
@@ -720,6 +721,8 @@ public class Configuration {
                 }
 
                 String skillName = reqParts[0].trim().toLowerCase(Locale.ROOT);
+                skillName = aliases.getOrDefault(skillName, skillName);
+
                 int level = Integer.parseInt(reqParts[1].trim());
 
                 Skill builtInSkill = Skill.fromString(skillName);
@@ -1154,5 +1157,30 @@ public class Configuration {
             this.totalDefense = totalDefense;
             this.toughness = toughness;
         }
+    }
+    private static Map<String, String> getSkillAliasMap() {
+        Map<String, String> aliases = new HashMap<>();
+
+        for (String entry : SKILL_ALIAS.get()) {
+            if (entry == null || entry.isBlank()) continue;
+
+            String[] parts = entry.split("=", 2);
+            if (parts.length != 2) {
+                System.err.println("[Reskillable] Invalid skill alias entry: " + entry);
+                continue;
+            }
+
+            String alias = parts[0].trim().toLowerCase(Locale.ROOT);
+            String target = parts[1].trim().toLowerCase(Locale.ROOT);
+
+            if (alias.isBlank() || target.isBlank()) {
+                System.err.println("[Reskillable] Invalid skill alias entry: " + entry);
+                continue;
+            }
+
+            aliases.put(alias, target);
+        }
+
+        return aliases;
     }
 }

@@ -1,5 +1,7 @@
 package net.bandit.reskillable.event;
 
+import net.bandit.reskillable.Configuration;
+import net.bandit.reskillable.Configuration.CustomSkillSlot;
 import net.bandit.reskillable.common.capabilities.SkillModel;
 import net.bandit.reskillable.common.commands.skills.Requirement;
 import net.bandit.reskillable.common.commands.skills.RequirementType;
@@ -9,6 +11,7 @@ import net.minecraft.world.entity.player.Player;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 public class AbsEventHandler {
@@ -21,7 +24,7 @@ public class AbsEventHandler {
 
         List<Requirement> unmetRequirements = new ArrayList<>();
         for (Requirement requirement : requirements) {
-            if (skillModel.getSkillLevel(requirement.skill) < requirement.level) {
+            if (!meetsRequirement(skillModel, requirement)) {
                 unmetRequirements.add(requirement);
             }
         }
@@ -29,6 +32,22 @@ public class AbsEventHandler {
         if (!unmetRequirements.isEmpty()) {
             sendSkillRequirementMessage(player, RequirementType.USE, unmetRequirements);
             return false;
+        }
+
+        return true;
+    }
+
+    protected boolean meetsRequirement(SkillModel skillModel, Requirement requirement) {
+        if (requirement == null) {
+            return true;
+        }
+
+        if (requirement.isVanillaSkill()) {
+            return skillModel.getSkillLevel(requirement.skill) >= requirement.level;
+        }
+
+        if (requirement.isCustomSkill()) {
+            return skillModel.getCustomSkillLevel(requirement.customSkillId) >= requirement.level;
         }
 
         return true;
@@ -43,8 +62,19 @@ public class AbsEventHandler {
 
         List<Component> formattedRequirements = new ArrayList<>();
         for (Requirement req : unmetRequirements) {
-            String skillTranslationKey = "skill." + req.skill.name().toLowerCase();
-            Component translatedSkillName = Component.translatable(skillTranslationKey);
+            Component translatedSkillName;
+
+            if (req.isVanillaSkill()) {
+                String skillTranslationKey = "skill." + req.skill.name().toLowerCase(Locale.ROOT);
+                translatedSkillName = Component.translatable(skillTranslationKey);
+            } else if (req.isCustomSkill()) {
+                CustomSkillSlot slot = Configuration.findCustomSkillById(req.customSkillId);
+                String displayName = slot != null ? slot.getDisplayName() : req.customSkillId;
+                translatedSkillName = Component.literal(displayName);
+            } else {
+                translatedSkillName = Component.literal("Unknown");
+            }
+
             formattedRequirements.add(
                     Component.literal("")
                             .append(translatedSkillName)
@@ -58,6 +88,7 @@ public class AbsEventHandler {
                                 .map(Component::getString)
                                 .collect(Collectors.toList()))
                 ));
+
         Component message = Component.translatable(translationKey, joinedRequirements);
         player.displayClientMessage(message, true);
     }
