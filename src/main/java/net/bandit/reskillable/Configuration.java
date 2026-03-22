@@ -730,13 +730,10 @@ public class Configuration {
             return null;
         }
 
-        // exact match first
         Requirement[] exact = locks.get(key);
         if (exact != null && exact.length > 0) {
             return exact;
         }
-
-        // wildcard match second
         for (Map.Entry<String, Requirement[]> entry : locks.entrySet()) {
             String pattern = entry.getKey();
             if (pattern != null && pattern.contains("*") && matchesWildcard(pattern, key)) {
@@ -748,8 +745,22 @@ public class Configuration {
     }
 
     private static boolean matchesWildcard(String pattern, String input) {
-        String regex = "^" + java.util.regex.Pattern.quote(pattern).replace("\\*", ".*") + "$";
-        return input.matches(regex);
+        if (pattern == null || input == null) {
+            return false;
+        }
+
+        String[] parts = pattern.split("\\*", -1);
+        StringBuilder regex = new StringBuilder("^");
+
+        for (int i = 0; i < parts.length; i++) {
+            regex.append(java.util.regex.Pattern.quote(parts[i]));
+            if (i < parts.length - 1) {
+                regex.append(".*");
+            }
+        }
+
+        regex.append("$");
+        return input.matches(regex.toString());
     }
 
     private static Requirement[] parseRequirements(List<String> rawRequirements) {
@@ -965,15 +976,15 @@ public class Configuration {
     }
 
     public static Requirement[] getRequirements(ResourceLocation key) {
-        return skillLocks.get(key.toString());
+        return findRequirementsForKey(skillLocks, key == null ? null : key.toString());
     }
 
     public static Requirement[] getCraftRequirements(ResourceLocation key) {
-        return craftSkillLocks.get(key.toString());
+        return findRequirementsForKey(craftSkillLocks, key == null ? null : key.toString());
     }
 
     public static Requirement[] getEntityAttackRequirements(ResourceLocation key) {
-        return attackSkillLocks.get(key.toString());
+        return findRequirementsForKey(attackSkillLocks, key == null ? null : key.toString());
     }
 
     public static ForgeConfigSpec getConfig() {
