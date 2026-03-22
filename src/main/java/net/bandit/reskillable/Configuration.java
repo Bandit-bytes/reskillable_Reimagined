@@ -695,7 +695,13 @@ public class Configuration {
                 }
 
                 if (rawKey.contains("*")) {
-                    expandWildcardLock(rawKey, requirements, locks);
+                    // Tinkers/material-based compat keys are dynamic string keys, not registry item IDs.
+                    // Keep them as raw wildcard entries so they can be matched at runtime.
+                    if (rawKey.contains("__")) {
+                        mergeRequirementsIntoLock(rawKey, requirements, locks);
+                    } else {
+                        expandWildcardLock(rawKey, requirements, locks);
+                    }
                 } else {
                     mergeRequirementsIntoLock(rawKey, requirements, locks);
                 }
@@ -706,6 +712,44 @@ public class Configuration {
         }
 
         return locks;
+    }
+    public static Requirement[] getRequirementsForKey(String key) {
+        return findRequirementsForKey(skillLocks, key);
+    }
+
+    public static Requirement[] getCraftRequirementsForKey(String key) {
+        return findRequirementsForKey(craftSkillLocks, key);
+    }
+
+    public static Requirement[] getEntityAttackRequirementsForKey(String key) {
+        return findRequirementsForKey(attackSkillLocks, key);
+    }
+
+    private static Requirement[] findRequirementsForKey(Map<String, Requirement[]> locks, String key) {
+        if (locks == null || locks.isEmpty() || key == null || key.isBlank()) {
+            return null;
+        }
+
+        // exact match first
+        Requirement[] exact = locks.get(key);
+        if (exact != null && exact.length > 0) {
+            return exact;
+        }
+
+        // wildcard match second
+        for (Map.Entry<String, Requirement[]> entry : locks.entrySet()) {
+            String pattern = entry.getKey();
+            if (pattern != null && pattern.contains("*") && matchesWildcard(pattern, key)) {
+                return entry.getValue();
+            }
+        }
+
+        return null;
+    }
+
+    private static boolean matchesWildcard(String pattern, String input) {
+        String regex = "^" + java.util.regex.Pattern.quote(pattern).replace("\\*", ".*") + "$";
+        return input.matches(regex);
     }
 
     private static Requirement[] parseRequirements(List<String> rawRequirements) {

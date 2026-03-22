@@ -13,6 +13,9 @@ import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.registries.ForgeRegistries;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class TinkersEventHandler extends AbsEventHandler {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
@@ -57,22 +60,24 @@ public class TinkersEventHandler extends AbsEventHandler {
             return true;
         }
 
-        ResourceLocation exactTinkersId = getTinkersRequirementId(stack);
-        if (exactTinkersId == null) {
+        String exactKey = getTinkersRequirementKey(stack);
+        if (exactKey == null) {
             return true;
         }
 
-        // 1. Check exact material/version-based requirement first
-        if (!checkRequirements(model, player, exactTinkersId)) {
-            return false;
+        // Check exact key + wildcard fallbacks
+        for (String candidate : buildTinkersCandidates(exactKey)) {
+            if (!checkRequirementsForKey(model, player, candidate)) {
+                return false;
+            }
         }
 
-        // 2. Then also check generic base item requirement
+        // Also check plain base item requirement like before
         ResourceLocation baseId = ForgeRegistries.ITEMS.getKey(stack.getItem());
         return baseId == null || checkRequirements(model, player, baseId);
     }
 
-    private ResourceLocation getTinkersRequirementId(ItemStack stack) {
+    private String getTinkersRequirementKey(ItemStack stack) {
         ResourceLocation itemRegistryName = ForgeRegistries.ITEMS.getKey(stack.getItem());
         CompoundTag tag = stack.getTag();
 
@@ -80,30 +85,53 @@ public class TinkersEventHandler extends AbsEventHandler {
             return null;
         }
 
-        // Detect Tinkers-style tool data by NBT presence, so addon tools can work too
+        // Detect Tinkers-style tool data
         if (!tag.contains("tic_materials", Tag.TAG_LIST)) {
             return null;
         }
 
         ListTag materials = tag.getList("tic_materials", Tag.TAG_STRING);
 
-        // If somehow there are no materials, just use the base item
         if (materials.isEmpty()) {
-            return itemRegistryName;
+            return itemRegistryName.toString();
         }
 
-        // Format:
-        // <namespace>:<item>__<material1>__<material2>__<material3>
-        // Example:
-        // tconstruct:pickaxe__tconstruct_wood__tconstruct_wood__tconstruct_skyslime_vine
-        StringBuilder path = new StringBuilder(itemRegistryName.getPath());
+        StringBuilder key = new StringBuilder(itemRegistryName.toString());
 
         for (int i = 0; i < materials.size(); i++) {
-            String materialId = materials.getString(i);
-            path.append("__").append(sanitize(materialId));
+            key.append("__").append(sanitize(materials.getString(i)));
         }
 
-        return new ResourceLocation(itemRegistryName.getNamespace(), path.toString());
+        return key.toString();
+    }
+
+    private List<String> buildTinkersCandidates(String exactKey) {
+        List<String> candidates = new ArrayList<>();
+        candidates.add(exactKey);
+
+        String[] parts = exactKey.split("__");
+
+        // Build progressively broader wildcard matches:
+        // exact
+        // item__mat1__mat2__mat3__*
+        // item__mat1__mat2__*
+        // item__mat1__*
+        // item__*
+        if (parts.length > 1) {
+            for (int i = parts.length - 1; i >= 1; i--) {
+                StringBuilder builder = new StringBuilder(parts[0]);
+                for (int j = 1; j < i; j++) {
+                    builder.append("__").append(parts[j]);
+                }
+                builder.append("__*");
+                candidates.add(builder.toString());
+            }
+        }
+
+        // plain base item
+        candidates.add(parts[0]);
+
+        return candidates;
     }
 
     private String sanitize(String input) {
@@ -111,21 +139,22 @@ public class TinkersEventHandler extends AbsEventHandler {
                 .replace('/', '_')
                 .replace('#', '_');
     }
-    /**Example's:
-     "tconstruct:pickaxe__tconstruct_wood__tconstruct_wood__tconstruct_skyslime_vine": [
-     "mining:4"
-     ],
-     "tconstruct:kama__tconstruct_manyullyn__tconstruct_manyullyn__tconstruct_manyullyn": [
-     "attack:12"
-     ],
-     "tconstruct:broad_axe__tconstruct_pig_iron__tconstruct_pig_iron__tconstruct_pig_iron__tconstruct_pig_iron": [
-     "attack:10",
-     "mining:10"
-     ],
-     "tconstruct:pickaxe": [
-     "mining:2"
-     ]
-     }
-     }
-    ***/
+
+    /*
+    Example supported keys:
+
+    "tconstruct:pickaxe__tconstruct_wood__tconstruct_wood__tconstruct_skyslime_vine": [
+      "mining:4"
+    ],
+    "tconstruct:kama__tconstruct_manyullyn__tconstruct_manyullyn__tconstruct_manyullyn": [
+      "attack:12"
+    ],
+    "tconstruct:broad_axe__tconstruct_pig_iron__*": [
+      "attack:10",
+      "mining:10"
+    ],
+    "tconstruct:pickaxe": [
+      "mining:2"
+    ]
+    */
 }

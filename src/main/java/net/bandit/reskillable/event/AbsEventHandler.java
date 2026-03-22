@@ -18,6 +18,15 @@ public class AbsEventHandler {
 
     protected boolean checkRequirements(SkillModel skillModel, Player player, ResourceLocation resource) {
         Requirement[] requirements = RequirementType.USE.getRequirements(resource);
+        return checkRequirementArray(skillModel, player, RequirementType.USE, requirements);
+    }
+
+    protected boolean checkRequirementsForKey(SkillModel skillModel, Player player, String key) {
+        Requirement[] requirements = RequirementType.USE.getRequirementsForKey(key);
+        return checkRequirementArray(skillModel, player, RequirementType.USE, requirements);
+    }
+
+    private boolean checkRequirementArray(SkillModel skillModel, Player player, RequirementType type, Requirement[] requirements) {
         if (requirements == null || requirements.length == 0) {
             return true;
         }
@@ -30,7 +39,7 @@ public class AbsEventHandler {
         }
 
         if (!unmetRequirements.isEmpty()) {
-            sendSkillRequirementMessage(player, RequirementType.USE, unmetRequirements);
+            sendSkillRequirementMessage(player, type, unmetRequirements);
             return false;
         }
 
