@@ -16,7 +16,9 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.FormattedText;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.player.Player;
@@ -93,7 +95,12 @@ public class SkillButton extends Button {
             guiGraphics.drawString(font, "✖", iconX, iconY, 0xFF5555, false);
         }
 
-        guiGraphics.drawString(font, getDisplayNameComponent(), getX() + 25, getY() + 7, 0xFFFFFF, false);
+        int nameX = getX() + 25;
+        int nameY = getY() + 7;
+        int rightPadding = gateBlocked ? 22 : 6;
+        int maxNameWidth = width - (nameX - getX()) - rightPadding;
+
+        drawScaledToFitText(guiGraphics, font, getDisplayNameComponent(), nameX, nameY, maxNameWidth, 0xFFFFFF);
         guiGraphics.drawString(font, Component.literal(level + "/" + maxLevel), getX() + 25, getY() + 18, 0xBEBEBE, false);
 
         if (gateBlocked) {
@@ -334,5 +341,28 @@ public class SkillButton extends Button {
 
     private static String normalizeSkillId(String skillId) {
         return skillId == null ? "" : skillId.trim().toLowerCase(Locale.ROOT);
+    }
+    private void drawScaledToFitText(GuiGraphics guiGraphics, Font font, Component text, int x, int y, int maxWidth, int color) {
+        int textWidth = font.width(text);
+
+        if (textWidth <= maxWidth) {
+            guiGraphics.drawString(font, text, x, y, color, false);
+            return;
+        }
+
+        float scale = (float) maxWidth / (float) textWidth;
+        float minScale = 0.72F;
+        scale = Math.max(scale, minScale);
+
+        guiGraphics.enableScissor(x, y - 1, x + maxWidth, y + font.lineHeight + 2);
+        try {
+            guiGraphics.pose().pushPose();
+            guiGraphics.pose().translate(x, y, 0);
+            guiGraphics.pose().scale(scale, scale, 1.0F);
+            guiGraphics.drawString(font, text, 0, 0, color, false);
+            guiGraphics.pose().popPose();
+        } finally {
+            guiGraphics.disableScissor();
+        }
     }
 }

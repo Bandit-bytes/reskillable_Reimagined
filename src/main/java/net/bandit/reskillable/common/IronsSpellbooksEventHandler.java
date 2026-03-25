@@ -41,7 +41,7 @@ public class IronsSpellbooksEventHandler extends AbsEventHandler {
         );
 
         if (!checkRequirements(model, player, checkKey)) {
-            System.out.println("⚠ Blocking spell cast: unmet requirements for " + checkKey);
+            System.out.println( "Blocking spell cast: unmet requirements for " + checkKey);
             event.setCanceled(true);
         }
     }

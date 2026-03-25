@@ -58,6 +58,12 @@
   "tooltip.reskillable.hold_shift": "Hold Shift for details",
   "config.jade.plugin_reskillable.requirements_block": "Show Skill Requirements Blocks",
   "config.jade.plugin_reskillable.requirements_entity": "Show Skill Requirements Entities",
-  "message.reskillable.spent_level_cap": "You have reached the maximum spendable skill levels (%s/%s)."
+  "message.reskillable.spent_level_cap": "You have reached the maximum spendable skill levels (%s/%s).",
+  "gui.reskillable.builtin_skills": "Built-In Skills",
+  "gui.reskillable.custom_skills": "Custom Skills",
+  "gui.reskillable.builtin_perks": "Built-In Perks",
+  "gui.reskillable.custom_perks": "Custom Perks",
+  "attribute.name.reskillable.health_regeneration": "Health Regeneration",
+  "reskillable.requirement.not_met": "Requirement not met."
 
 }

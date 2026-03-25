@@ -19,7 +19,9 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.FormattedText;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
@@ -251,9 +253,17 @@ public class SkillScreen extends Screen {
         if (Configuration.isSecondSkillPageEnabled()) {
             Component subPageTitle;
             if (page == 0) {
-                subPageTitle = Component.literal(skillSubPage == 0 ? "Built-In Skills" : "Custom Skills");
+                subPageTitle = Component.translatable(
+                        skillSubPage == 0
+                                ? "gui.reskillable.builtin_skills"
+                                : "gui.reskillable.custom_skills"
+                );
             } else {
-                subPageTitle = Component.literal(perkSubPage == 0 ? "Built-In Perks" : "Custom Perks");
+                subPageTitle = Component.translatable(
+                        perkSubPage == 0
+                                ? "gui.reskillable.builtin_perks"
+                                : "gui.reskillable.custom_perks"
+                );
             }
 
             int titleX = left + 88 - (font.width(subPageTitle) / 2);
@@ -266,6 +276,7 @@ public class SkillScreen extends Screen {
             renderable.render(guiGraphics, mouseX, mouseY, partialTicks);
         }
 
+        // Skill page tooltips
         if (page == 0) {
             for (var widget : this.renderables) {
                 if (widget instanceof SkillButton button && button.isMouseOver(mouseX, mouseY)) {
@@ -287,6 +298,18 @@ public class SkillScreen extends Screen {
                     );
                     break;
                 }
+            }
+        }
+
+        if (page == 1) {
+            Component perkTooltip = getHoveredPerkTooltip(mouseX, mouseY, left, top);
+            if (perkTooltip != null) {
+                guiGraphics.renderTooltip(
+                        font,
+                        List.of(perkTooltip.getVisualOrderText()),
+                        mouseX,
+                        mouseY
+                );
             }
         }
     }
@@ -313,15 +336,31 @@ public class SkillScreen extends Screen {
 
             Component line = buildSinglePerkLine(skill, skillLevel);
 
-            float scale = 0.85f;
+            int panelRight = left + 176 - 8;
+            int maxTextWidth = panelRight - textX;
 
-            gui.pose().pushPose();
-            gui.pose().translate(textX, textY, 0);
-            gui.pose().scale(scale, scale, 1.0F);
-            gui.drawString(this.font, line, 0, 0, 0xFFFFFF, false);
-            gui.pose().popPose();
+            drawEllipsizedRowText(
+                    gui,
+                    line,
+                    textX,
+                    boxY + 4,
+                    maxTextWidth,
+                    boxY + 1,
+                    boxY + PERK_ROW_HEIGHT - 1,
+                    0xFFFFFF
+            );
 
             row++;
+        }
+    }
+    private void drawEllipsizedRowText(GuiGraphics gui, Component text, int x, int y, int maxWidth, int rowTop, int rowBottom, int color) {
+        FormattedText fitted = this.font.ellipsize(text, maxWidth);
+
+        gui.enableScissor(x, rowTop, x + maxWidth, rowBottom);
+        try {
+            gui.drawString(this.font, Language.getInstance().getVisualOrder(fitted), x, y, color, false);
+        } finally {
+            gui.disableScissor();
         }
     }
 
@@ -363,13 +402,19 @@ public class SkillScreen extends Screen {
 
             Component line = buildCustomPerkLine(slot, skillLevel);
 
-            float scale = 0.85f;
+            int panelRight = left + 176 - 8;
+            int maxTextWidth = panelRight - textX;
 
-            gui.pose().pushPose();
-            gui.pose().translate(textX, textY, 0);
-            gui.pose().scale(scale, scale, 1.0F);
-            gui.drawString(this.font, line, 0, 0, 0xFFFFFF, false);
-            gui.pose().popPose();
+            drawEllipsizedRowText(
+                    gui,
+                    line,
+                    textX,
+                    boxY + 4,
+                    maxTextWidth,
+                    boxY + 1,
+                    boxY + PERK_ROW_HEIGHT - 1,
+                    0xFFFFFF
+            );
 
             row++;
         }
@@ -954,6 +999,29 @@ public class SkillScreen extends Screen {
             this.gateBlocked = blocked;
             this.gateMissing = missingList;
         }
+        private void drawScaledToFitText(GuiGraphics guiGraphics, Font font, Component text, int x, int y, int maxWidth, int color) {
+            int textWidth = font.width(text);
+
+            if (textWidth <= maxWidth) {
+                guiGraphics.drawString(font, text, x, y, color, false);
+                return;
+            }
+
+            float scale = (float) maxWidth / (float) textWidth;
+            float minScale = 0.72F;
+            scale = Math.max(scale, minScale);
+
+            guiGraphics.enableScissor(x, y - 1, x + maxWidth, y + font.lineHeight + 2);
+            try {
+                guiGraphics.pose().pushPose();
+                guiGraphics.pose().translate(x, y, 0);
+                guiGraphics.pose().scale(scale, scale, 1.0F);
+                guiGraphics.drawString(font, text, 0, 0, color, false);
+                guiGraphics.pose().popPose();
+            } finally {
+                guiGraphics.disableScissor();
+            }
+        }
 
         @Override
         protected void renderWidget(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
@@ -998,7 +1066,12 @@ public class SkillScreen extends Screen {
                 guiGraphics.drawString(font, "?", getX() + 10, getY() + 10, 0xAAAAAA, false);
             }
 
-            guiGraphics.drawString(font, Component.literal(skillSlot.displayName), getX() + 25, getY() + 7, 0xFFFFFF, false);
+            int nameX = getX() + 25;
+            int nameY = getY() + 7;
+            int rightPadding = gateBlocked ? 22 : 6;
+            int maxNameWidth = width - (nameX - getX()) - rightPadding;
+
+            drawScaledToFitText(guiGraphics, font, Component.literal(skillSlot.displayName), nameX, nameY, maxNameWidth, 0xFFFFFF);
             guiGraphics.drawString(font, Component.literal(level + "/" + maxLevel), getX() + 25, getY() + 18, 0xBEBEBE, false);
 
             if (skillSlot.hasPerk() && !model.isPerkEnabled(skillId)) {
@@ -1214,5 +1287,57 @@ public class SkillScreen extends Screen {
 
             return lines;
         }
+    }
+    private Component getHoveredPerkTooltip(int mouseX, int mouseY, int left, int top) {
+        Player player = Minecraft.getInstance().player;
+        if (player == null) return null;
+
+        SkillModel model = SkillModel.get(player);
+        if (model == null) return null;
+
+        if (perkSubPage == 0) {
+            int row = 0;
+            for (Skill skill : Skill.values()) {
+                if (row >= 8) break;
+
+                int boxX = left + PERK_BOX_X;
+                int boxY = top + PERK_BOX_Y + (row * PERK_ROW_HEIGHT);
+                int boxWidth = 176 - PERK_BOX_X - 8;
+                int boxHeight = PERK_ROW_HEIGHT;
+
+                if (isMouseOverRect(mouseX, mouseY, boxX, boxY, boxWidth, boxHeight)) {
+                    int skillLevel = model.getSkillLevel(normalizeSkillId(skill.name()));
+                    return buildSinglePerkLine(skill, skillLevel);
+                }
+
+                row++;
+            }
+        } else {
+            int row = 0;
+            for (Configuration.CustomSkillSlot slot : Configuration.getCustomSkills()) {
+                if (slot == null || !slot.isEnabled() || !slot.hasPerk()) {
+                    continue;
+                }
+
+                int boxX = left + PERK_BOX_X;
+                int boxY = top + PERK_BOX_Y + (row * PERK_ROW_HEIGHT);
+                int boxWidth = 176 - PERK_BOX_X - 8;
+                int boxHeight = PERK_ROW_HEIGHT;
+
+                if (isMouseOverRect(mouseX, mouseY, boxX, boxY, boxWidth, boxHeight)) {
+                    int skillLevel = model.getSkillLevel(normalizeSkillId(slot.id));
+                    return buildCustomPerkLine(slot, skillLevel);
+                }
+
+                row++;
+                if (row >= 8) break;
+            }
+        }
+
+        return null;
+    }
+
+    private boolean isMouseOverRect(int mouseX, int mouseY, int x, int y, int width, int height) {
+        return mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + height;
     }
 }

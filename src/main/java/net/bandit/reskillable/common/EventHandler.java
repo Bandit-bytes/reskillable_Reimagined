@@ -35,6 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class EventHandler {
     private static final Map<UUID, SkillModel> lastDiedPlayerSkillsMap = new ConcurrentHashMap<>();
+    private static final java.util.Set<UUID> rejectingArmorEquip = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
@@ -126,21 +127,35 @@ public class EventHandler {
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public void onChangeEquipment(LivingEquipmentChangeEvent event) {
         if (!(event.getEntity() instanceof Player player)) return;
+        if (player.level().isClientSide()) return;
+        if (event.getSlot().getType() != EquipmentSlot.Type.HUMANOID_ARMOR) return;
 
         SkillModel model = SkillModel.get(player);
         if (model == null || player.isCreative()) return;
 
-        if (event.getSlot().getType() == EquipmentSlot.Type.HUMANOID_ARMOR) {
-            ItemStack newItem = event.getTo();
-            ItemStack oldItem = event.getFrom();
+        ItemStack newItem = event.getTo();
+        if (newItem.isEmpty()) return;
 
+        UUID uuid = player.getUUID();
+        if (!rejectingArmorEquip.add(uuid)) return;
+
+        try {
             if (!model.canUseItem(player, newItem)) {
-                player.setItemSlot(event.getSlot(), oldItem);
+                ItemStack rejected = newItem.copy();
+                player.setItemSlot(event.getSlot(), ItemStack.EMPTY);
 
-                player.drop(newItem.copy(), false);
+                if (!player.getInventory().add(rejected)) {
+                    player.drop(rejected, false);
+                }
 
-                player.sendSystemMessage(Component.literal("You lack the skill to equip this armor.").withStyle(ChatFormatting.RED));
+                player.containerMenu.broadcastChanges();
+                player.sendSystemMessage(
+                        Component.literal("You lack the skill to equip this armor.")
+                                .withStyle(ChatFormatting.RED)
+                );
             }
+        } finally {
+            rejectingArmorEquip.remove(uuid);
         }
     }
 

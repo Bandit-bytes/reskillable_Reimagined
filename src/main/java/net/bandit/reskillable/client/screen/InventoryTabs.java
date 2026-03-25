@@ -57,12 +57,18 @@ public class InventoryTabs {
 
         position = getDefault();
 
-        if (!Files.exists(SAVE_PATH)) return;
+        if (!Files.exists(SAVE_PATH)) {
+            save();
+            return;
+        }
 
         try {
             String json = Files.readString(SAVE_PATH);
             JsonObject root = GSON.fromJson(json, JsonObject.class);
-            if (root == null) return;
+            if (root == null) {
+                save();
+                return;
+            }
 
             if (root.has("x") && root.has("y")) {
                 int x = root.get("x").getAsInt();
@@ -77,9 +83,14 @@ public class InventoryTabs {
                     int x = obj.has("x") ? obj.get("x").getAsInt() : position.x;
                     int y = obj.has("y") ? obj.get("y").getAsInt() : position.y;
                     position = new Pos(x, y);
+                    save();
+                    return;
                 }
             }
+
+            save();
         } catch (Exception ignored) {
+            save();
         }
     }
 

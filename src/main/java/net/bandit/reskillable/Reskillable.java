@@ -7,8 +7,10 @@ import net.bandit.reskillable.common.*;
 import net.bandit.reskillable.common.commands.Commands;
 import net.bandit.reskillable.common.network.NetworkInit;
 import net.bandit.reskillable.event.ClientEvents;
+import net.bandit.reskillable.event.RegenAttributeHandler;
 import net.bandit.reskillable.event.SkillAttachments;
 import net.bandit.reskillable.event.SoundRegistry;
+import net.bandit.reskillable.registry.AttributeRegistry;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -31,10 +33,13 @@ public class Reskillable {
 
     public Reskillable(IEventBus modEventBus, ModContainer modContainer) {
         modEventBus.addListener(this::commonSetup);
+        modEventBus.addListener(AttributeRegistry::modifyEntityAttributes);
         SkillAttachments.init(modEventBus);
         modEventBus.addListener(NetworkInit::register);
         SoundRegistry.SOUND_EVENTS.register(modEventBus);
+        AttributeRegistry.ATTRIBUTES.register(modEventBus);
         NeoForge.EVENT_BUS.register(new EventHandler());
+        NeoForge.EVENT_BUS.register(new RegenAttributeHandler());
         NeoForge.EVENT_BUS.register(new Commands());
         NeoForge.EVENT_BUS.register(this);
 
