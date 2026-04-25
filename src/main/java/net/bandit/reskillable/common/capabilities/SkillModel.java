@@ -368,57 +368,75 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
                 continue;
             }
 
-            Attribute attribute = slot.getResolvedPerkAttribute();
-            if (attribute == null) {
-                continue;
-            }
-
-            Holder.Reference<Attribute> attr = BuiltInRegistries.ATTRIBUTE
-                    .getResourceKey(attribute)
-                    .flatMap(BuiltInRegistries.ATTRIBUTE::getHolder)
-                    .orElse(null);
-
-            if (attr == null) continue;
-
-            var attrInstance = player.getAttributes().getInstance(attr);
-            if (attrInstance == null) continue;
-
             String skillId = normalizeSkillId(slot.getId());
-
-            ResourceLocation modifierId = ResourceLocation.fromNamespaceAndPath(
-                    "reskillable",
-                    "custom_" + skillId
-            );
-
-            attrInstance.getModifiers().stream()
-                    .filter(mod -> mod.id().equals(modifierId))
-                    .findFirst()
-                    .ifPresent(attrInstance::removeModifier);
-
-            if (!isPerkEnabled(skillId)) {
-                continue;
-            }
 
             int skillLevel = getSkillLevel(skillId);
             int step = Math.max(1, slot.getPerkStep());
             int bonusSteps = skillLevel / step;
             double totalBonus = bonusSteps * slot.getPerkAmountPerStep();
 
-            if (totalBonus <= 0) {
-                continue;
+            for (Attribute attribute : slot.getResolvedPerkAttributes()) {
+                if (attribute == null) {
+                    continue;
+                }
+
+                Holder.Reference<Attribute> attr = BuiltInRegistries.ATTRIBUTE
+                        .getResourceKey(attribute)
+                        .flatMap(BuiltInRegistries.ATTRIBUTE::getHolder)
+                        .orElse(null);
+
+                if (attr == null) {
+                    continue;
+                }
+
+                var attrInstance = player.getAttributes().getInstance(attr);
+                if (attrInstance == null) {
+                    continue;
+                }
+
+                ResourceLocation modifierId = getCustomSkillModifierId(skillId, attribute);
+
+                attrInstance.getModifiers().stream()
+                        .filter(mod -> mod.id().equals(modifierId))
+                        .findFirst()
+                        .ifPresent(attrInstance::removeModifier);
+
+                if (!isPerkEnabled(skillId)) {
+                    continue;
+                }
+
+                if (totalBonus <= 0) {
+                    continue;
+                }
+
+                AttributeModifier modifier = new AttributeModifier(
+                        modifierId,
+                        totalBonus,
+                        slot.getResolvedPerkOperation()
+                );
+
+                attrInstance.addTransientModifier(modifier);
             }
-
-            AttributeModifier modifier = new AttributeModifier(
-                    modifierId,
-                    totalBonus,
-                    slot.getResolvedPerkOperation()
-            );
-
-            attrInstance.addTransientModifier(modifier);
         }
 
         handleHealthBonus(player);
         forceAttributeSync(player);
+    }
+
+    private static ResourceLocation getCustomSkillModifierId(String skillId, Attribute attribute) {
+        ResourceLocation attributeId = BuiltInRegistries.ATTRIBUTE.getKey(attribute);
+
+        String safeAttributeId = attributeId == null
+                ? "unknown"
+                : attributeId.toString()
+                .replace(':', '_')
+                .replace('/', '_')
+                .replace('.', '_');
+
+        return ResourceLocation.fromNamespaceAndPath(
+                "reskillable",
+                "custom_" + normalizeSkillId(skillId) + "_" + safeAttributeId
+        );
     }
 
     private void handleHealthBonus(Player player) {

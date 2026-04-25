@@ -134,83 +134,85 @@ public class Configuration {
             """;
 
     private static final String DEFAULT_CUSTOM_SKILLS = """
+        {
+          "customSkills": [
             {
-              "customSkills": [
-                {
-                  "id": "swimming",
-                  "displayName": "Swimming",
-                  "perkAttribute": "neoforge:swim_speed",
-                  "icon": "reskillable:textures/gui/custom_skills/swimming.png",
-                  "perkOperation": "ADDITION",
-                  "perkAmountPerStep": 0.1,
-                  "perkStep": 5
-                },
-                {
-                  "id": "",
-                  "displayName": "",
-                  "perkAttribute": "",
-                  "icon": "",
-                  "perkOperation": "ADDITION",
-                  "perkAmountPerStep": 0.0,
-                  "perkStep": 5
-                },
-                {
-                  "id": "",
-                  "displayName": "",
-                  "perkAttribute": "",
-                  "icon": "",
-                  "perkOperation": "ADDITION",
-                  "perkAmountPerStep": 0.0,
-                  "perkStep": 5
-                },
-                {
-                  "id": "",
-                  "displayName": "",
-                  "perkAttribute": "",
-                  "icon": "",
-                  "perkOperation": "ADDITION",
-                  "perkAmountPerStep": 0.0,
-                  "perkStep": 5
-                },
-                {
-                  "id": "",
-                  "displayName": "",
-                  "perkAttribute": "",
-                  "icon": "",
-                  "perkOperation": "ADDITION",
-                  "perkAmountPerStep": 0.0,
-                  "perkStep": 5
-                },
-                {
-                  "id": "",
-                  "displayName": "",
-                  "perkAttribute": "",
-                  "icon": "",
-                  "perkOperation": "ADDITION",
-                  "perkAmountPerStep": 0.0,
-                  "perkStep": 5
-                },
-                {
-                  "id": "",
-                  "displayName": "",
-                  "perkAttribute": "",
-                  "icon": "",
-                  "perkOperation": "ADDITION",
-                  "perkAmountPerStep": 0.0,
-                  "perkStep": 5
-                },
-                {
-                  "id": "",
-                  "displayName": "",
-                  "perkAttribute": "",
-                  "icon": "",
-                  "perkOperation": "ADDITION",
-                  "perkAmountPerStep": 0.0,
-                  "perkStep": 5
-                }
-              ]
+              "id": "swimming",
+              "displayName": "Swimming",
+              "perkAttributes": [
+                "neoforge:swim_speed"
+              ],
+              "icon": "reskillable:textures/gui/custom_skills/swimming.png",
+              "perkOperation": "ADDITION",
+              "perkAmountPerStep": 0.1,
+              "perkStep": 5
+            },
+            {
+              "id": "",
+              "displayName": "",
+              "perkAttributes": [],
+              "icon": "",
+              "perkOperation": "ADDITION",
+              "perkAmountPerStep": 0.0,
+              "perkStep": 5
+            },
+            {
+              "id": "",
+              "displayName": "",
+              "perkAttributes": [],
+              "icon": "",
+              "perkOperation": "ADDITION",
+              "perkAmountPerStep": 0.0,
+              "perkStep": 5
+            },
+            {
+              "id": "",
+              "displayName": "",
+              "perkAttributes": [],
+              "icon": "",
+              "perkOperation": "ADDITION",
+              "perkAmountPerStep": 0.0,
+              "perkStep": 5
+            },
+            {
+              "id": "",
+              "displayName": "",
+              "perkAttributes": [],
+              "icon": "",
+              "perkOperation": "ADDITION",
+              "perkAmountPerStep": 0.0,
+              "perkStep": 5
+            },
+            {
+              "id": "",
+              "displayName": "",
+              "perkAttributes": [],
+              "icon": "",
+              "perkOperation": "ADDITION",
+              "perkAmountPerStep": 0.0,
+              "perkStep": 5
+            },
+            {
+              "id": "",
+              "displayName": "",
+              "perkAttributes": [],
+              "icon": "",
+              "perkOperation": "ADDITION",
+              "perkAmountPerStep": 0.0,
+              "perkStep": 5
+            },
+            {
+              "id": "",
+              "displayName": "",
+              "perkAttributes": [],
+              "icon": "",
+              "perkOperation": "ADDITION",
+              "perkAmountPerStep": 0.0,
+              "perkStep": 5
             }
-            """;
+          ]
+        }
+        """;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
@@ -408,7 +410,8 @@ public class Configuration {
             for (int i = 0; i < MAX_CUSTOM_SKILLS; i++) {
                 CustomSkillSlot slot = i < loaded.size() && loaded.get(i) != null
                         ? loaded.get(i)
-                        : new CustomSkillSlot("", "", "", "", "ADDITION", 0.0, 5);
+                        : new CustomSkillSlot("", "", "", List.of(), "", "ADDITION", 0.0, 5);
+
                 normalized.add(normalizeCustomSkillSlot(slot));
             }
 
@@ -423,7 +426,7 @@ public class Configuration {
     private static List<CustomSkillSlot> createEmptyCustomSkillSlots() {
         List<CustomSkillSlot> empty = new ArrayList<>();
         for (int i = 0; i < MAX_CUSTOM_SKILLS; i++) {
-            empty.add(new CustomSkillSlot("", "", "", "", "ADDITION", 0.0, 5));
+            empty.add(new CustomSkillSlot("", "", "", List.of(), "", "ADDITION", 0.0, 5));
         }
         return empty;
     }
@@ -431,39 +434,51 @@ public class Configuration {
     private static CustomSkillSlot normalizeCustomSkillSlot(CustomSkillSlot slot) {
         String id = slot.id == null ? "" : slot.id.trim().toLowerCase(Locale.ROOT);
         String displayName = slot.displayName == null ? "" : slot.displayName.trim();
-        String perkAttribute = slot.perkAttribute == null ? "" : slot.perkAttribute.trim();
         String icon = slot.icon == null ? "" : slot.icon.trim();
         String perkOperation = slot.perkOperation == null ? "ADDITION" : slot.perkOperation.trim().toUpperCase(Locale.ROOT);
         double perkAmountPerStep = Math.max(0.0, slot.perkAmountPerStep);
         int perkStep = Math.max(1, slot.perkStep);
 
-        if (!id.isEmpty() && !id.matches("[a-z0-9_]+")) {
-            System.err.println("[Reskillable] Invalid custom skill id '" + id + "'. Only lowercase letters, numbers, and underscores are allowed.");
-            id = "";
-            displayName = "";
-            perkAttribute = "";
-            icon = "";
-            perkAmountPerStep = 0.0;
-            perkStep = 5;
-            perkOperation = "ADDITION";
+        String legacyPerkAttribute = slot.perkAttribute == null ? "" : slot.perkAttribute.trim();
+
+        LinkedHashSet<String> normalizedAttributes = new LinkedHashSet<>();
+
+        if (!legacyPerkAttribute.isBlank()) {
+            normalizedAttributes.add(legacyPerkAttribute);
         }
 
-        if (!perkAttribute.isBlank()) {
-            try {
-                ResourceLocation attrId = ResourceLocation.parse(perkAttribute);
-                if (!BuiltInRegistries.ATTRIBUTE.containsKey(attrId)) {
-                    System.err.println("[Reskillable] Unknown custom perk attribute '" + perkAttribute + "' for skill '" + id + "'.");
-                    perkAttribute = "";
+        if (slot.perkAttributes != null) {
+            for (String rawAttribute : slot.perkAttributes) {
+                if (rawAttribute != null && !rawAttribute.isBlank()) {
+                    normalizedAttributes.add(rawAttribute.trim());
                 }
+            }
+        }
+
+        if (!id.isEmpty() && !id.matches("[a-z0-9_]+")) {
+            System.err.println("[Reskillable] Invalid custom skill id '" + id + "'. Only lowercase letters, numbers, and underscores are allowed.");
+            return new CustomSkillSlot("", "", "", List.of(), "", "ADDITION", 0.0, 5);
+        }
+
+        List<String> validAttributes = new ArrayList<>();
+
+        for (String rawAttribute : normalizedAttributes) {
+            try {
+                ResourceLocation attrId = ResourceLocation.parse(rawAttribute);
+
+                if (!BuiltInRegistries.ATTRIBUTE.containsKey(attrId)) {
+                    System.err.println("[Reskillable] Unknown custom perk attribute '" + rawAttribute + "' for skill '" + id + "'.");
+                    continue;
+                }
+
+                validAttributes.add(rawAttribute);
             } catch (Exception e) {
-                System.err.println("[Reskillable] Invalid custom perk attribute '" + perkAttribute + "' for skill '" + id + "'.");
-                perkAttribute = "";
+                System.err.println("[Reskillable] Invalid custom perk attribute '" + rawAttribute + "' for skill '" + id + "'.");
             }
         }
 
         try {
-            String op = perkOperation;
-            switch (op) {
+            switch (perkOperation) {
                 case "ADD_VALUE", "VALUE", "ADDITION",
                      "ADD_MULTIPLIED_BASE", "MULTIPLIED_BASE", "MULTIPLY_BASE",
                      "ADD_MULTIPLIED_TOTAL", "MULTIPLIED_TOTAL", "MULTIPLY_TOTAL" -> {}
@@ -474,7 +489,18 @@ public class Configuration {
             perkOperation = "ADDITION";
         }
 
-        return new CustomSkillSlot(id, displayName, perkAttribute, icon, perkOperation, perkAmountPerStep, perkStep);
+        String firstAttribute = validAttributes.isEmpty() ? "" : validAttributes.get(0);
+
+        return new CustomSkillSlot(
+                id,
+                displayName,
+                firstAttribute,
+                validAttributes,
+                icon,
+                perkOperation,
+                perkAmountPerStep,
+                perkStep
+        );
     }
 
     public static boolean isSecondSkillPageEnabled() {
@@ -604,24 +630,41 @@ public class Configuration {
     public static final class CustomSkillSlot {
         public String id;
         public String displayName;
+
+        /**
+         * Old single-attribute field.
+         * Kept for backwards compatibility with existing configs.
+         */
         public String perkAttribute;
+
+        /**
+         * New multi-attribute field.
+         * All listed attributes use the same perkOperation, perkAmountPerStep, and perkStep.
+         */
+        public List<String> perkAttributes;
+
         public String icon;
         public String perkOperation;
         public double perkAmountPerStep;
         public int perkStep;
 
         public CustomSkillSlot() {
-            this("", "", "", "", "ADDITION", 0.0, 5);
+            this("", "", "", List.of(), "", "ADDITION", 0.0, 5);
         }
 
         public CustomSkillSlot(String id, String displayName) {
-            this(id, displayName, "", "", "ADDITION", 0.0, 5);
+            this(id, displayName, "", List.of(), "", "ADDITION", 0.0, 5);
         }
 
         public CustomSkillSlot(String id, String displayName, String perkAttribute, String icon, String perkOperation, double perkAmountPerStep, int perkStep) {
+            this(id, displayName, perkAttribute, List.of(), icon, perkOperation, perkAmountPerStep, perkStep);
+        }
+
+        public CustomSkillSlot(String id, String displayName, String perkAttribute, List<String> perkAttributes, String icon, String perkOperation, double perkAmountPerStep, int perkStep) {
             this.id = id == null ? "" : id;
             this.displayName = displayName == null ? "" : displayName;
             this.perkAttribute = perkAttribute == null ? "" : perkAttribute;
+            this.perkAttributes = perkAttributes == null ? new ArrayList<>() : new ArrayList<>(perkAttributes);
             this.icon = icon == null ? "" : icon;
             this.perkOperation = perkOperation == null ? "ADDITION" : perkOperation;
             this.perkAmountPerStep = Math.max(0.0, perkAmountPerStep);
@@ -640,8 +683,38 @@ public class Configuration {
             return displayName == null || displayName.isBlank() ? id : displayName;
         }
 
+        /**
+         * Old helper. Returns the first configured attribute.
+         * This keeps older code from instantly breaking.
+         */
         public String getPerkAttribute() {
-            return perkAttribute == null ? "" : perkAttribute.trim();
+            List<String> attributes = getPerkAttributes();
+            return attributes.isEmpty() ? "" : attributes.get(0);
+        }
+
+        /**
+         * New helper. Combines:
+         * - old perkAttribute
+         * - new perkAttributes list
+         *
+         * Duplicates are removed while preserving order.
+         */
+        public List<String> getPerkAttributes() {
+            LinkedHashSet<String> attributes = new LinkedHashSet<>();
+
+            if (perkAttribute != null && !perkAttribute.isBlank()) {
+                attributes.add(perkAttribute.trim());
+            }
+
+            if (perkAttributes != null) {
+                for (String attr : perkAttributes) {
+                    if (attr != null && !attr.isBlank()) {
+                        attributes.add(attr.trim());
+                    }
+                }
+            }
+
+            return new ArrayList<>(attributes);
         }
 
         public String getIcon() {
@@ -661,20 +734,45 @@ public class Configuration {
         }
 
         public boolean hasPerk() {
-            return !getPerkAttribute().isBlank() && perkAmountPerStep > 0.0;
+            return !getPerkAttributes().isEmpty() && perkAmountPerStep > 0.0;
         }
 
+        /**
+         * Old helper. Returns the first resolved attribute.
+         * Use getResolvedPerkAttributes() for the new multi-attribute behavior.
+         */
         public Attribute getResolvedPerkAttribute() {
+            List<Attribute> attributes = getResolvedPerkAttributes();
+            return attributes.isEmpty() ? null : attributes.get(0);
+        }
+
+        /**
+         * New helper. Resolves every configured attribute.
+         */
+        public List<Attribute> getResolvedPerkAttributes() {
+            List<Attribute> resolved = new ArrayList<>();
+
             if (!hasPerk()) {
-                return null;
+                return resolved;
             }
 
-            try {
-                return BuiltInRegistries.ATTRIBUTE.get(ResourceLocation.parse(getPerkAttribute()));
-            } catch (Exception e) {
-                System.err.println("[Reskillable] Invalid custom perk attribute for skill '" + id + "': " + perkAttribute);
-                return null;
+            for (String rawAttribute : getPerkAttributes()) {
+                try {
+                    ResourceLocation attrId = ResourceLocation.parse(rawAttribute);
+                    Attribute attribute = BuiltInRegistries.ATTRIBUTE.get(attrId);
+
+                    if (attribute == null) {
+                        System.err.println("[Reskillable] Unknown custom perk attribute for skill '" + id + "': " + rawAttribute);
+                        continue;
+                    }
+
+                    resolved.add(attribute);
+                } catch (Exception e) {
+                    System.err.println("[Reskillable] Invalid custom perk attribute for skill '" + id + "': " + rawAttribute);
+                }
             }
+
+            return resolved;
         }
 
         public AttributeModifier.Operation getResolvedPerkOperation() {
@@ -705,7 +803,6 @@ public class Configuration {
             }
         }
     }
-
     public static boolean isSkillLevelingEnabled() {
         return enableSkillLeveling;
     }
