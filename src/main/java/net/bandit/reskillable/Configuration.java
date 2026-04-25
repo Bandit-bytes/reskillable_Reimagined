@@ -32,6 +32,7 @@ public class Configuration {
 
     private static final ModConfigSpec.BooleanValue DISABLE_WOOL;
     private static final ModConfigSpec.BooleanValue SHOW_TAB_BUTTONS;
+    private static final ModConfigSpec.BooleanValue SHOW_SUBPAGE_TITLES;
     private static final ModConfigSpec.BooleanValue DEATH_RESET;
     public static final ModConfigSpec.BooleanValue HEALTH_BONUS;
     public static ModConfigSpec.ConfigValue<List<? extends String>> SKILL_LEVEL_GATES;
@@ -66,6 +67,7 @@ public class Configuration {
     public static ModConfigSpec.ConfigValue<String> MAGIC_OPERATION;
 
     private static final ModConfigSpec.BooleanValue ENABLE_SECOND_SKILL_PAGE;
+    private static final ModConfigSpec.ConfigValue<String> SUBPAGE_NAV_POSITION;
 
     private static final int MAX_CUSTOM_SKILLS = 8;
     private static List<CustomSkillSlot> customSkills = new ArrayList<>();
@@ -325,6 +327,12 @@ public class Configuration {
         builder.comment("Enable a second skill page for up to 8 custom skills loaded from custom_skills.json.");
         ENABLE_SECOND_SKILL_PAGE = builder.define("enableSecondSkillPage", false);
 
+        builder.comment("Where the built-in/custom page arrows should appear. Valid: TOP, BOTTOM, LEFT, RIGHT.");
+        SUBPAGE_NAV_POSITION = builder.define("subpageNavPosition", "BOTTOM");
+
+        builder.comment("Toggle the visibility of the built-in/custom subpage titles on the skills screen.");
+        SHOW_SUBPAGE_TITLES = builder.define("showSubpageTitles", true);
+
         MAX_TOTAL_SPENT_LEVELS = builder
                 .comment("Maximum total number of skill levels a player can spend across all skills. Set to -1 for unlimited.")
                 .defineInRange("maxTotalSpentLevels", -1, -1, Integer.MAX_VALUE);
@@ -473,8 +481,35 @@ public class Configuration {
         return ENABLE_SECOND_SKILL_PAGE.get();
     }
 
+    public enum SubpageNavPosition {
+        TOP,
+        BOTTOM,
+        LEFT,
+        RIGHT;
+
+        public static SubpageNavPosition fromString(String raw) {
+            if (raw == null || raw.isBlank()) {
+                return BOTTOM;
+            }
+
+            try {
+                return SubpageNavPosition.valueOf(raw.trim().toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException ex) {
+                return BOTTOM;
+            }
+        }
+    }
+
+    public static SubpageNavPosition getSubpageNavPosition() {
+        return SubpageNavPosition.fromString(SUBPAGE_NAV_POSITION.get());
+    }
+
     public static List<CustomSkillSlot> getCustomSkills() {
         return Collections.unmodifiableList(customSkills);
+    }
+
+    public static boolean shouldShowSubpageTitles() {
+        return SHOW_SUBPAGE_TITLES.get();
     }
 
     public static CustomSkillSlot getCustomSkill(int index) {
