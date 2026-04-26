@@ -45,8 +45,11 @@ public class SkillScreen extends Screen {
     private static final int PERK_BOX_Y = 29;
     private static final int PERK_ROW_HEIGHT = 15;
     private static final int PERK_TEXT_OFFSET_X = 15;
-    private static final int SUBPAGE_NAV_Y = -12;
-    private static final int SUBPAGE_TITLE_Y = -10;
+
+    private static final int SUBPAGE_TITLE_Y = -6;
+    private static final int SUBPAGE_BUTTON_WIDTH = 16;
+    private static final int SUBPAGE_BUTTON_HEIGHT = 14;
+    private static final int TITLE_COLOR = 0xE0D0A0;
 
 
     private int gatePreviewCooldownTicks = 0;
@@ -68,10 +71,75 @@ public class SkillScreen extends Screen {
     private Button previousSkillPageButton;
     private Button nextSkillPageButton;
 
-    private static final int TITLE_COLOR = 0xE0D0A0;
 
     public SkillScreen() {
         super(Component.empty());
+    }
+
+    private int getCurrentSubPage() {
+        return page == 0 ? skillSubPage : perkSubPage;
+    }
+
+    private int getMaxSubPage() {
+        return Configuration.isSecondSkillPageEnabled() ? 1 : 0;
+    }
+
+    private void changeSubPage(int delta) {
+        if (!Configuration.isSecondSkillPageEnabled()) {
+            return;
+        }
+
+        if (page == 0) {
+            int newPage = Math.max(0, Math.min(getMaxSubPage(), skillSubPage + delta));
+            if (newPage != skillSubPage) {
+                skillSubPage = newPage;
+                init(minecraft, width, height);
+            }
+        } else {
+            int newPage = Math.max(0, Math.min(getMaxSubPage(), perkSubPage + delta));
+            if (newPage != perkSubPage) {
+                perkSubPage = newPage;
+                init(minecraft, width, height);
+            }
+        }
+    }
+
+    private Component getSubPageTitle() {
+        if (page == 0) {
+            return Component.literal(skillSubPage == 0 ? "Built-In Skills" : "Custom Skills");
+        }
+        return Component.literal(perkSubPage == 0 ? "Built-In Perks" : "Custom Perks");
+    }
+
+    private record SubPageLayout(int prevX, int prevY, int nextX, int nextY) {}
+
+    private SubPageLayout getSubPageLayout(int guiLeft, int guiTop) {
+        return switch (Configuration.getSubpageNavPosition()) {
+            case TOP -> new SubPageLayout(
+                    guiLeft + 62,
+                    guiTop - 12,
+                    guiLeft + 98,
+                    guiTop - 12
+            );
+            case BOTTOM -> new SubPageLayout(
+                    guiLeft + 122,
+                    guiTop + 168,
+                    guiLeft + 142,
+                    guiTop + 168
+            );
+            case LEFT -> new SubPageLayout(
+                    guiLeft - 20,
+                    guiTop + 56,
+                    guiLeft - 20,
+                    guiTop + 76
+            );
+            case RIGHT -> new SubPageLayout(
+                    guiLeft + 180,
+                    guiTop + 56,
+                    guiLeft + 180,
+                    guiTop + 76
+            );
+        };
     }
 
     @Override
@@ -100,7 +168,6 @@ public class SkillScreen extends Screen {
                 }
             }
         }
-
         int guiLeft = (width - 176) / 2;
         int guiTop = (height - 166) / 2;
 
@@ -133,71 +200,34 @@ public class SkillScreen extends Screen {
                 }
         );
 
-        addRenderableWidget(skillsTab);
-        addRenderableWidget(perksTab);
-
-        if (Configuration.isSecondSkillPageEnabled()) {
-            int centerX = guiLeft + 88;
-            int navY = guiTop + SUBPAGE_NAV_Y;
-
-            if (page == 0) {
-                previousSkillPageButton = addRenderableWidget(new SubPageButton(
-                        centerX - 52,
-                        navY,
-                        "<",
-                        b -> {
-                            if (skillSubPage > 0) {
-                                skillSubPage--;
-                                init(minecraft, width, height);
-                            }
-                        }
-                ));
-
-                nextSkillPageButton = addRenderableWidget(new SubPageButton(
-                        centerX + 36,
-                        navY,
-                        ">",
-                        b -> {
-                            if (skillSubPage < 1) {
-                                skillSubPage++;
-                                init(minecraft, width, height);
-                            }
-                        }
-                ));
-
-                previousSkillPageButton.active = skillSubPage > 0;
-                nextSkillPageButton.active = skillSubPage < 1;
-            } else if (page == 1) {
-                previousSkillPageButton = addRenderableWidget(new SubPageButton(
-                        centerX - 52,
-                        navY,
-                        "<",
-                        b -> {
-                            if (perkSubPage > 0) {
-                                perkSubPage--;
-                                init(minecraft, width, height);
-                            }
-                        }
-                ));
-
-                nextSkillPageButton = addRenderableWidget(new SubPageButton(
-                        centerX + 36,
-                        navY,
-                        ">",
-                        b -> {
-                            if (perkSubPage < 1) {
-                                perkSubPage++;
-                                init(minecraft, width, height);
-                            }
-                        }
-                ));
-
-                previousSkillPageButton.active = perkSubPage > 0;
-                nextSkillPageButton.active = perkSubPage < 1;
-            }
+        if (Configuration.shouldShowTabButtons()) {
+            addRenderableWidget(skillsTab);
+            addRenderableWidget(perksTab);
         }
 
+        if (Configuration.isSecondSkillPageEnabled()) {
+            SubPageLayout layout = getSubPageLayout(guiLeft, guiTop);
 
+            previousSkillPageButton = addRenderableWidget(new SubPageButton(
+                    layout.prevX(),
+                    layout.prevY(),
+                    "<",
+                    b -> changeSubPage(-1)
+            ));
+
+            nextSkillPageButton = addRenderableWidget(new SubPageButton(
+                    layout.nextX(),
+                    layout.nextY(),
+                    ">",
+                    b -> changeSubPage(1)
+            ));
+
+            int currentSubPage = getCurrentSubPage();
+            int maxSubPage = getMaxSubPage();
+
+            previousSkillPageButton.active = currentSubPage > 0;
+            nextSkillPageButton.active = currentSubPage < maxSubPage;
+        }
 
         RequestLevelUp.clearClientGatePreview();
         gatePreviewCooldownTicks = 0;
@@ -261,13 +291,7 @@ public class SkillScreen extends Screen {
         }
 
         if (Configuration.isSecondSkillPageEnabled()) {
-            Component subPageTitle;
-            if (page == 0) {
-                subPageTitle = Component.literal(skillSubPage == 0 ? "Built-In Skills" : "Custom Skills");
-            } else {
-                subPageTitle = Component.literal(perkSubPage == 0 ? "Built-In Perks" : "Custom Perks");
-            }
-
+            Component subPageTitle = getSubPageTitle();
             int titleX = left + 88 - (font.width(subPageTitle) / 2);
             int titleY = top + SUBPAGE_TITLE_Y;
             guiGraphics.drawString(font, subPageTitle, titleX, titleY, TITLE_COLOR, false);
@@ -718,7 +742,7 @@ public class SkillScreen extends Screen {
         private final String arrow;
 
         public SubPageButton(int x, int y, String arrow, OnPress onPress) {
-            super(x, y, 16, 14, Component.literal(arrow), onPress, DEFAULT_NARRATION);
+            super(x, y, SUBPAGE_BUTTON_WIDTH, SUBPAGE_BUTTON_HEIGHT, Component.literal(arrow), onPress, DEFAULT_NARRATION);
             this.arrow = arrow;
         }
 
@@ -741,7 +765,6 @@ public class SkillScreen extends Screen {
 
             guiGraphics.drawString(font, Component.literal(arrow), textX, textY, color, false);
         }
-
     }
 
     private static GateUiResult checkGateClient(SkillModel model, Skill levelingSkill, String customSkillId, int currentLevel) {

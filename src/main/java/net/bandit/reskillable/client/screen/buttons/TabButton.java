@@ -36,7 +36,6 @@ public class TabButton extends AbstractWidget {
             int guiTop = inventoryScreen.getGuiTop();
             setPosition(guiLeft - 28, guiTop + 7);
         } else if (minecraft.screen instanceof SkillScreen skillScreen) {
-            // If your SkillScreen is 176x166 like vanilla inventory, this matches your existing math:
             int guiLeft = (skillScreen.width - 176) / 2;
             int guiTop = (skillScreen.height - 166) / 2;
             setPosition(guiLeft - 28, guiTop + 7);

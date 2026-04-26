@@ -61,6 +61,8 @@ public class Configuration {
     public static ForgeConfigSpec.ConfigValue<String> AGILITY_ATTRIBUTE_ID;
     public static ForgeConfigSpec.ConfigValue<String> BUILDING_ATTRIBUTE_ID;
 
+    private static final ForgeConfigSpec.ConfigValue<String> SUBPAGE_NAV_POSITION;
+
     public static ForgeConfigSpec.ConfigValue<String> ATTACK_OPERATION;
     public static ForgeConfigSpec.ConfigValue<String> DEFENSE_OPERATION;
     public static ForgeConfigSpec.ConfigValue<String> AGILITY_OPERATION;
@@ -316,6 +318,9 @@ public class Configuration {
         builder.comment("Enable a second skill page for up to 8 custom skills loaded from custom_skills.json.");
         ENABLE_SECOND_SKILL_PAGE = builder.define("enableSecondSkillPage", false);
 
+        builder.comment("Where the built-in/custom page arrows should appear. Valid: TOP, BOTTOM, LEFT, RIGHT.");
+        SUBPAGE_NAV_POSITION = builder.define("subpageNavPosition", "BOTTOM");
+
         MAX_TOTAL_SPENT_LEVELS = builder
                 .comment("Maximum total number of skill levels a player can spend across all skills. Set to -1 for unlimited.")
                 .defineInRange("maxTotalSpentLevels", -1, -1, Integer.MAX_VALUE);
@@ -344,6 +349,26 @@ public class Configuration {
             return null;
         }
     }
+
+    public enum SubpageNavPosition {
+        TOP,
+        BOTTOM,
+        LEFT,
+        RIGHT;
+
+        public static SubpageNavPosition fromString(String raw) {
+            if (raw == null || raw.isBlank()) {
+                return BOTTOM;
+            }
+
+            try {
+                return SubpageNavPosition.valueOf(raw.trim().toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException ex) {
+                return BOTTOM;
+            }
+        }
+    }
+
     public static AttributeModifier.Operation getConfiguredOperation(Skill skill, AttributeModifier.Operation fallback) {
         try {
             String raw = switch (skill) {
@@ -931,6 +956,10 @@ public class Configuration {
             e.printStackTrace();
             return false;
         }
+    }
+
+    public static SubpageNavPosition getSubpageNavPosition() {
+        return SubpageNavPosition.fromString(SUBPAGE_NAV_POSITION.get());
     }
 
     public static boolean getDisableWool() {
