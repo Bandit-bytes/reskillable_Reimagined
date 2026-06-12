@@ -200,10 +200,8 @@ public class SkillScreen extends Screen {
                 }
         );
 
-        if (Configuration.shouldShowTabButtons()) {
-            addRenderableWidget(skillsTab);
-            addRenderableWidget(perksTab);
-        }
+        addRenderableWidget(skillsTab);
+        addRenderableWidget(perksTab);
 
         if (Configuration.isSecondSkillPageEnabled()) {
             SubPageLayout layout = getSubPageLayout(guiLeft, guiTop);
