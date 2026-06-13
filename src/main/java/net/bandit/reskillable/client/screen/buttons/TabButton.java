@@ -1,0 +1,159 @@
+package net.bandit.reskillable.client.screen.buttons;
+
+import com.mojang.blaze3d.platform.InputConstants;
+import net.bandit.reskillable.client.screen.InventoryTabs;
+import net.bandit.reskillable.client.screen.SkillScreen;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.gui.narration.NarrationElementOutput;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.network.chat.Component;
+import org.jetbrains.annotations.NotNull;
+
+public class TabButton extends AbstractWidget {
+
+    private final TabType type;
+
+    private int relX;
+    private int relY;
+
+    private boolean dragging = false;
+    private int dragOffsetX = 0;
+    private int dragOffsetY = 0;
+
+    public TabButton(int relX, int relY) {
+        super(0, 0, 31, 28, Component.literal("Tab"));
+        this.type = TabType.SKILLS;
+        this.relX = relX;
+        this.relY = relY;
+    }
+
+    private boolean isSelected() {
+        return Minecraft.getInstance().screen instanceof SkillScreen;
+    }
+
+    @Override
+    protected void extractWidgetRenderState(@NotNull GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTicks) {
+        Minecraft minecraft = Minecraft.getInstance();
+
+        active = true;
+
+        if (!active) return;
+
+        if (minecraft.screen != null) {
+            int guiLeft;
+            int guiTop;
+
+            if (minecraft.screen instanceof InventoryScreen inv) {
+                guiLeft = inv.getGuiLeft();
+                guiTop = inv.getGuiTop();
+            } else {
+                guiLeft = InventoryTabs.getGuiLeft(minecraft.screen);
+                guiTop = InventoryTabs.getGuiTop(minecraft.screen);
+            }
+
+            setPosition(guiLeft + relX, guiTop + relY);
+        }
+
+        boolean selected = isSelected();
+
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, SkillScreen.RESOURCES, getX(), getY(), selected ? 31 : 0, 166, width, height, 256, 256);
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, SkillScreen.RESOURCES, getX() + (selected ? 8 : 10), getY() + 6,
+                240, 128 + type.iconIndex * 16, 16, 16, 256, 256);
+    }
+
+    @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
+        if (!active || !isMouseOver(mouseX, mouseY) || button != 0) return false;
+
+        if ((event.modifiers() & InputConstants.MOD_SHIFT) != 0) {
+            dragging = true;
+            dragOffsetX = (int) mouseX - getX();
+            dragOffsetY = (int) mouseY - getY();
+            return true;
+        }
+
+        onPress();
+        return true;
+    }
+
+    @Override
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
+        if (!dragging || button != 0) return false;
+
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.screen == null) return false;
+
+        int guiLeft;
+        int guiTop;
+
+        if (minecraft.screen instanceof InventoryScreen inv) {
+            guiLeft = inv.getGuiLeft();
+            guiTop = inv.getGuiTop();
+        } else {
+            guiLeft = InventoryTabs.getGuiLeft(minecraft.screen);
+            guiTop = InventoryTabs.getGuiTop(minecraft.screen);
+        }
+
+        int newAbsX = (int) mouseX - dragOffsetX;
+        int newAbsY = (int) mouseY - dragOffsetY;
+
+        relX = newAbsX - guiLeft;
+        relY = newAbsY - guiTop;
+
+        relX = clamp(relX, -80, InventoryTabs.GUI_W + 80);
+        relY = clamp(relY, -80, InventoryTabs.GUI_H + 80);
+
+        return true;
+    }
+
+    @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        int button = event.button();
+        if (dragging && button == 0) {
+            dragging = false;
+
+            InventoryTabs.setPosition(relX, relY);
+            return true;
+        }
+        return super.mouseReleased(event);
+    }
+
+    public void onPress() {
+        Minecraft mc = Minecraft.getInstance();
+
+        if (mc.screen instanceof SkillScreen) {
+            if (mc.player != null) {
+                mc.setScreen(new InventoryScreen(mc.player));
+            }
+        } else {
+            mc.setScreen(new SkillScreen());
+        }
+    }
+
+    @Override
+    protected void updateWidgetNarration(@NotNull NarrationElementOutput output) {
+        defaultButtonNarrationText(output);
+    }
+
+    private static int clamp(int v, int min, int max) {
+        return Math.max(min, Math.min(max, v));
+    }
+
+    public enum TabType {
+        SKILLS(1);
+
+        public final int iconIndex;
+        TabType(int index) { this.iconIndex = index; }
+    }
+}
