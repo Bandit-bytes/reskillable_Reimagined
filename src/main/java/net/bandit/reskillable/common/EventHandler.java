@@ -28,6 +28,7 @@ import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerXpEvent;
 import net.neoforged.neoforge.event.level.BlockEvent;
+import net.neoforged.neoforge.event.level.block.BreakBlockEvent;
 import net.neoforged.neoforge.event.level.block.CropGrowEvent;
 
 import java.util.Map;
@@ -222,7 +223,7 @@ public class EventHandler {
 
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
-    public void onBlockBreak(BlockEvent.BreakEvent event) {
+    public void onBlockBreak(BreakBlockEvent event) {
         Player player = event.getPlayer();
         SkillModel model = SkillModel.get(player);
         if (model == null || player.isCreative()) return;
@@ -230,10 +231,10 @@ public class EventHandler {
         ItemStack tool = player.getMainHandItem();
         if (!model.canUseItem(player, tool)) {
             event.setCanceled(true);
+            event.setNotifyClient(true);
             player.sendSystemMessage(Component.literal("You lack the skill to use this tool.").withStyle(ChatFormatting.RED));
         }
     }
-
 
     @SubscribeEvent
     public void onPlayerRespawn(PlayerEvent.PlayerRespawnEvent event) {
