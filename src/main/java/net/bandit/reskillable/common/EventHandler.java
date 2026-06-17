@@ -22,6 +22,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.neoforge.common.util.FakePlayer;
 import net.neoforged.neoforge.event.entity.living.*;
 import net.neoforged.neoforge.event.entity.player.AttackEntityEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
@@ -43,6 +44,8 @@ public class EventHandler {
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public void onLeftClickBlock(PlayerInteractEvent.LeftClickBlock event) {
         Player player = event.getEntity();
+        if (shouldBypassSkillChecks(player)) return;
+
         SkillModel model = SkillModel.get(player);
         if (model == null) return;
 
@@ -56,6 +59,7 @@ public class EventHandler {
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public void onStartUsingItem(LivingEntityUseItemEvent.Start event) {
         if (!(event.getEntity() instanceof Player player)) return;
+        if (shouldBypassSkillChecks(player)) return;
 
         SkillModel model = SkillModel.get(player);
         if (model == null || player.isCreative()) return;
@@ -71,6 +75,8 @@ public class EventHandler {
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
         Player player = event.getEntity();
+        if (shouldBypassSkillChecks(player)) return;
+
         SkillModel model = SkillModel.get(player);
         if (model == null) return;
 
@@ -85,6 +91,8 @@ public class EventHandler {
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public void onRightClickItem(PlayerInteractEvent.RightClickItem event) {
         Player player = event.getEntity();
+        if (shouldBypassSkillChecks(player)) return;
+
         SkillModel model = SkillModel.get(player);
         if (model == null) return;
 
@@ -98,6 +106,8 @@ public class EventHandler {
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public void onRightClickEntity(PlayerInteractEvent.EntityInteract event) {
         Player player = event.getEntity();
+        if (shouldBypassSkillChecks(player)) return;
+
         SkillModel model = SkillModel.get(player);
         if (model == null) return;
 
@@ -112,6 +122,8 @@ public class EventHandler {
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public void onAttackEntity(AttackEntityEvent event) {
         Player player = event.getEntity();
+        if (shouldBypassSkillChecks(player)) return;
+
         SkillModel model = SkillModel.get(player);
         if (model == null || player.isCreative()) return;
 
@@ -225,6 +237,8 @@ public class EventHandler {
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public void onBlockBreak(BreakBlockEvent event) {
         Player player = event.getPlayer();
+        if (shouldBypassSkillChecks(player)) return;
+
         SkillModel model = SkillModel.get(player);
         if (model == null || player.isCreative()) return;
 
@@ -403,5 +417,26 @@ public class EventHandler {
                 return;
             }
         }
+    }
+
+    // Just Dire Things fake player helper
+
+    private static boolean shouldBypassSkillChecks(Player player) {
+        return isJustDireThingsFakePlayer(player);
+    }
+
+    private static boolean isJustDireThingsFakePlayer(Player player) {
+        if (!(player instanceof FakePlayer)) return false;
+
+        String className = player.getClass().getName();
+        String playerName = player.getScoreboardName();
+
+        // JDT clickers use this fake player class.
+        if ("com.direwolf20.justdirethings.util.UsefulFakePlayer".equals(className)) {
+            return true;
+        }
+
+        // JDT machine fake player profile name.
+        return "[JustDiresFakePlayer]".equals(playerName);
     }
 }
