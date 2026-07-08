@@ -8,7 +8,6 @@ import net.bandit.reskillable.Configuration;
 import net.bandit.reskillable.Configuration.CustomSkillSlot;
 import net.bandit.reskillable.common.capabilities.SkillModel;
 import net.bandit.reskillable.common.commands.skills.Requirement;
-import net.bandit.reskillable.common.commands.skills.Skill;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.CompoundTag;
@@ -25,36 +24,58 @@ import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.logging.Logger;
 
 public class Tooltip {
-    private static final Logger LOGGER = Logger.getLogger(Tooltip.class.getName());
+    private static final boolean IS_TACZ_LOADED =
+            ModList.get().isLoaded("tacz");
 
-    private static final boolean IS_TACZ_LOADED = ModList.get().isLoaded("tacz");
-    private static final boolean IS_IRONS_LOADED = ModList.get().isLoaded("irons_spellbooks");
-    private static final boolean IS_TCONSTRUCT_LOADED = ModList.get().isLoaded("tconstruct");
+    private static final boolean IS_IRONS_LOADED =
+            ModList.get().isLoaded("irons_spellbooks");
+
+    private static final boolean IS_TCONSTRUCT_LOADED =
+            ModList.get().isLoaded("tconstruct");
 
     @SubscribeEvent
     public void onTooltipDisplay(ItemTooltipEvent event) {
         Player player = Minecraft.getInstance().player;
-        if (player == null) return;
+        if (player == null) {
+            return;
+        }
 
         SkillModel skillModel = SkillModel.get(player);
-        if (skillModel == null) return;
+        if (skillModel == null) {
+            return;
+        }
 
         ItemStack stack = event.getItemStack();
-        ResourceLocation itemRegistryName = ForgeRegistries.ITEMS.getKey(stack.getItem());
-        if (itemRegistryName == null) return;
+        if (stack.isEmpty()) {
+            return;
+        }
 
-        // TACZ: tacz:<gun type>__<gunid>
-        if (IS_TACZ_LOADED && Objects.equals(itemRegistryName.getNamespace(), "tacz")) {
+        ResourceLocation itemRegistryName =
+                ForgeRegistries.ITEMS.getKey(stack.getItem());
+
+        if (itemRegistryName == null) {
+            return;
+        }
+
+        // TACZ: tacz:<gun type>__<gun id>
+        if (IS_TACZ_LOADED
+                && Objects.equals(itemRegistryName.getNamespace(), "tacz")) {
+
             CompoundTag tag = stack.getTag();
-            if (tag != null && tag.contains("GunId")) {
+
+            if (tag != null && tag.contains("GunId", Tag.TAG_STRING)) {
+                String gunId = tag.getString("GunId")
+                        .replace(":", "_")
+                        .replace("/", "_")
+                        .replace("#", "_");
+
                 itemRegistryName = new ResourceLocation(
                         "tacz",
                         "%s__%s".formatted(
                                 itemRegistryName.getPath(),
-                                tag.getString("GunId").replace(":", "_")
+                                gunId
                         )
                 );
             }
@@ -63,19 +84,27 @@ public class Tooltip {
         // TConstruct: tconstruct:<tool>__<material1>__<material2>__...
         if (IS_TCONSTRUCT_LOADED) {
             CompoundTag tag = stack.getTag();
-            if (tag != null && tag.contains("tic_materials", Tag.TAG_LIST)) {
-                ListTag materials = tag.getList("tic_materials", Tag.TAG_STRING);
+
+            if (tag != null
+                    && tag.contains("tic_materials", Tag.TAG_LIST)) {
+
+                ListTag materials =
+                        tag.getList("tic_materials", Tag.TAG_STRING);
 
                 if (!materials.isEmpty()) {
-                    StringBuilder path = new StringBuilder(itemRegistryName.getPath());
+                    StringBuilder path =
+                            new StringBuilder(itemRegistryName.getPath());
 
                     for (int i = 0; i < materials.size(); i++) {
                         String materialId = materials.getString(i);
-                        path.append("__").append(
-                                materialId.replace(":", "_")
-                                        .replace("/", "_")
-                                        .replace("#", "_")
-                        );
+
+                        path.append("__")
+                                .append(
+                                        materialId
+                                                .replace(":", "_")
+                                                .replace("/", "_")
+                                                .replace("#", "_")
+                                );
                     }
 
                     itemRegistryName = new ResourceLocation(
@@ -88,56 +117,98 @@ public class Tooltip {
 
         // ISS: irons_spellbooks:scroll__<spell id>_<level>
         if (IS_IRONS_LOADED && stack.getItem() instanceof Scroll) {
-            SpellData spellAtIndex = ISpellContainer.get(stack).getSpellAtIndex(0);
-            if (spellAtIndex != null && spellAtIndex.getSpell() != null) {
-                AbstractSpell spell = spellAtIndex.getSpell();
-                String[] split = spell.getSpellId().split(":");
-                if (split.length == 2) {
-                    itemRegistryName = new ResourceLocation(
-                            "irons_spellbooks",
-                            "scroll__%s_%d".formatted(split[1], spellAtIndex.getLevel())
-                    );
+            ISpellContainer spellContainer = ISpellContainer.get(stack);
+
+            if (spellContainer != null) {
+                SpellData spellAtIndex =
+                        spellContainer.getSpellAtIndex(0);
+
+                if (spellAtIndex != null
+                        && spellAtIndex.getSpell() != null) {
+
+                    AbstractSpell spell = spellAtIndex.getSpell();
+
+                    ResourceLocation spellId =
+                            ResourceLocation.tryParse(spell.getSpellId());
+
+                    if (spellId != null) {
+                        itemRegistryName = new ResourceLocation(
+                                "irons_spellbooks",
+                                "scroll__%s_%d".formatted(
+                                        spellId.getPath(),
+                                        spellAtIndex.getLevel()
+                                )
+                        );
+                    }
                 }
             }
         }
 
-        Requirement[] requirements = Configuration.getRequirements(itemRegistryName);
-        if (requirements == null || requirements.length == 0) return;
+        Requirement[] requirements =
+                Configuration.getRequirements(itemRegistryName);
+
+        if (requirements == null || requirements.length == 0) {
+            return;
+        }
 
         List<Component> tooltips = event.getToolTip();
-        tooltips.add(Component.literal(""));
-        tooltips.add(Component.translatable("tooltip.requirements")
-                .append(":")
-                .withStyle(ChatFormatting.GRAY));
+
+        tooltips.add(Component.empty());
+        tooltips.add(
+                Component.translatable("tooltip.requirements")
+                        .append(":")
+                        .withStyle(ChatFormatting.GRAY)
+        );
 
         for (Requirement requirement : requirements) {
-            if (requirement == null) continue;
+            if (requirement == null) {
+                continue;
+            }
 
             int currentLevel = 0;
-            Component skillName = Component.literal("Unknown Skill");
+            Component skillName =
+                    Component.literal("Unknown Skill");
 
             if (requirement.isVanillaSkill()) {
-                currentLevel = skillModel.getSkillLevel(requirement.skill);
-                skillName = Component.translatable(requirement.skill.displayName);
-            } else if (requirement.isCustomSkill()) {
-                currentLevel = skillModel.getCustomSkillLevel(requirement.customSkillId);
+                currentLevel =
+                        skillModel.getSkillLevel(requirement.skill);
 
-                CustomSkillSlot slot = Configuration.findCustomSkillById(requirement.customSkillId);
+                skillName =
+                        Component.translatable(
+                                requirement.skill.displayName
+                        );
+            } else if (requirement.isCustomSkill()) {
+                currentLevel =
+                        skillModel.getCustomSkillLevel(
+                                requirement.customSkillId
+                        );
+
+                CustomSkillSlot slot =
+                        Configuration.findCustomSkillById(
+                                requirement.customSkillId
+                        );
+
                 if (slot != null) {
-                    skillName = Component.literal(slot.getDisplayName());
+                    skillName =
+                            Component.literal(slot.getDisplayName());
                 } else {
-                    skillName = Component.literal(requirement.customSkillId);
+                    skillName =
+                            Component.literal(
+                                    requirement.customSkillId
+                            );
                 }
             }
 
-            ChatFormatting colour = currentLevel >= requirement.level
-                    ? ChatFormatting.GREEN
-                    : ChatFormatting.RED;
+            ChatFormatting colour =
+                    currentLevel >= requirement.level
+                            ? ChatFormatting.GREEN
+                            : ChatFormatting.RED;
 
-            tooltips.add(skillName
-                    .copy()
-                    .append(" " + requirement.level)
-                    .withStyle(colour));
+            tooltips.add(
+                    skillName.copy()
+                            .append(" " + requirement.level)
+                            .withStyle(colour)
+            );
         }
     }
 }
