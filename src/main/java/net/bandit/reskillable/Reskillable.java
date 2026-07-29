@@ -1,10 +1,20 @@
 package net.bandit.reskillable;
 
 import net.bandit.reskillable.client.ClientInitializer;
-import net.bandit.reskillable.event.*;
 import net.bandit.reskillable.common.capabilities.SkillModel;
 import net.bandit.reskillable.common.commands.Commands;
-import net.bandit.reskillable.common.network.*;
+import net.bandit.reskillable.common.network.NotifyWarning;
+import net.bandit.reskillable.common.network.RequestLevelUp;
+import net.bandit.reskillable.common.network.SyncSkillConfigPacket;
+import net.bandit.reskillable.common.network.SyncToClient;
+import net.bandit.reskillable.common.network.ToggleCustomPerkPacket;
+import net.bandit.reskillable.common.network.TogglePerkPacket;
+import net.bandit.reskillable.event.CuriosCompat;
+import net.bandit.reskillable.event.EventHandler;
+import net.bandit.reskillable.event.IronsSpellbooksEventHandler;
+import net.bandit.reskillable.event.SoundRegistry;
+import net.bandit.reskillable.event.TaczEventHandler;
+import net.bandit.reskillable.event.TinkersEventHandler;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
@@ -25,32 +35,52 @@ import java.util.Optional;
 @Mod(Reskillable.MOD_ID)
 public class Reskillable {
     public static final String MOD_ID = "reskillable";
+
+    /*
+     * Increment this whenever an existing packet layout or packet
+     * registration order changes incompatibly.
+     */
+    public static final String NETWORK_PROTOCOL = "2";
+
     public static SimpleChannel NETWORK;
 
     public Reskillable() {
-        FMLJavaModLoadingContext.get().getModEventBus().addListener(this::commonSetup);
-        FMLJavaModLoadingContext.get().getModEventBus().addListener(this::initCaps);
+        FMLJavaModLoadingContext.get()
+                .getModEventBus()
+                .addListener(this::commonSetup);
 
-        SoundRegistry.SOUND_EVENTS.register(FMLJavaModLoadingContext.get().getModEventBus());
+        FMLJavaModLoadingContext.get()
+                .getModEventBus()
+                .addListener(this::initCaps);
 
-        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, Configuration.getConfig());
+        SoundRegistry.SOUND_EVENTS.register(
+                FMLJavaModLoadingContext.get().getModEventBus()
+        );
+
+        ModLoadingContext.get().registerConfig(
+                ModConfig.Type.COMMON,
+                Configuration.getConfig()
+        );
 
         MinecraftForge.EVENT_BUS.register(new EventHandler());
         MinecraftForge.EVENT_BUS.register(new Commands());
-        // TACZ
+
         if (ModList.get().isLoaded("tacz")) {
             MinecraftForge.EVENT_BUS.register(new TaczEventHandler());
         }
-        // irons_spellbooks
+
         if (ModList.get().isLoaded("irons_spellbooks")) {
             MinecraftForge.EVENT_BUS.register(new IronsSpellbooksEventHandler());
         }
-        // tconstruct
+
         if (ModList.get().isLoaded("tconstruct")) {
             MinecraftForge.EVENT_BUS.register(new TinkersEventHandler());
         }
 
-        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> ClientInitializer::registerClientEvents);
+        DistExecutor.unsafeRunWhenOn(
+                Dist.CLIENT,
+                () -> ClientInitializer::registerClientEvents
+        );
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
@@ -59,46 +89,82 @@ public class Reskillable {
 
             NETWORK = NetworkRegistry.newSimpleChannel(
                     new ResourceLocation(MOD_ID, "main_channel"),
-                    () -> "1.0",
-                    s -> true,
-                    s -> true
+                    () -> NETWORK_PROTOCOL,
+                    NETWORK_PROTOCOL::equals,
+                    NETWORK_PROTOCOL::equals
             );
 
-            NETWORK.registerMessage(1, SyncToClient.class,
-                    SyncToClient::encode, SyncToClient::new, SyncToClient::handle,
-                    Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+            NETWORK.registerMessage(
+                    1,
+                    SyncToClient.class,
+                    SyncToClient::encode,
+                    SyncToClient::new,
+                    SyncToClient::handle,
+                    Optional.of(NetworkDirection.PLAY_TO_CLIENT)
+            );
 
-            NETWORK.registerMessage(2, RequestLevelUp.class,
-                    RequestLevelUp::encode, RequestLevelUp::new, RequestLevelUp::handle,
-                    Optional.of(NetworkDirection.PLAY_TO_SERVER));
+            NETWORK.registerMessage(
+                    2,
+                    RequestLevelUp.class,
+                    RequestLevelUp::encode,
+                    RequestLevelUp::new,
+                    RequestLevelUp::handle,
+                    Optional.of(NetworkDirection.PLAY_TO_SERVER)
+            );
 
-            NETWORK.registerMessage(3, NotifyWarning.class,
-                    NotifyWarning::encode, NotifyWarning::new, NotifyWarning::handle,
-                    Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+            NETWORK.registerMessage(
+                    3,
+                    NotifyWarning.class,
+                    NotifyWarning::encode,
+                    NotifyWarning::new,
+                    NotifyWarning::handle,
+                    Optional.of(NetworkDirection.PLAY_TO_CLIENT)
+            );
 
-            NETWORK.registerMessage(4, SyncSkillConfigPacket.class,
-                    SyncSkillConfigPacket::toBytes, SyncSkillConfigPacket::new, SyncSkillConfigPacket::handle,
-                    Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+            NETWORK.registerMessage(
+                    4,
+                    SyncSkillConfigPacket.class,
+                    SyncSkillConfigPacket::toBytes,
+                    SyncSkillConfigPacket::new,
+                    SyncSkillConfigPacket::handle,
+                    Optional.of(NetworkDirection.PLAY_TO_CLIENT)
+            );
 
-            NETWORK.registerMessage(5, TogglePerkPacket.class,
-                    TogglePerkPacket::encode, TogglePerkPacket::new, TogglePerkPacket::handle,
-                    Optional.of(NetworkDirection.PLAY_TO_SERVER));
+            NETWORK.registerMessage(
+                    5,
+                    TogglePerkPacket.class,
+                    TogglePerkPacket::encode,
+                    TogglePerkPacket::new,
+                    TogglePerkPacket::handle,
+                    Optional.of(NetworkDirection.PLAY_TO_SERVER)
+            );
 
-            NETWORK.registerMessage(6, RequestLevelUp.RequestGatePreviewPacket.class,
+            NETWORK.registerMessage(
+                    6,
+                    RequestLevelUp.RequestGatePreviewPacket.class,
                     RequestLevelUp.RequestGatePreviewPacket::encode,
                     RequestLevelUp.RequestGatePreviewPacket::new,
                     RequestLevelUp.RequestGatePreviewPacket::handle,
-                    Optional.of(NetworkDirection.PLAY_TO_SERVER));
+                    Optional.of(NetworkDirection.PLAY_TO_SERVER)
+            );
 
-            NETWORK.registerMessage(7, RequestLevelUp.SyncGatePreviewPacket.class,
+            NETWORK.registerMessage(
+                    7,
+                    RequestLevelUp.SyncGatePreviewPacket.class,
                     RequestLevelUp.SyncGatePreviewPacket::encode,
                     RequestLevelUp.SyncGatePreviewPacket::new,
                     RequestLevelUp.SyncGatePreviewPacket::handle,
-                    Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+                    Optional.of(NetworkDirection.PLAY_TO_CLIENT)
+            );
 
-            NETWORK.registerMessage(8, ToggleCustomPerkPacket.class,
-                    ToggleCustomPerkPacket::encode, ToggleCustomPerkPacket::new, ToggleCustomPerkPacket::handle,
-                    Optional.of(NetworkDirection.PLAY_TO_SERVER));
+            NETWORK.registerMessage(
+                    8,
+                    ToggleCustomPerkPacket.class,
+                    ToggleCustomPerkPacket::encode,
+                    ToggleCustomPerkPacket::new,
+                    ToggleCustomPerkPacket::handle,
+                    Optional.of(NetworkDirection.PLAY_TO_SERVER)
+            );
         });
 
         if (ModList.get().isLoaded("curios")) {
