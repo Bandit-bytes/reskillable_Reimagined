@@ -35,16 +35,22 @@ public enum SkillAttributeBonus {
     }
 
     public AttributeModifier.Operation getOperation() {
-        return Configuration.getConfiguredOperation(this.skill, defaultOperation);
+        AttributeModifier.Operation legacy = Configuration.getConfiguredOperation(this.skill, defaultOperation);
+        return Configuration.getBuiltInPerkOperation(this.skill, legacy);
     }
 
     public double getBonusPerStep() {
-        return bonusSupplier.get();
+        return Configuration.getBuiltInPerkAmountPerStep(this.skill, bonusSupplier.get());
+    }
+
+    public int getPerkStep() {
+        return Configuration.getBuiltInPerkStep(this.skill);
     }
 
     public Attribute getAttribute() {
         Attribute configured = Configuration.getConfiguredAttribute(this.skill);
-        return configured != null ? configured : attributeSupplier.get();
+        Attribute legacy = configured != null ? configured : attributeSupplier.get();
+        return Configuration.getBuiltInPerkAttribute(this.skill, legacy);
     }
 
     public static @Nullable SkillAttributeBonus getBySkill(Skill skill) {
@@ -55,7 +61,7 @@ public enum SkillAttributeBonus {
 
     }
     public double getTotalBonus(SkillModel model) {
-        int steps = model.getSkillLevel(this.skill) / 5;
+        int steps = model.getSkillLevel(this.skill) / getPerkStep();
         return steps * getBonusPerStep();
     }
 

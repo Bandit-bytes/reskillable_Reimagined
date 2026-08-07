@@ -78,7 +78,7 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
     }
 
     public void increaseSkillLevel(Skill skill, Player player) {
-        if (skill == null || player == null) {
+        if (skill == null || player == null || !Configuration.isBuiltInSkillEnabled(skill)) {
             return;
         }
 
@@ -95,14 +95,12 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
             syncSkills(player);
 
             int newLevel = skillLevels[skill.index];
-            if (newLevel % 5 == 0) {
-                SkillAttributeBonus bonus = SkillAttributeBonus.getBySkill(skill);
-                if (bonus != null) {
-                    Attribute attr = bonus.getAttribute();
-                    if (attr != null) {
-                        double amount = bonus.getBonusPerStep();
-                        String attributeName = attr.getDescriptionId().replace("attribute.name.", "");
-                    }
+            SkillAttributeBonus bonus = SkillAttributeBonus.getBySkill(skill);
+            if (bonus != null && newLevel % bonus.getPerkStep() == 0) {
+                Attribute attr = bonus.getAttribute();
+                if (attr != null) {
+                    double amount = bonus.getBonusPerStep();
+                    String attributeName = attr.getDescriptionId().replace("attribute.name.", "");
                 }
             }
         }
@@ -128,6 +126,9 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
     }
 
     public void addExperience(Skill skill, int experience) {
+        if (skill == null || !Configuration.isBuiltInSkillEnabled(skill)) {
+            return;
+        }
         skillExperience[skill.index] += experience;
         checkForLevelUp(skill);
     }
@@ -263,8 +264,10 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
             Component translatedSkillName;
 
             if (req.isVanillaSkill()) {
-                String skillTranslationKey = "skill." + req.skill.name().toLowerCase(Locale.ROOT);
-                translatedSkillName = Component.translatable(skillTranslationKey);
+                String configuredName = Configuration.getBuiltInSkillDisplayName(req.skill);
+                translatedSkillName = configuredName.isBlank()
+                        ? Component.translatable(req.skill.getDisplayName())
+                        : Component.literal(configuredName);
             } else if (req.isCustomSkill()) {
                 CustomSkillSlot slot = Configuration.findCustomSkillById(req.customSkillId);
                 String displayName = slot != null ? slot.getDisplayName() : req.customSkillId;
@@ -462,7 +465,7 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
 
             if (isPerkEnabled(bonus.skill)) {
                 int skillLevel = getSkillLevel(bonus.skill);
-                int bonusSteps = skillLevel / 5;
+                int bonusSteps = skillLevel / bonus.getPerkStep();
                 double totalBonus = bonusSteps * bonus.getBonusPerStep();
 
                 if (totalBonus > 0) {
@@ -528,7 +531,10 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
             return;
         }
 
-        int totalSkillLevels = Arrays.stream(skillLevels).sum();
+        int totalSkillLevels = 0;
+        for (Skill skill : Configuration.getEnabledBuiltInSkills()) {
+            totalSkillLevels += getSkillLevel(skill);
+        }
 
         for (CustomSkillSlot slot : Configuration.getCustomSkills()) {
             if (slot != null && slot.isEnabled()) {
@@ -568,7 +574,7 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
     }
 
     public boolean isPerkEnabled(Skill skill) {
-        return !disabledPerks.contains(skill);
+        return skill != null && Configuration.isBuiltInSkillEnabled(skill) && !disabledPerks.contains(skill);
     }
     public boolean isCustomPerkEnabled(String customSkillId) {
         if (customSkillId == null || customSkillId.isBlank()) {
@@ -593,6 +599,9 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
 
 
     public void togglePerk(Skill skill, Player player) {
+        if (skill == null || !Configuration.isBuiltInSkillEnabled(skill)) {
+            return;
+        }
         if (!disabledPerks.add(skill)) {
             disabledPerks.remove(skill);
         }
@@ -602,9 +611,10 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
     public int getTotalSpentLevels() {
         int total = 0;
 
-        // Built-in skills
-        for (int level : skillLevels) {
-            total += Math.max(0, level - 1);
+        // Enabled built-in skills. Disabled skills keep their saved data for compatibility,
+        // but do not count toward caps/health/progression totals.
+        for (Skill skill : Configuration.getEnabledBuiltInSkills()) {
+            total += Math.max(0, getSkillLevel(skill) - 1);
         }
 
         // Custom skills
@@ -652,7 +662,9 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
         }
 
         for (CustomSkillSlot slot : Configuration.getCustomSkills()) {
-            if (slot != null && slot.isEnabled()) {
+            // Disabled custom skills can still have saved player investment. Refund it
+            // before reset so temporarily hiding a skill never destroys spent XP.
+            if (slot != null && !slot.getId().isBlank()) {
                 refund += getRefundForLevel(getCustomSkillLevel(slot.getId()));
             }
         }

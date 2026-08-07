@@ -56,7 +56,7 @@ public class SetCommand {
         if (skillName.equals("all")) {
             int changed = 0;
 
-            for (Skill skill : Skill.values()) {
+            for (Skill skill : Configuration.getEnabledBuiltInSkills()) {
                 int current = model.getSkillLevel(skill);
                 int newLevel = Math.min(current + amount, Configuration.getMaxLevel());
                 if (newLevel != current) {
@@ -87,7 +87,7 @@ public class SetCommand {
             return 1;
         }
 
-        Skill builtInSkill = Skill.fromString(skillName);
+        Skill builtInSkill = Configuration.resolveBuiltInSkill(skillName);
         if (builtInSkill != null) {
             int current = model.getSkillLevel(builtInSkill);
             int newLevel = Math.min(current + amount, Configuration.getMaxLevel());
@@ -98,7 +98,9 @@ public class SetCommand {
             context.getSource().sendSuccess(() -> Component.literal("Increased ")
                     .append(player.getName())
                     .append("'s ")
-                    .append(Component.literal(builtInSkill.getSerializedName()))
+                    .append(Component.literal(Configuration.getBuiltInSkillDisplayName(builtInSkill).isBlank()
+                            ? Configuration.getBuiltInSkillId(builtInSkill)
+                            : Configuration.getBuiltInSkillDisplayName(builtInSkill)))
                     .append(" by " + amount + " to " + newLevel), true);
 
             return 1;
@@ -139,7 +141,7 @@ public class SetCommand {
         if (skillName.equals("all")) {
             int changed = 0;
 
-            for (Skill skill : Skill.values()) {
+            for (Skill skill : Configuration.getEnabledBuiltInSkills()) {
                 if (model.getSkillLevel(skill) != level) {
                     model.setSkillLevel(skill, level);
                     changed++;
@@ -166,7 +168,7 @@ public class SetCommand {
             return 1;
         }
 
-        Skill builtInSkill = Skill.fromString(skillName);
+        Skill builtInSkill = Configuration.resolveBuiltInSkill(skillName);
         if (builtInSkill != null) {
             model.setSkillLevel(builtInSkill, level);
             model.updateSkillAttributeBonuses(player);
@@ -175,7 +177,9 @@ public class SetCommand {
             context.getSource().sendSuccess(() -> Component.literal("Set ")
                     .append(player.getName())
                     .append("'s ")
-                    .append(Component.literal(builtInSkill.getSerializedName()))
+                    .append(Component.literal(Configuration.getBuiltInSkillDisplayName(builtInSkill).isBlank()
+                            ? Configuration.getBuiltInSkillId(builtInSkill)
+                            : Configuration.getBuiltInSkillDisplayName(builtInSkill)))
                     .append(" to " + level), true);
 
             return 1;

@@ -44,11 +44,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class EventHandler {
     private static final Map<UUID, SkillModel> lastDiedPlayerSkillsMap = new ConcurrentHashMap<>();
 
-    /**
-     * Automation mods such as Create use Forge FakePlayer instances to perform
-     * block and item interactions. Fake players cannot earn Reskillable levels,
-     * so they must not be blocked by normal player skill requirements.
-     */
+
     private static boolean bypassSkillRequirements(Player player) {
         return player instanceof FakePlayer;
     }
@@ -260,15 +256,12 @@ public class EventHandler {
         if (model == null) return;
 
         int miningLevel = model.getSkillLevel(Skill.MINING);
+        SkillAttributeBonus bonus = SkillAttributeBonus.getBySkill(Skill.MINING);
 
-        if (miningLevel >= 5) {
-            SkillAttributeBonus bonus = SkillAttributeBonus.getBySkill(Skill.MINING);
-
-            if (bonus != null && model.isPerkEnabled(Skill.MINING)) {
-                float multiplier = 1.0f
-                        + (miningLevel / 5.0f) * (float) bonus.getBonusPerStep();
-                event.setNewSpeed(event.getNewSpeed() * multiplier);
-            }
+        if (bonus != null && miningLevel >= bonus.getPerkStep() && model.isPerkEnabled(Skill.MINING)) {
+            float bonusSteps = miningLevel / (float) bonus.getPerkStep();
+            float multiplier = 1.0f + bonusSteps * (float) bonus.getBonusPerStep();
+            event.setNewSpeed(event.getNewSpeed() * multiplier);
         }
     }
 
@@ -290,8 +283,8 @@ public class EventHandler {
                 if (model != null && model.isPerkEnabled(Skill.FARMING)) {
                     int farmingLevel = model.getSkillLevel(Skill.FARMING);
 
-                    if (farmingLevel >= 5) {
-                        float steps = farmingLevel / 5.0f;
+                    if (farmingBonus != null && farmingLevel >= farmingBonus.getPerkStep()) {
+                        float steps = farmingLevel / (float) farmingBonus.getPerkStep();
                         float chance = Math.min(steps * chancePerStep, 1.0f);
 
                         if (level.random.nextFloat() < chance) {
@@ -313,22 +306,19 @@ public class EventHandler {
         if (model == null || !model.isPerkEnabled(Skill.GATHERING)) return;
 
         int gatheringLevel = model.getSkillLevel(Skill.GATHERING);
-        if (gatheringLevel < 5) return;
-
         SkillAttributeBonus bonus = SkillAttributeBonus.getBySkill(Skill.GATHERING);
+        if (bonus == null || gatheringLevel < bonus.getPerkStep()) return;
 
-        if (bonus != null) {
-            double bonusPercentPerStep = bonus.getBonusPerStep();
-            int bonusSteps = gatheringLevel / 5;
-            float originalXp = event.getOrb().value;
+        double bonusPercentPerStep = bonus.getBonusPerStep();
+        int bonusSteps = gatheringLevel / bonus.getPerkStep();
+        float originalXp = event.getOrb().value;
 
-            int bonusXp = Math.round(
-                    originalXp * (float) (bonusSteps * bonusPercentPerStep)
-            );
+        int bonusXp = Math.round(
+                originalXp * (float) (bonusSteps * bonusPercentPerStep)
+        );
 
-            if (bonusXp > 0) {
-                player.giveExperiencePoints(bonusXp);
-            }
+        if (bonusXp > 0) {
+            player.giveExperiencePoints(bonusXp);
         }
     }
 

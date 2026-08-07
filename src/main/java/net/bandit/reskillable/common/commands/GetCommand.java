@@ -35,12 +35,17 @@ public class GetCommand {
             return 0;
         }
 
-        Skill builtInSkill = Skill.fromString(skillName);
+        Skill builtInSkill = Configuration.resolveBuiltInSkill(skillName);
         if (builtInSkill != null) {
             int level = model.getSkillLevel(builtInSkill);
 
+            String configuredName = Configuration.getBuiltInSkillDisplayName(builtInSkill);
+            Component displayName = configuredName.isBlank()
+                    ? Component.translatable(builtInSkill.getDisplayName())
+                    : Component.literal(configuredName);
+
             context.getSource().sendSuccess(() ->
-                    Component.translatable(builtInSkill.getDisplayName())
+                    displayName.copy()
                             .append(" " + level), true);
 
             return level;

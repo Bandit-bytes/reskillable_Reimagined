@@ -173,10 +173,10 @@ public class Tooltip {
                 currentLevel =
                         skillModel.getSkillLevel(requirement.skill);
 
-                skillName =
-                        Component.translatable(
-                                requirement.skill.displayName
-                        );
+                String configuredName = Configuration.getBuiltInSkillDisplayName(requirement.skill);
+                skillName = configuredName.isBlank()
+                        ? Component.translatable(requirement.skill.getDisplayName())
+                        : Component.literal(configuredName);
             } else if (requirement.isCustomSkill()) {
                 currentLevel =
                         skillModel.getCustomSkillLevel(

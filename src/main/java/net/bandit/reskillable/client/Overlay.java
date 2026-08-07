@@ -81,8 +81,14 @@ public class Overlay implements IGuiOverlay {
                 int u = Math.min(requirement.level, maxLevel - 1) / Math.max(1, (maxLevel / 4)) * 16 + 176;
                 int v = requirement.skill.index * 16 + 128;
 
-                RenderSystem.setShaderTexture(0, SkillScreen.RESOURCES);
-                guiGraphics.blit(SkillScreen.RESOURCES, x, y, u, v, 16, 16);
+                ResourceLocation configuredIcon = Configuration.getBuiltInSkillIcon(requirement.skill);
+                if (configuredIcon != null) {
+                    RenderSystem.setShaderTexture(0, configuredIcon);
+                    guiGraphics.blit(configuredIcon, x, y, 0, 0, 16, 16, 16, 16);
+                } else {
+                    RenderSystem.setShaderTexture(0, SkillScreen.RESOURCES);
+                    guiGraphics.blit(SkillScreen.RESOURCES, x, y, u, v, 16, 16);
+                }
 
                 met = model.getSkillLevel(requirement.skill) >= requirement.level;
             } else if (requirement.isCustomSkill()) {

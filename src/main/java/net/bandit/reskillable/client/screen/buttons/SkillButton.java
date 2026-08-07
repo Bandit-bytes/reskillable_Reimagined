@@ -73,7 +73,14 @@ public class SkillButton extends Button {
         int v = skill.index * 16 + 128;
 
         guiGraphics.blit(SkillScreen.RESOURCES, getX(), getY(), 176, (level == maxLevel ? 64 : 0) + (isMouseOver(mouseX, mouseY) ? 32 : 0), width, height);
-        guiGraphics.blit(SkillScreen.RESOURCES, getX() + 6, getY() + 8, u, v, 16, 16);
+        ResourceLocation configuredIcon = Configuration.getBuiltInSkillIcon(skill);
+        if (configuredIcon != null) {
+            RenderSystem.setShaderTexture(0, configuredIcon);
+            guiGraphics.blit(configuredIcon, getX() + 6, getY() + 8, 0, 0, 16, 16, 16, 16);
+            RenderSystem.setShaderTexture(0, SkillScreen.RESOURCES);
+        } else {
+            guiGraphics.blit(SkillScreen.RESOURCES, getX() + 6, getY() + 8, u, v, 16, 16);
+        }
         if (!skillModel.isPerkEnabled(skill) && SkillAttributeBonus.getBySkill(skill) != null) {
             int iconX = getX() + width - 10;
             int iconY = getY() + height - 10;
@@ -85,7 +92,11 @@ public class SkillButton extends Button {
         int rightPadding = gateBlocked ? 22 : 6;
         int maxNameWidth = width - (nameX - getX()) - rightPadding;
 
-        drawScaledToFitText(guiGraphics, font, Component.translatable(skill.getDisplayName()), nameX, nameY, maxNameWidth, 0xFFFFFF);
+        String configuredName = Configuration.getBuiltInSkillDisplayName(skill);
+        Component skillName = configuredName.isBlank()
+                ? Component.translatable(skill.getDisplayName())
+                : Component.literal(configuredName);
+        drawScaledToFitText(guiGraphics, font, skillName, nameX, nameY, maxNameWidth, 0xFFFFFF);
         guiGraphics.drawString(font, Component.literal(level + "/" + maxLevel), getX() + 25, getY() + 18, 0xBEBEBE, false);
 
 

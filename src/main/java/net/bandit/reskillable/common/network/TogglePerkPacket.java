@@ -1,5 +1,6 @@
 package net.bandit.reskillable.common.network;
 
+import net.bandit.reskillable.Configuration;
 import net.bandit.reskillable.common.capabilities.SkillModel;
 import net.bandit.reskillable.common.commands.skills.Skill;
 import net.minecraft.network.FriendlyByteBuf;
@@ -31,7 +32,11 @@ public class TogglePerkPacket {
             SkillModel model = SkillModel.get(player);
             if (model == null) return;
 
-            Skill skill = Skill.values()[skillIndex];
+            Skill[] skills = Skill.values();
+            if (skillIndex < 0 || skillIndex >= skills.length) return;
+
+            Skill skill = skills[skillIndex];
+            if (!Configuration.isBuiltInSkillEnabled(skill)) return;
             model.togglePerk(skill, player);
         });
         ctx.get().setPacketHandled(true);

@@ -5,6 +5,7 @@ import net.bandit.reskillable.Configuration.CustomSkillSlot;
 import net.bandit.reskillable.Reskillable;
 import net.bandit.reskillable.common.capabilities.SkillModel;
 import net.bandit.reskillable.common.commands.skills.Skill;
+import net.bandit.reskillable.common.commands.skills.SkillAttributeBonus;
 import net.bandit.reskillable.event.SoundRegistry;
 import net.minecraft.advancements.Advancement;
 import net.minecraft.advancements.DisplayInfo;
@@ -75,7 +76,7 @@ public class RequestLevelUp {
 
     private void handleBuiltInSkillLevelUp(ServerPlayer player, SkillModel model) {
         Skill skill = getSkillSafe(skillIndex);
-        if (skill == null) return;
+        if (skill == null || !Configuration.isBuiltInSkillEnabled(skill)) return;
 
         int currentLevel = model.getSkillLevel(skill);
         int max = Configuration.getMaxLevel();
@@ -97,9 +98,13 @@ public class RequestLevelUp {
 
         GateResult gate = SkillGateRules.check(player, model, skill, null, currentLevel);
         if (!gate.allowed) {
+            String configuredName = Configuration.getBuiltInSkillDisplayName(skill);
+            Component displayName = configuredName.isBlank()
+                    ? Component.translatable(skill.getDisplayName())
+                    : Component.literal(configuredName);
             player.sendSystemMessage(Component.translatable(
                     "message.reskillable.gate_blocked",
-                    Component.translatable("skill.reskillable." + skill.name().toLowerCase(Locale.ROOT)),
+                    displayName,
                     gate.missingListComponent(player)
             ));
             return;
@@ -125,7 +130,8 @@ public class RequestLevelUp {
         model.increaseSkillLevel(skill, player);
         int newLevel = model.getSkillLevel(skill);
 
-        playLevelSounds(player, newLevel);
+        SkillAttributeBonus bonus = SkillAttributeBonus.getBySkill(skill);
+        playLevelSounds(player, newLevel, bonus != null ? bonus.getPerkStep() : 5);
 
         SyncToClient.send(player);
         sendGatePreview(player, model);
@@ -192,13 +198,13 @@ public class RequestLevelUp {
         model.increaseCustomSkillLevel(slot.getId(), player);
         int newLevel = model.getCustomSkillLevel(slot.getId());
 
-        playLevelSounds(player, newLevel);
+        playLevelSounds(player, newLevel, slot.getPerkStep());
 
         SyncToClient.send(player);
         sendGatePreview(player, model);
     }
 
-    private static void playLevelSounds(ServerPlayer player, int newLevel) {
+    private static void playLevelSounds(ServerPlayer player, int newLevel, int perkStep) {
         player.level().playSound(
                 null,
                 player.blockPosition(),
@@ -208,7 +214,7 @@ public class RequestLevelUp {
                 1.0F
         );
 
-        if (newLevel % 5 == 0) {
+        if (newLevel % Math.max(1, perkStep) == 0) {
             player.level().playSound(
                     null,
                     player.blockPosition(),
@@ -230,7 +236,7 @@ public class RequestLevelUp {
     private static Map<Skill, GatePreview> buildPreview(ServerPlayer player, SkillModel model) {
         Map<Skill, GatePreview> preview = new EnumMap<>(Skill.class);
 
-        for (Skill s : Skill.values()) {
+        for (Skill s : Configuration.getEnabledBuiltInSkills()) {
             int lvl = model.getSkillLevel(s);
             GateResult r = SkillGateRules.check(player, model, s, null, lvl);
 
@@ -352,7 +358,7 @@ public class RequestLevelUp {
                     int reqLevel = e.getValue();
 
                     int actual;
-                    Skill builtIn = Skill.fromString(reqSkillId);
+                    Skill builtIn = Configuration.resolveBuiltInSkill(reqSkillId);
                     if (builtIn != null) {
                         actual = model.getSkillLevel(builtIn);
                     } else {
@@ -384,7 +390,7 @@ public class RequestLevelUp {
 
         private static int getTotalSkillLevels(SkillModel model) {
             int total = 0;
-            for (Skill s : Skill.values()) {
+            for (Skill s : Configuration.getEnabledBuiltInSkills()) {
                 total += model.getSkillLevel(s);
             }
 
@@ -436,7 +442,7 @@ public class RequestLevelUp {
 
         boolean matchesTarget(Skill builtInSkill, String customSkillId) {
             if (builtInSkill != null) {
-                return targetSkillId.equals(builtInSkill.getSerializedName());
+                return Configuration.resolveBuiltInSkill(targetSkillId) == builtInSkill;
             }
             return customSkillId != null && targetSkillId.equals(customSkillId.toLowerCase(Locale.ROOT));
         }
@@ -451,7 +457,7 @@ public class RequestLevelUp {
 
             String targetSkillId = parts[0].trim().toLowerCase(Locale.ROOT);
 
-            boolean validBuiltIn = Skill.isBuiltInSkill(targetSkillId);
+            boolean validBuiltIn = Configuration.resolveBuiltInSkill(targetSkillId) != null;
             boolean validCustom = Configuration.findCustomSkillById(targetSkillId) != null;
             if (!validBuiltIn && !validCustom) {
                 return null;
@@ -502,7 +508,7 @@ public class RequestLevelUp {
                         continue;
                     }
 
-                    if (Skill.isBuiltInSkill(key) || Configuration.findCustomSkillById(key) != null) {
+                    if (Configuration.resolveBuiltInSkill(key) != null || Configuration.findCustomSkillById(key) != null) {
                         skillReqs.put(key, val);
                     }
                 }
@@ -583,11 +589,15 @@ public class RequestLevelUp {
                 return Component.translatable("message.reskillable.req_total", requiredLevel);
             }
 
-            Skill builtIn = Skill.fromString(skillId);
+            Skill builtIn = Configuration.resolveBuiltInSkill(skillId);
             if (builtIn != null) {
+                String configuredName = Configuration.getBuiltInSkillDisplayName(builtIn);
+                Component displayName = configuredName.isBlank()
+                        ? Component.translatable(builtIn.getDisplayName())
+                        : Component.literal(configuredName);
                 return Component.translatable(
                         "message.reskillable.req_skill",
-                        Component.translatable("skill.reskillable." + builtIn.name().toLowerCase(Locale.ROOT)),
+                        displayName,
                         requiredLevel
                 );
             }

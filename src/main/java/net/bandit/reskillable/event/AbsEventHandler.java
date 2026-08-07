@@ -74,8 +74,10 @@ public class AbsEventHandler {
             Component translatedSkillName;
 
             if (req.isVanillaSkill()) {
-                String skillTranslationKey = "skill." + req.skill.name().toLowerCase(Locale.ROOT);
-                translatedSkillName = Component.translatable(skillTranslationKey);
+                String configuredName = Configuration.getBuiltInSkillDisplayName(req.skill);
+                translatedSkillName = configuredName.isBlank()
+                        ? Component.translatable(req.skill.getDisplayName())
+                        : Component.literal(configuredName);
             } else if (req.isCustomSkill()) {
                 CustomSkillSlot slot = Configuration.findCustomSkillById(req.customSkillId);
                 String displayName = slot != null ? slot.getDisplayName() : req.customSkillId;
