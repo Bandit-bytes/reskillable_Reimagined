@@ -1,0 +1,12 @@
+{
+  "level_up": {
+    "sounds": [
+      { "name": "reskillable:level_up", "stream": false }
+    ]
+  },
+  "milestone_up": {
+    "sounds": [
+      { "name": "reskillable:milestone_up", "stream": false }
+    ]
+  }
+}

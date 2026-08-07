@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "id": "reskillable",
+  "version": "${version}",
+  "name": "Reskillable",
+  "description": "Reskillable reimagined for 1.21.1, a mod that lets you prevent everything with skills, for the ultimate RPG experience!",
+  "authors": [
+    "Bandit-Bytes"
+  ],
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "net.bandit.reskillable.Reskillable"
+    ],
+    "client": [
+      "net.bandit.reskillable.client.ReskillableClient"
+    ],
+    "emi": [
+      "net.bandit.reskillable.client.compat.emi.ReskillableEmiPlugin"
+    ]
+  },
+  "mixins": [
+    "reskillable.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric-api": "*",
+    "minecraft": "${minecraft_version}",
+    "java": ">=21"
+  },
+  "suggests": {
+    "emi": "*",
+    "jade": "*"
+  }
+}
