@@ -2,6 +2,7 @@ package net.bandit.reskillable.common.gating;
 
 import net.bandit.reskillable.Configuration;
 import net.bandit.reskillable.common.capabilities.SkillModel;
+import net.bandit.reskillable.common.skills.Skill;
 import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -82,8 +83,12 @@ public final class SkillLevelGate {
     private static Component getSkillDisplayComponent(String skillId) {
         String normalized = normalizeSkillId(skillId);
 
-        if (Configuration.isVanillaSkill(normalized)) {
-            return Component.translatable("skill." + normalized);
+        Skill builtIn = Configuration.resolveBuiltInSkill(normalized);
+        if (builtIn != null) {
+            String configuredName = Configuration.getBuiltInSkillDisplayName(builtIn);
+            return configuredName.isBlank()
+                    ? Component.translatable(builtIn.getDisplayName())
+                    : Component.literal(configuredName);
         }
 
         Configuration.CustomSkillSlot customSkill = Configuration.getCustomSkill(normalized);
@@ -144,8 +149,16 @@ public final class SkillLevelGate {
             return GateResult.allow();
         }
 
-        String normalizedLevelingSkill = normalizeSkillId(levelingSkillId);
-        int totalLevels = model.getAllSkillLevels().values().stream().mapToInt(Integer::intValue).sum();
+        String normalizedLevelingSkill = Configuration.canonicalSkillId(levelingSkillId);
+        int totalLevels = 0;
+        for (Skill skill : Configuration.getEnabledBuiltInSkills()) {
+            totalLevels += model.getSkillLevel(skill);
+        }
+        for (Configuration.CustomSkillSlot slot : Configuration.getCustomSkills()) {
+            if (slot != null && slot.isEnabled()) {
+                totalLevels += model.getSkillLevel(slot.getId());
+            }
+        }
 
         List<MissingReq> missing = new ArrayList<>();
 
@@ -214,10 +227,11 @@ public final class SkillLevelGate {
             String[] parts = line.split(":", 3);
             if (parts.length < 3) return null;
 
-            String skillId = normalizeSkillId(parts[0]);
-            if (!Configuration.isKnownSkill(skillId)) {
+            String rawSkillId = normalizeSkillId(parts[0]);
+            if (!Configuration.isKnownSkill(rawSkillId)) {
                 return null;
             }
+            String skillId = Configuration.canonicalSkillId(rawSkillId);
 
             int minLevel;
             try {
@@ -264,7 +278,7 @@ public final class SkillLevelGate {
 
                     String requiredSkillId = normalizeSkillId(keyRaw);
                     if (Configuration.isKnownSkill(requiredSkillId)) {
-                        skillReqs.put(requiredSkillId, val);
+                        skillReqs.put(Configuration.canonicalSkillId(requiredSkillId), val);
                     }
                 }
             }

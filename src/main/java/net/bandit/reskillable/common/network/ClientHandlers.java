@@ -37,6 +37,7 @@ public class ClientHandlers {
                     msg.skillLevelingEnabled(),
                     msg.maximumLevel(),
                     msg.maxTotalSpentLevels(),
+                    msg.builtInSkills(),
                     msg.customSkills()
             );
         }

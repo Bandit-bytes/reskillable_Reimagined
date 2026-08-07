@@ -13,70 +13,101 @@ import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.RegisterCommandsEvent;
 
 import java.util.Locale;
-import java.util.logging.Logger;
 
-@EventBusSubscriber
 public class GetCommand {
-    private static final Logger LOGGER = Logger.getLogger(GetCommand.class.getName());
 
     static ArgumentBuilder<CommandSourceStack, ?> register() {
         return Commands.literal("get")
-                .then(Commands.argument("player", EntityArgument.player())
-                        .then(Commands.argument("skill", StringArgumentType.word())
-                                .executes(GetCommand::execute)));
+                .then(
+                        Commands.argument(
+                                        "player",
+                                        EntityArgument.player()
+                                )
+                                .then(
+                                        Commands.argument(
+                                                        "skill",
+                                                        StringArgumentType.word()
+                                                )
+                                                .executes(GetCommand::execute)
+                                )
+                );
     }
 
-    private static int execute(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-        ServerPlayer player = EntityArgument.getPlayer(context, "player");
-        String skillId = normalizeSkillId(StringArgumentType.getString(context, "skill"));
+    private static int execute(
+            CommandContext<CommandSourceStack> context
+    ) throws CommandSyntaxException {
+        ServerPlayer player =
+                EntityArgument.getPlayer(context, "player");
+
+        String skillId = normalizeSkillId(
+                StringArgumentType.getString(context, "skill")
+        );
 
         if (!Configuration.isKnownSkill(skillId)) {
-            context.getSource().sendFailure(Component.literal("Unknown skill: " + skillId));
+            context.getSource().sendFailure(
+                    Component.literal("Unknown skill: " + skillId)
+            );
+
             return 0;
         }
 
-        int level = SkillModel.get(player).getSkillLevel(skillId);
+        SkillModel model = SkillModel.get(player);
+
+        if (model == null) {
+            context.getSource().sendFailure(
+                    Component.literal(
+                            "Unable to access skills for "
+                                    + player.getScoreboardName()
+                                    + "."
+                    )
+            );
+
+            return 0;
+        }
+
+        int level = model.getSkillLevel(skillId);
 
         context.getSource().sendSuccess(
                 () -> Component.literal("")
+                        .append(player.getDisplayName())
+                        .append("'s ")
                         .append(getSkillDisplayComponent(skillId))
-                        .append(" " + level),
-                true
+                        .append(" level is ")
+                        .append(Component.literal(String.valueOf(level))),
+                false
         );
 
-        return level;
-    }
-
-    @SubscribeEvent
-    public static void onRegisterCommands(RegisterCommandsEvent event) {
-        event.getDispatcher().register(
-                Commands.literal("skills")
-                        .then(Commands.literal("get")
-                                .then(Commands.argument("player", EntityArgument.player())
-                                        .then(Commands.argument("skill", StringArgumentType.word())
-                                                .executes(GetCommand::execute))))
-        );
+        /*
+         * Return 1 for successful command execution.
+         * The actual level is already included in the message.
+         */
+        return 1;
     }
 
     private static String normalizeSkillId(String skillId) {
-        return skillId == null ? "" : skillId.trim().toLowerCase(Locale.ROOT);
+        return skillId == null
+                ? ""
+                : skillId.trim().toLowerCase(Locale.ROOT);
     }
 
-    private static MutableComponent getSkillDisplayComponent(String skillId) {
+    private static MutableComponent getSkillDisplayComponent(
+            String skillId
+    ) {
         String normalized = normalizeSkillId(skillId);
 
-        try {
-            Skill vanilla = Skill.valueOf(normalized.toUpperCase(Locale.ROOT));
-            return Component.translatable(vanilla.displayName);
-        } catch (Exception ignored) {
+        Skill builtIn = Configuration.resolveBuiltInSkill(normalized);
+        if (builtIn != null) {
+            String configuredName = Configuration.getBuiltInSkillDisplayName(builtIn);
+            return configuredName.isBlank()
+                    ? Component.translatable(builtIn.getDisplayName())
+                    : Component.literal(configuredName);
         }
 
-        Configuration.CustomSkillSlot custom = Configuration.getCustomSkill(normalized);
+        Configuration.CustomSkillSlot custom =
+                Configuration.getCustomSkill(normalized);
+
         if (custom != null) {
             return Component.literal(custom.getDisplayName());
         }

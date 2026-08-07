@@ -24,6 +24,7 @@ public record SyncSkillConfig(Map<String, Requirement[]> skillLocks,
                               boolean skillLevelingEnabled,
                               int maximumLevel,
                               int maxTotalSpentLevels,
+                              List<Configuration.BuiltInSkillSlot> builtInSkills,
                               List<Configuration.CustomSkillSlot> customSkills,
                               boolean isFinalChunk) implements CustomPacketPayload {
 
@@ -32,6 +33,7 @@ public record SyncSkillConfig(Map<String, Requirement[]> skillLocks,
     private static final Logger LOGGER = Logger.getLogger(SyncSkillConfig.class.getName());
     private static final Gson GSON = new Gson();
     private static final java.lang.reflect.Type REQ_MAP_TYPE = new TypeToken<Map<String, Requirement[]>>() {}.getType();
+    private static final java.lang.reflect.Type BUILT_IN_SKILL_LIST_TYPE = new TypeToken<List<Configuration.BuiltInSkillSlot>>() {}.getType();
     private static final java.lang.reflect.Type CUSTOM_SKILL_LIST_TYPE = new TypeToken<List<Configuration.CustomSkillSlot>>() {}.getType();
 
     public static final StreamCodec<FriendlyByteBuf, SyncSkillConfig> STREAM_CODEC = StreamCodec.of(
@@ -43,6 +45,7 @@ public record SyncSkillConfig(Map<String, Requirement[]> skillLocks,
                     buf.writeBoolean(msg.skillLevelingEnabled);
                     buf.writeInt(msg.maximumLevel);
                     buf.writeInt(msg.maxTotalSpentLevels);
+                    buf.writeByteArray(compress(GSON.toJson(msg.builtInSkills)));
                     buf.writeByteArray(compress(GSON.toJson(msg.customSkills)));
                     buf.writeBoolean(msg.isFinalChunk);
                 } catch (IOException e) {
@@ -57,6 +60,7 @@ public record SyncSkillConfig(Map<String, Requirement[]> skillLocks,
                     boolean skillLevelingEnabled = buf.readBoolean();
                     int maximumLevel = buf.readInt();
                     int maxTotalSpentLevels = buf.readInt();
+                    List<Configuration.BuiltInSkillSlot> builtInSkills = GSON.fromJson(decompress(buf.readByteArray()), BUILT_IN_SKILL_LIST_TYPE);
                     List<Configuration.CustomSkillSlot> customSkills = GSON.fromJson(decompress(buf.readByteArray()), CUSTOM_SKILL_LIST_TYPE);
                     boolean isFinal = buf.readBoolean();
                     return new SyncSkillConfig(
@@ -66,6 +70,7 @@ public record SyncSkillConfig(Map<String, Requirement[]> skillLocks,
                             skillLevelingEnabled,
                             maximumLevel,
                             maxTotalSpentLevels,
+                            builtInSkills,
                             customSkills,
                             isFinal
                     );
@@ -83,6 +88,7 @@ public record SyncSkillConfig(Map<String, Requirement[]> skillLocks,
                 Configuration.isSkillLevelingEnabled(),
                 Configuration.getMaxLevel(),
                 Configuration.getMaxSpendableLevels(),
+                Configuration.getBuiltInSkills(),
                 Configuration.getCustomSkills(),
                 true
         ));

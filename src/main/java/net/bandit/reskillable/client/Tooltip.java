@@ -72,7 +72,10 @@ public final class Tooltip {
 
         Skill vanilla = getVanillaSkillOrNull(normalized);
         if (vanilla != null) {
-            return Component.translatable("skill." + normalized);
+            String configuredName = Configuration.getBuiltInSkillDisplayName(vanilla);
+            return configuredName.isBlank()
+                    ? Component.translatable(vanilla.getDisplayName())
+                    : Component.literal(configuredName);
         }
 
         Configuration.CustomSkillSlot custom = Configuration.getCustomSkill(normalized);
@@ -84,11 +87,7 @@ public final class Tooltip {
     }
 
     private static Skill getVanillaSkillOrNull(String skillId) {
-        try {
-            return Skill.valueOf(skillId.toUpperCase(Locale.ROOT));
-        } catch (Exception e) {
-            return null;
-        }
+        return Configuration.resolveBuiltInSkill(skillId);
     }
 
     private static String normalizeSkillId(String skillId) {

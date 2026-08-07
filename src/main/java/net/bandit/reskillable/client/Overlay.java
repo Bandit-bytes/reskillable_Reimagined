@@ -99,11 +99,17 @@ public class Overlay {
 
         Skill vanilla = getVanillaSkillOrNull(skillId);
         if (vanilla != null) {
+            Identifier configuredIcon = Configuration.getBuiltInSkillIcon(vanilla);
+            if (configuredIcon != null) {
+                guiGraphics.blit(RenderPipelines.GUI_TEXTURED, configuredIcon, x, y, 0, 0, 16, 16, 16, 16);
+                return;
+            }
+
             int maxLevel = Math.max(1, Configuration.getMaxLevel());
             int divisor = Math.max(1, maxLevel / 4);
 
             int u = Math.min(req.level, maxLevel - 1) / divisor * 16 + 176;
-            int v = vanilla.index * 16 + 128;
+            int v = vanilla.getIconIndex() * 16 + 128;
 
             guiGraphics.blit(RenderPipelines.GUI_TEXTURED, SkillScreen.RESOURCES, x, y, u, v, 16, 16, 256, 256);
             return;
@@ -133,10 +139,6 @@ public class Overlay {
     }
 
     private static Skill getVanillaSkillOrNull(String skillId) {
-        try {
-            return Skill.valueOf(skillId.toUpperCase(Locale.ROOT));
-        } catch (Exception e) {
-            return null;
-        }
+        return Configuration.resolveBuiltInSkill(skillId);
     }
 }
