@@ -56,11 +56,10 @@ public class SetCommand {
                 SkillModel model = SkillModel.get(target);
                 if (model == null) continue;
 
-                for (Skill vanilla : Skill.values()) {
-                    String id = normalizeSkillId(vanilla.name());
-                    int currentLevel = model.getSkillLevel(id);
+                for (Skill builtIn : Configuration.getEnabledBuiltInSkills()) {
+                    int currentLevel = model.getSkillLevel(builtIn);
                     int newLevel = Math.min(currentLevel + amount, Configuration.getMaxLevel());
-                    model.setSkillLevel(id, newLevel);
+                    model.setSkillLevel(builtIn, newLevel);
                 }
 
                 for (Configuration.CustomSkillSlot custom : Configuration.getCustomSkills()) {
@@ -130,8 +129,8 @@ public class SetCommand {
                 SkillModel model = SkillModel.get(target);
                 if (model == null) continue;
 
-                for (Skill vanilla : Skill.values()) {
-                    model.setSkillLevel(normalizeSkillId(vanilla.name()), level);
+                for (Skill builtIn : Configuration.getEnabledBuiltInSkills()) {
+                    model.setSkillLevel(builtIn, level);
                 }
 
                 for (Configuration.CustomSkillSlot custom : Configuration.getCustomSkills()) {
@@ -227,10 +226,12 @@ public class SetCommand {
     private static MutableComponent getSkillDisplayComponent(String skillId) {
         String normalized = normalizeSkillId(skillId);
 
-        try {
-            Skill vanilla = Skill.valueOf(normalized.toUpperCase(Locale.ROOT));
-            return Component.translatable(vanilla.displayName);
-        } catch (Exception ignored) {
+        Skill builtIn = Configuration.resolveBuiltInSkill(normalized);
+        if (builtIn != null) {
+            String configuredName = Configuration.getBuiltInSkillDisplayName(builtIn);
+            return configuredName.isBlank()
+                    ? Component.translatable(builtIn.getDisplayName())
+                    : Component.literal(configuredName);
         }
 
         Configuration.CustomSkillSlot custom = Configuration.getCustomSkill(normalized);

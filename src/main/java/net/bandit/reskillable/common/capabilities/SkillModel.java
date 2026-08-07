@@ -40,6 +40,22 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
         return skillId == null ? "" : skillId.trim().toLowerCase(Locale.ROOT);
     }
 
+    /**
+     * Built-in skills keep their original map/NBT key even when their public ID is renamed.
+     * This preserves existing player data and prevents reordering/renaming from creating a new skill.
+     */
+    private static String toStorageSkillId(String skillId) {
+        String normalized = normalizeSkillId(skillId);
+        if (normalized.isBlank()) return "";
+
+        Skill legacy = Skill.fromString(normalized);
+        if (legacy != null) {
+            return legacy.getSerializedName();
+        }
+
+        return Configuration.toStorageSkillId(normalized);
+    }
+
     public static SkillModel get(Player player) {
         return player.getData(SkillAttachments.SKILL_MODEL.get());
     }
@@ -50,7 +66,7 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
         disabledPerks.clear();
 
         for (Skill skill : Skill.values()) {
-            String id = normalizeSkillId(skill.name());
+            String id = skill.getSerializedName();
             skillLevels.put(id, 1);
             skillExperience.put(id, 0);
         }
@@ -65,80 +81,82 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
     }
 
     public void ensureSkillExists(String skillId) {
-        String normalized = normalizeSkillId(skillId);
-        if (normalized.isBlank()) {
+        String storageId = toStorageSkillId(skillId);
+        if (storageId.isBlank()) {
             return;
         }
 
-        skillLevels.putIfAbsent(normalized, 1);
-        skillExperience.putIfAbsent(normalized, 0);
+        skillLevels.putIfAbsent(storageId, 1);
+        skillExperience.putIfAbsent(storageId, 0);
     }
 
     public int getSkillLevel(Skill skill) {
-        return getSkillLevel(skill.name());
+        return getSkillLevel(skill.getSerializedName());
     }
 
     public int getSkillLevel(String skillId) {
-        String normalized = normalizeSkillId(skillId);
-        return skillLevels.getOrDefault(normalized, 1);
+        String storageId = toStorageSkillId(skillId);
+        return skillLevels.getOrDefault(storageId, 1);
     }
 
     public void setSkillLevel(Skill skill, int level) {
-        setSkillLevel(skill.name(), level);
+        setSkillLevel(skill.getSerializedName(), level);
     }
 
     public void setSkillLevel(String skillId, int level) {
-        String normalized = normalizeSkillId(skillId);
-        if (normalized.isBlank()) {
+        String storageId = toStorageSkillId(skillId);
+        if (storageId.isBlank()) {
             return;
         }
 
-        skillLevels.put(normalized, Math.min(level, Configuration.getMaxLevel()));
-        skillExperience.putIfAbsent(normalized, 0);
+        skillLevels.put(storageId, Math.min(level, Configuration.getMaxLevel()));
+        skillExperience.putIfAbsent(storageId, 0);
     }
 
     public int getSkillExperience(Skill skill) {
-        return getSkillExperience(skill.name());
+        return getSkillExperience(skill.getSerializedName());
     }
 
     public int getSkillExperience(String skillId) {
-        return skillExperience.getOrDefault(normalizeSkillId(skillId), 0);
+        return skillExperience.getOrDefault(toStorageSkillId(skillId), 0);
     }
 
     public void setSkillExperience(Skill skill, int xp) {
-        setSkillExperience(skill.name(), xp);
+        setSkillExperience(skill.getSerializedName(), xp);
     }
 
     public void setSkillExperience(String skillId, int xp) {
-        String normalized = normalizeSkillId(skillId);
-        if (normalized.isBlank()) {
+        String storageId = toStorageSkillId(skillId);
+        if (storageId.isBlank()) {
             return;
         }
 
-        skillExperience.put(normalized, Math.max(0, xp));
-        skillLevels.putIfAbsent(normalized, 1);
+        skillExperience.put(storageId, Math.max(0, xp));
+        skillLevels.putIfAbsent(storageId, 1);
     }
 
     public void increaseSkillLevel(Skill skill, Player player) {
-        increaseSkillLevel(skill.name(), player);
+        if (skill == null || !Configuration.isBuiltInSkillEnabled(skill)) return;
+        increaseSkillLevel(Configuration.getBuiltInSkillId(skill), player);
     }
 
     public void increaseSkillLevel(String skillId, Player player) {
         String normalized = normalizeSkillId(skillId);
-        if (normalized.isBlank()) {
+        if (normalized.isBlank() || !Configuration.isKnownSkill(normalized)) {
             return;
         }
 
-        ensureSkillExists(normalized);
+        String storageId = toStorageSkillId(normalized);
+        ensureSkillExists(storageId);
 
         if (!canSpendAnotherLevel()) {
             return;
         }
 
-        int currentLevel = getSkillLevel(normalized);
+        int currentLevel = getSkillLevel(storageId);
         if (currentLevel < Configuration.getMaxLevel()) {
-            skillLevels.put(normalized, currentLevel + 1);
-            skillExperience.put(normalized, 0);
+            skillLevels.put(storageId, currentLevel + 1);
+            skillExperience.put(storageId, 0);
 
             updateSkillAttributeBonuses(player);
             syncSkills(player);
@@ -146,18 +164,20 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
     }
 
     public void addExperience(Skill skill, int experience) {
-        addExperience(skill.name(), experience);
+        if (skill == null || !Configuration.isBuiltInSkillEnabled(skill)) return;
+        addExperience(Configuration.getBuiltInSkillId(skill), experience);
     }
 
     public void addExperience(String skillId, int experience) {
         String normalized = normalizeSkillId(skillId);
-        if (normalized.isBlank()) {
+        if (normalized.isBlank() || !Configuration.isKnownSkill(normalized)) {
             return;
         }
 
-        ensureSkillExists(normalized);
-        skillExperience.put(normalized, getSkillExperience(normalized) + experience);
-        checkForLevelUp(normalized);
+        String storageId = toStorageSkillId(normalized);
+        ensureSkillExists(storageId);
+        skillExperience.put(storageId, getSkillExperience(storageId) + experience);
+        checkForLevelUp(storageId);
     }
 
     private void checkForLevelUp(String skillId) {
@@ -265,8 +285,11 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
     private String getRequirementDisplayName(String skillId) {
         String normalized = normalizeSkillId(skillId);
 
-        if (Configuration.isVanillaSkill(normalized)) {
-            return Component.translatable("skill." + normalized).getString();
+        Skill builtIn = Configuration.resolveBuiltInSkill(normalized);
+        if (builtIn != null) {
+            String configuredName = Configuration.getBuiltInSkillDisplayName(builtIn);
+            if (!configuredName.isBlank()) return configuredName;
+            return Component.translatable(builtIn.getDisplayName()).getString();
         }
 
         Configuration.CustomSkillSlot customSkill = Configuration.getCustomSkill(normalized);
@@ -295,25 +318,31 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
     }
 
     public boolean isPerkEnabled(Skill skill) {
-        return isPerkEnabled(skill.name());
+        return skill != null
+                && Configuration.isBuiltInSkillEnabled(skill)
+                && !disabledPerks.contains(skill.getSerializedName());
     }
 
     public boolean isPerkEnabled(String skillId) {
-        return !disabledPerks.contains(normalizeSkillId(skillId));
+        String normalized = normalizeSkillId(skillId);
+        if (normalized.isBlank() || !Configuration.isKnownSkill(normalized)) return false;
+        return !disabledPerks.contains(toStorageSkillId(normalized));
     }
 
     public void togglePerk(Skill skill, Player player) {
-        togglePerk(skill.name(), player);
+        if (skill == null || !Configuration.isBuiltInSkillEnabled(skill)) return;
+        togglePerk(Configuration.getBuiltInSkillId(skill), player);
     }
 
     public void togglePerk(String skillId, Player player) {
         String normalized = normalizeSkillId(skillId);
-        if (normalized.isBlank()) {
+        if (normalized.isBlank() || !Configuration.isKnownSkill(normalized)) {
             return;
         }
 
-        if (!disabledPerks.add(normalized)) {
-            disabledPerks.remove(normalized);
+        String storageId = toStorageSkillId(normalized);
+        if (!disabledPerks.add(storageId)) {
+            disabledPerks.remove(storageId);
         }
 
         updateSkillAttributeBonuses(player);
@@ -348,7 +377,7 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
 
             if (isPerkEnabled(bonus.skill)) {
                 int skillLevel = getSkillLevel(bonus.skill);
-                int bonusSteps = skillLevel / 5;
+                int bonusSteps = skillLevel / bonus.getPerkStep();
                 double totalBonus = bonusSteps * bonus.getBonusPerStep();
 
                 if (totalBonus > 0) {
@@ -424,7 +453,15 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
     private void handleHealthBonus(Player player) {
         if (!Configuration.HEALTH_BONUS.get()) return;
 
-        int totalSkillLevels = skillLevels.values().stream().mapToInt(Integer::intValue).sum();
+        int totalSkillLevels = 0;
+        for (Skill skill : Configuration.getEnabledBuiltInSkills()) {
+            totalSkillLevels += getSkillLevel(skill);
+        }
+        for (Configuration.CustomSkillSlot slot : Configuration.getCustomSkills()) {
+            if (slot != null && slot.isEnabled()) {
+                totalSkillLevels += getSkillLevel(slot.getId());
+            }
+        }
         int levelsPerHeart = Configuration.LEVELS_PER_HEART.get();
         double healthPerHeart = Configuration.HEALTH_PER_HEART.get();
 
@@ -553,8 +590,14 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
     public int getTotalSpentLevels() {
         int total = 0;
 
-        for (int level : skillLevels.values()) {
-            total += Math.max(0, level - 1);
+        for (Skill skill : Configuration.getEnabledBuiltInSkills()) {
+            total += Math.max(0, getSkillLevel(skill) - 1);
+        }
+
+        for (Configuration.CustomSkillSlot slot : Configuration.getCustomSkills()) {
+            if (slot != null && slot.isEnabled()) {
+                total += Math.max(0, getSkillLevel(slot.getId()) - 1);
+            }
         }
 
         return total;

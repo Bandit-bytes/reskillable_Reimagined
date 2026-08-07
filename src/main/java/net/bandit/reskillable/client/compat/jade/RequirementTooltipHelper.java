@@ -3,8 +3,10 @@ package net.bandit.reskillable.client.compat.jade;
 import net.bandit.reskillable.Configuration;
 import net.bandit.reskillable.common.capabilities.SkillModel;
 import net.bandit.reskillable.common.skills.Requirement;
+import net.bandit.reskillable.common.skills.Skill;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import snownee.jade.api.ITooltip;
@@ -27,6 +29,7 @@ public class RequirementTooltipHelper {
         if (skillModel == null) {
             return;
         }
+
         tooltip.add(Component.literal(""));
 
         tooltip.add(
@@ -38,11 +41,31 @@ public class RequirementTooltipHelper {
         for (Requirement req : requirements) {
             boolean meets = skillModel.getSkillLevel(req.skill) >= req.level;
 
-            Component line = Component.translatable(req.skill)
+            Component line = getSkillDisplayComponent(req.skill)
                     .append(" " + req.level)
                     .withStyle(meets ? ChatFormatting.GREEN : ChatFormatting.RED);
 
             tooltip.add(line);
         }
+    }
+
+    private static MutableComponent getSkillDisplayComponent(String skillId) {
+        Skill builtIn = Configuration.resolveBuiltInSkill(skillId);
+
+        if (builtIn != null) {
+            String configuredName = Configuration.getBuiltInSkillDisplayName(builtIn);
+
+            return configuredName.isBlank()
+                    ? Component.translatable(builtIn.getDisplayName())
+                    : Component.literal(configuredName);
+        }
+
+        Configuration.CustomSkillSlot custom = Configuration.getCustomSkill(skillId);
+
+        if (custom != null) {
+            return Component.literal(custom.getDisplayName());
+        }
+
+        return Component.literal(skillId);
     }
 }

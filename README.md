@@ -43,6 +43,54 @@ Each player has multiple skills they can level up using experience.
 | **Agility** | Grants movement and mobility perks |
 | **Magic** | Controls magical items & spell-based gear |
 
+### Editing or Removing the Built-In Skills
+
+The original eight skills are defined publicly in:
+
+```text
+config/reskillable/built_in_skills.json
+```
+
+The `skill` field is the fixed behavior/save-data hook and should stay tied to the original skill. The other fields are pack-editable, and the order of the entries controls the order shown on the first skill page.
+
+```json
+{
+  "skill": "attack",
+  "id": "combat",
+  "displayName": "Combat",
+  "enabled": true,
+  "icon": "yourpack:textures/gui/skills/combat.png",
+  "perkAttribute": null,
+  "perkOperation": null,
+  "perkAmountPerStep": null,
+  "perkStep": 5
+}
+```
+
+| Field | Description |
+|------|-------------|
+| `skill` | Fixed built-in behavior/save-data hook (`attack`, `defense`, etc.). Do not repurpose it. |
+| `id` | Public ID used by locks, gates, commands, and the UI. Can be renamed. |
+| `displayName` | Literal name shown in the UI. Leave blank to keep the original translated name. |
+| `enabled` | Set to `false` to remove the skill from leveling, UI, totals, gates, and perks. Deleting the entry also disables it. |
+| `icon` | Optional custom texture. Leave blank to keep the original Reskillable icon. |
+| `perkAttribute` | Optional attribute override. `null`/blank keeps the legacy value; `"none"` disables the attribute modifier. |
+| `perkOperation` | Optional operation override. `null`/blank keeps the legacy operation. |
+| `perkAmountPerStep` | Optional perk amount override. `null` keeps the legacy amount. |
+| `perkStep` | Levels per perk milestone. Defaults to `5`. |
+
+The original IDs remain accepted as compatibility aliases, so renaming `attack` to `combat` does not invalidate old lock/gate configs. Built-in levels remain stored under their original internal keys, so disabling, renaming, or reordering a skill does not shift or corrupt player progression.
+
+### Additional / Custom Skills
+
+Additional skills are configured in:
+
+```text
+config/reskillable/custom_skills.json
+```
+
+Custom skills also support `enabled`. Set it to `false` to temporarily hide/disable a configured skill without deleting its definition or saved player level. Existing custom-skill fields such as `displayName`, `icon`, `perkAttribute`, `perkOperation`, `perkAmountPerStep`, and `perkStep` continue to work normally.
+
 ---
 
 ## 📈 Leveling & XP System
@@ -68,9 +116,9 @@ maximumLevel
 
 ## 💥 Attribute Bonuses
 
-Every **5 levels** in a skill grants permanent bonuses.
+Every configured **perk milestone** grants bonuses (`perkStep` defaults to 5 levels).
 
-These bonuses are configurable via the config.
+Built-in perk values can continue using the main config or be overridden per skill in `built_in_skills.json`.
 
 ### Example Bonuses
 
@@ -263,6 +311,8 @@ Reskillable automatically generates:
 - `skill_locks.json`
 - `attack_skill_locks.json`
 - `craft_skill_locks.json`
+- `built_in_skills.json`
+- `custom_skills.json`
 
 It also includes default vanilla benchmarks for:
 - Armor tiers

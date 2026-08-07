@@ -4,6 +4,7 @@ import net.bandit.reskillable.Configuration;
 import net.bandit.reskillable.common.capabilities.SkillModel;
 import net.bandit.reskillable.common.gating.SkillLevelGate;
 import net.bandit.reskillable.common.skills.Skill;
+import net.bandit.reskillable.common.skills.SkillAttributeBonus;
 import net.bandit.reskillable.event.SoundRegistry;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
@@ -99,7 +100,8 @@ public record RequestLevelUp(String skillId) implements CustomPacketPayload {
                     1.0F
             );
 
-            if (model.getSkillLevel(skillId) % 5 == 0) {
+            int perkStep = getPerkStep(skillId);
+            if (model.getSkillLevel(skillId) % perkStep == 0) {
                 player.level().playSound(
                         null,
                         player.blockPosition(),
@@ -125,12 +127,15 @@ public record RequestLevelUp(String skillId) implements CustomPacketPayload {
         return skillId == null ? "" : skillId.trim().toLowerCase(Locale.ROOT);
     }
 
-    private static Skill getVanillaSkillOrNull(String skillId) {
-        try {
-            return Skill.valueOf(skillId.toUpperCase(Locale.ROOT));
-        } catch (Exception e) {
-            return null;
+    private static int getPerkStep(String skillId) {
+        Skill builtIn = Configuration.resolveBuiltInSkill(skillId);
+        if (builtIn != null) {
+            SkillAttributeBonus bonus = SkillAttributeBonus.getBySkill(builtIn);
+            return Math.max(1, bonus != null ? bonus.getPerkStep() : Configuration.getBuiltInPerkStep(builtIn));
         }
+
+        Configuration.CustomSkillSlot custom = Configuration.findCustomSkillById(skillId);
+        return Math.max(1, custom != null ? custom.getPerkStep() : 5);
     }
 
     private static int getTotalXp(ServerPlayer player) {

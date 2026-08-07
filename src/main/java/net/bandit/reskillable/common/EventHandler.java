@@ -267,11 +267,11 @@ public class EventHandler {
         if (!model.isPerkEnabled(Skill.MINING)) return;
 
         int miningLevel = model.getSkillLevel(Skill.MINING);
-        int steps = miningLevel / 5;
-        if (steps <= 0) return;
-
         SkillAttributeBonus bonus = SkillAttributeBonus.getBySkill(Skill.MINING);
         if (bonus == null) return;
+
+        int steps = miningLevel / bonus.getPerkStep();
+        if (steps <= 0) return;
 
         float perStep = (float) bonus.getBonusPerStep();
         float totalBonus = steps * perStep;
@@ -291,8 +291,9 @@ public class EventHandler {
                 if (model != null) {
                     int farmingLevel = model.getSkillLevel(Skill.FARMING);
 
-                    if (model.isPerkEnabled(Skill.FARMING) && farmingLevel >= 5) {
-                        float steps = farmingLevel / 5f;
+                    int perkStep = farmingBonus != null ? farmingBonus.getPerkStep() : 5;
+                    if (model.isPerkEnabled(Skill.FARMING) && farmingLevel >= perkStep) {
+                        int steps = farmingLevel / perkStep;
                         float chance = steps * chancePerStep;
                         if (chance > 1.0f) chance = 1.0f;
 
@@ -314,12 +315,14 @@ public class EventHandler {
         if (model == null || !model.isPerkEnabled(Skill.GATHERING)) return;
 
         int gatheringLevel = model.getSkillLevel(Skill.GATHERING);
-        if (gatheringLevel < 5) return;
 
         var bonus = SkillAttributeBonus.getBySkill(Skill.GATHERING);
         if (bonus != null) {
+            int perkStep = bonus.getPerkStep();
+            if (gatheringLevel < perkStep) return;
+
             double bonusPercentPerStep = bonus.getBonusPerStep();
-            int bonusSteps = gatheringLevel / 5;
+            int bonusSteps = gatheringLevel / perkStep;
             float originalXp = event.getOrb().value;
 
             int bonusXp = Math.round(originalXp * (float)(bonusSteps * bonusPercentPerStep));

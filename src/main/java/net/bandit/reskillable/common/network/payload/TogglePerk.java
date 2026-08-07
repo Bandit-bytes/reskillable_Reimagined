@@ -1,5 +1,6 @@
 package net.bandit.reskillable.common.network.payload;
 
+import net.bandit.reskillable.Configuration;
 import net.bandit.reskillable.common.capabilities.SkillModel;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -30,8 +31,9 @@ public record TogglePerk(String skillId) implements CustomPacketPayload {
 
     public static void handle(TogglePerk msg, ServerPlayer player) {
         SkillModel model = SkillModel.get(player);
-        if (model != null) {
-            model.togglePerk(normalize(msg.skillId()), player);
+        String skillId = normalize(msg.skillId());
+        if (model != null && Configuration.isKnownSkill(skillId)) {
+            model.togglePerk(skillId, player);
         }
     }
 

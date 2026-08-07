@@ -87,7 +87,15 @@ public class SkillButton extends Button {
                 height
         );
 
-        guiGraphics.blit(SkillScreen.RESOURCES, getX() + 6, getY() + 8, u, v, 16, 16);
+        Skill builtIn = getVanillaSkillOrNull();
+        ResourceLocation configuredIcon = builtIn == null ? null : Configuration.getBuiltInSkillIcon(builtIn);
+        if (configuredIcon != null) {
+            RenderSystem.setShaderTexture(0, configuredIcon);
+            guiGraphics.blit(configuredIcon, getX() + 6, getY() + 8, 0, 0, 16, 16, 16, 16);
+            RenderSystem.setShaderTexture(0, SkillScreen.RESOURCES);
+        } else {
+            guiGraphics.blit(SkillScreen.RESOURCES, getX() + 6, getY() + 8, u, v, 16, 16);
+        }
 
         if (hasBuiltInPerk() && !skillModel.isPerkEnabled(skillId)) {
             int iconX = getX() + width - 10;
@@ -293,7 +301,10 @@ public class SkillButton extends Button {
     private Component getDisplayNameComponent() {
         Skill vanilla = getVanillaSkillOrNull();
         if (vanilla != null) {
-            return Component.translatable(vanilla.getDisplayName());
+            String configuredName = Configuration.getBuiltInSkillDisplayName(vanilla);
+            return configuredName.isBlank()
+                    ? Component.translatable(vanilla.getDisplayName())
+                    : Component.literal(configuredName);
         }
 
         Configuration.CustomSkillSlot custom = Configuration.getCustomSkill(skillId);
@@ -312,7 +323,7 @@ public class SkillButton extends Button {
     private int getSkillIconV() {
         Skill vanilla = getVanillaSkillOrNull();
         if (vanilla != null) {
-            return vanilla.index * 16 + 128;
+            return vanilla.getIconIndex() * 16 + 128;
         }
 
         List<Configuration.CustomSkillSlot> customSkills = Configuration.getCustomSkills();
@@ -332,11 +343,7 @@ public class SkillButton extends Button {
     }
 
     private Skill getVanillaSkillOrNull() {
-        try {
-            return Skill.valueOf(skillId.toUpperCase(Locale.ROOT));
-        } catch (Exception e) {
-            return null;
-        }
+        return Configuration.resolveBuiltInSkill(skillId);
     }
 
     private static String normalizeSkillId(String skillId) {

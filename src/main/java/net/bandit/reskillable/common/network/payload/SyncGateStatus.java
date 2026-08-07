@@ -1,5 +1,6 @@
 package net.bandit.reskillable.common.network.payload;
 
+import net.bandit.reskillable.Configuration;
 import net.bandit.reskillable.common.capabilities.SkillModel;
 import net.bandit.reskillable.common.skills.Skill;
 import net.bandit.reskillable.common.gating.GateClientCache;
@@ -14,7 +15,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.PacketDistributor;
 
-import java.util.Locale;
 
 public record SyncGateStatus(int skillIndex, boolean blocked, Component missing) implements CustomPacketPayload {
 
@@ -35,12 +35,15 @@ public record SyncGateStatus(int skillIndex, boolean blocked, Component missing)
     }
 
     public static void send(ServerPlayer player, Skill skill) {
+        if (!Configuration.isBuiltInSkillEnabled(skill)) return;
+
         SkillModel model = SkillModel.get(player);
         if (model == null) return;
 
         int level = model.getSkillLevel(skill);
+        String skillId = Configuration.getBuiltInSkillId(skill);
 
-        SkillLevelGate.GateResult gate = SkillLevelGate.check(player, model, skill.name().toLowerCase(Locale.ROOT), level);
+        SkillLevelGate.GateResult gate = SkillLevelGate.check(player, model, skillId, level);
         boolean blocked = !gate.allowed();
         Component missing = blocked ? gate.missingListComponent(player) : Component.empty();
 
@@ -48,7 +51,7 @@ public record SyncGateStatus(int skillIndex, boolean blocked, Component missing)
     }
 
     public static void sendAll(ServerPlayer player) {
-        for (Skill s : Skill.values()) send(player, s);
+        for (Skill skill : Configuration.getEnabledBuiltInSkills()) send(player, skill);
     }
 
     public static void handleClient(SyncGateStatus msg) {

@@ -70,10 +70,12 @@ public class GetCommand {
     private static MutableComponent getSkillDisplayComponent(String skillId) {
         String normalized = normalizeSkillId(skillId);
 
-        try {
-            Skill vanilla = Skill.valueOf(normalized.toUpperCase(Locale.ROOT));
-            return Component.translatable(vanilla.displayName);
-        } catch (Exception ignored) {
+        Skill builtIn = Configuration.resolveBuiltInSkill(normalized);
+        if (builtIn != null) {
+            String configuredName = Configuration.getBuiltInSkillDisplayName(builtIn);
+            return configuredName.isBlank()
+                    ? Component.translatable(builtIn.getDisplayName())
+                    : Component.literal(configuredName);
         }
 
         Configuration.CustomSkillSlot custom = Configuration.getCustomSkill(normalized);

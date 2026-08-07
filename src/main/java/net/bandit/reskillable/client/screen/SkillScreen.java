@@ -156,11 +156,12 @@ public class SkillScreen extends Screen {
 
         if (page == 0) {
             if (skillSubPage == 0) {
-                Skill[] skills = Skill.values();
-                for (int i = 0; i < Math.min(8, skills.length); i++) {
+                List<Skill> skills = Configuration.getEnabledBuiltInSkills();
+                for (int i = 0; i < Math.min(8, skills.size()); i++) {
                     int x = left + i % 2 * 83;
                     int y = top + i / 2 * 36;
-                    addRenderableWidget(new SkillButton(x, y, normalizeSkillId(skills[i].name())));
+                    Skill skill = skills.get(i);
+                    addRenderableWidget(new SkillButton(x, y, Configuration.getBuiltInSkillId(skill)));
                 }
             } else if (skillSubPage == 1 && Configuration.isSecondSkillPageEnabled()) {
                 List<Configuration.CustomSkillSlot> customSkills = Configuration.getCustomSkills();
@@ -206,10 +207,8 @@ public class SkillScreen extends Screen {
                 }
         );
 
-        if (Configuration.shouldShowTabButtons()) {
-            addRenderableWidget(skillsTab);
-            addRenderableWidget(perksTab);
-        }
+        addRenderableWidget(skillsTab);
+        addRenderableWidget(perksTab);
 
         if (Configuration.isSecondSkillPageEnabled()) {
             SubPageLayout layout = getSubPageLayout(guiLeft, guiTop);
@@ -242,7 +241,7 @@ public class SkillScreen extends Screen {
         if (page == 0) {
             background = RESOURCES;
         } else {
-            background = (perkSubPage == 0) ? PERKS_TEXTURE : PERKS_ADDITIONAL_TEXTURE;
+            background = PERKS_ADDITIONAL_TEXTURE;
         }
 
         int left = (width - 176) / 2;
@@ -258,13 +257,13 @@ public class SkillScreen extends Screen {
         if (page == 0) {
             if (skillSubPage == 0) {
                 int i = 0;
-                for (Skill skill : Skill.values()) {
+                for (Skill skill : Configuration.getEnabledBuiltInSkills()) {
                     if (i >= 8) break;
 
                     int x = left + (i % 2) * 83 + 10;
                     int y = top + (i / 2) * 36 + 20;
 
-                    String skillId = normalizeSkillId(skill.name());
+                    String skillId = Configuration.getBuiltInSkillId(skill);
                     String xpCost = xpCostDisplay.getOrDefault(skillId, "N/A");
                     int color = xpCostColor.getOrDefault(skillId, 0xFFFFFF);
 
@@ -352,13 +351,23 @@ public class SkillScreen extends Screen {
 
         int row = 0;
 
-        for (Skill skill : Skill.values()) {
+        for (Skill skill : Configuration.getEnabledBuiltInSkills()) {
             if (row >= 8) break;
 
-            int skillLevel = model.getSkillLevel(normalizeSkillId(skill.name()));
+            int skillLevel = model.getSkillLevel(skill);
 
             int boxX = left + PERK_BOX_X;
             int boxY = top + PERK_BOX_Y + (row * PERK_ROW_HEIGHT);
+
+            ResourceLocation configuredIcon = Configuration.getBuiltInSkillIcon(skill);
+            if (configuredIcon != null) {
+                RenderSystem.setShaderTexture(0, configuredIcon);
+                gui.blit(configuredIcon, boxX + 2, boxY + 2, 0, 0, 12, 12, 12, 12);
+            } else {
+                RenderSystem.setShaderTexture(0, PERKS_TEXTURE);
+                gui.blit(PERKS_TEXTURE, boxX + 2, boxY + 2, 10, 29 + (skill.getIconIndex() * PERK_ROW_HEIGHT), 12, 12);
+            }
+            RenderSystem.setShaderTexture(0, PERKS_ADDITIONAL_TEXTURE);
 
             int textX = boxX + PERK_TEXT_OFFSET_X;
             int textY = boxY + 5;
@@ -491,8 +500,10 @@ public class SkillScreen extends Screen {
     }
 
     private Component buildSinglePerkLine(Skill skill, int skillLevel) {
-        Component skillName = Component.translatable("skill." + skill.name().toLowerCase(Locale.ROOT))
-                .withStyle(ChatFormatting.GOLD);
+        String configuredName = Configuration.getBuiltInSkillDisplayName(skill);
+        Component skillName = (configuredName.isBlank()
+                ? Component.translatable(skill.getDisplayName())
+                : Component.literal(configuredName)).withStyle(ChatFormatting.GOLD);
 
         Component amount;
         Component effect;
@@ -501,7 +512,8 @@ public class SkillScreen extends Screen {
             case AGILITY -> {
                 SkillAttributeBonus bonus = SkillAttributeBonus.getBySkill(skill);
                 double perStep = bonus != null ? bonus.getBonusPerStep() : 0.0;
-                double pct = skillLevel >= 5 ? (skillLevel / 5.0) * perStep * 100.0 : 0;
+                int steps = bonus != null ? skillLevel / bonus.getPerkStep() : 0;
+                double pct = steps * perStep * 100.0;
 
                 amount = Component.literal(String.format("+%.0f%%", pct))
                         .withStyle(ChatFormatting.AQUA);
@@ -515,7 +527,8 @@ public class SkillScreen extends Screen {
             case MINING -> {
                 SkillAttributeBonus bonus = SkillAttributeBonus.getBySkill(skill);
                 double perStep = bonus != null ? bonus.getBonusPerStep() : 0.0;
-                double pct = skillLevel >= 5 ? (skillLevel / 5.0) * perStep * 100.0 : 0;
+                int steps = bonus != null ? skillLevel / bonus.getPerkStep() : 0;
+                double pct = steps * perStep * 100.0;
                 amount = Component.literal(String.format("+%.0f%%", pct))
                         .withStyle(ChatFormatting.AQUA);
                 effect = Component.translatable("tooltip.rereskillable.break_speed")
@@ -525,7 +538,8 @@ public class SkillScreen extends Screen {
             case GATHERING -> {
                 SkillAttributeBonus bonus = SkillAttributeBonus.getBySkill(skill);
                 double perStep = bonus != null ? bonus.getBonusPerStep() : 0.0;
-                double pct = skillLevel >= 5 ? (skillLevel / 5.0) * perStep * 100.0 : 0;
+                int steps = bonus != null ? skillLevel / bonus.getPerkStep() : 0;
+                double pct = steps * perStep * 100.0;
 
                 amount = Component.literal(String.format("+%.0f%%", pct))
                         .withStyle(ChatFormatting.AQUA);
@@ -537,7 +551,8 @@ public class SkillScreen extends Screen {
             case FARMING -> {
                 SkillAttributeBonus bonus = SkillAttributeBonus.getBySkill(skill);
                 double perStep = bonus != null ? bonus.getBonusPerStep() : 0.0;
-                double pct = skillLevel >= 5 ? (skillLevel / 5.0) * perStep * 100.0 : 0;
+                int steps = bonus != null ? skillLevel / bonus.getPerkStep() : 0;
+                double pct = steps * perStep * 100.0;
 
                 amount = Component.literal(String.format("+%.0f%%", pct))
                         .withStyle(ChatFormatting.AQUA);
@@ -553,7 +568,8 @@ public class SkillScreen extends Screen {
                 }
 
                 double perStep = bonus.getBonusPerStep();
-                double pct = skillLevel >= 5 ? (skillLevel / 5.0) * perStep * 100.0 : 0;
+                int steps = bonus != null ? skillLevel / bonus.getPerkStep() : 0;
+                double pct = steps * perStep * 100.0;
 
                 amount = Component.literal(String.format("+%.0f%%", pct))
                         .withStyle(ChatFormatting.AQUA);
@@ -690,7 +706,7 @@ public class SkillScreen extends Screen {
         if (rules == null || rules.isEmpty()) return GateUiResult.allowed();
 
         int totalLevels = 0;
-        for (Skill s : Skill.values()) totalLevels += model.getSkillLevel(normalizeSkillId(s.name()));
+        for (Skill s : Configuration.getEnabledBuiltInSkills()) totalLevels += model.getSkillLevel(s);
         for (Configuration.CustomSkillSlot slot : Configuration.getCustomSkills()) {
             if (slot != null && slot.isEnabled()) {
                 totalLevels += model.getSkillLevel(normalizeSkillId(slot.id));
@@ -757,7 +773,7 @@ public class SkillScreen extends Screen {
         }
 
         boolean matchesTarget(String skillId) {
-            return targetSkillId.equals(normalizeSkillId(skillId));
+            return targetSkillId.equals(Configuration.canonicalSkillId(skillId));
         }
 
         static GateUiRule parse(String line) {
@@ -768,13 +784,14 @@ public class SkillScreen extends Screen {
             String[] parts = line.split(":", 3);
             if (parts.length < 3) return null;
 
-            String targetSkillId = normalizeSkillId(parts[0]);
+            String rawTargetSkillId = normalizeSkillId(parts[0]);
 
-            boolean validBuiltIn = isBuiltInSkill(targetSkillId);
-            boolean validCustom = Configuration.getCustomSkill(targetSkillId) != null;
+            boolean validBuiltIn = isBuiltInSkill(rawTargetSkillId);
+            boolean validCustom = Configuration.getCustomSkill(rawTargetSkillId) != null;
             if (!validBuiltIn && !validCustom) {
                 return null;
             }
+            String targetSkillId = Configuration.canonicalSkillId(rawTargetSkillId);
 
             int minLevel;
             try {
@@ -818,7 +835,7 @@ public class SkillScreen extends Screen {
                     try {
                         int val = Integer.parseInt(value);
                         if (isBuiltInSkill(key) || Configuration.getCustomSkill(key) != null) {
-                            skillReqs.put(key, val);
+                            skillReqs.put(Configuration.canonicalSkillId(key), val);
                         }
                     } catch (Exception ignored) {
                     }
@@ -902,9 +919,13 @@ public class SkillScreen extends Screen {
 
             Skill builtIn = getVanillaSkillOrNull(skillId);
             if (builtIn != null) {
+                String configuredName = Configuration.getBuiltInSkillDisplayName(builtIn);
+                Component display = configuredName.isBlank()
+                        ? Component.translatable(builtIn.getDisplayName())
+                        : Component.literal(configuredName);
                 return Component.translatable(
                         "message.reskillable.req_skill",
-                        Component.translatable(builtIn.getDisplayName()),
+                        display,
                         required
                 ).withStyle(ChatFormatting.YELLOW);
             }
@@ -956,11 +977,7 @@ public class SkillScreen extends Screen {
     }
 
     private static Skill getVanillaSkillOrNull(String skillId) {
-        try {
-            return Skill.valueOf(normalizeSkillId(skillId).toUpperCase(Locale.ROOT));
-        } catch (Exception e) {
-            return null;
-        }
+        return Configuration.resolveBuiltInSkill(skillId);
     }
 
     private static String normalizeSkillId(String skillId) {
@@ -1326,7 +1343,7 @@ public class SkillScreen extends Screen {
 
         if (perkSubPage == 0) {
             int row = 0;
-            for (Skill skill : Skill.values()) {
+            for (Skill skill : Configuration.getEnabledBuiltInSkills()) {
                 if (row >= 8) break;
 
                 int boxX = left + PERK_BOX_X;
@@ -1335,7 +1352,7 @@ public class SkillScreen extends Screen {
                 int boxHeight = PERK_ROW_HEIGHT;
 
                 if (isMouseOverRect(mouseX, mouseY, boxX, boxY, boxWidth, boxHeight)) {
-                    int skillLevel = model.getSkillLevel(normalizeSkillId(skill.name()));
+                    int skillLevel = model.getSkillLevel(skill);
                     return buildSinglePerkLine(skill, skillLevel);
                 }
 

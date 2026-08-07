@@ -107,11 +107,16 @@ public class Overlay implements LayeredDraw.Layer {
 
         Skill vanilla = getVanillaSkillOrNull(skillId);
         if (vanilla != null) {
+            ResourceLocation configuredIcon = Configuration.getBuiltInSkillIcon(vanilla);
+            if (configuredIcon != null) {
+                guiGraphics.blit(configuredIcon, x, y, 0, 0, 16, 16, 16, 16);
+                return;
+            }
+
             int maxLevel = Math.max(1, Configuration.getMaxLevel());
             int divisor = Math.max(1, maxLevel / 4);
-
             int u = Math.min(req.level, maxLevel - 1) / divisor * 16 + 176;
-            int v = vanilla.index * 16 + 128;
+            int v = vanilla.getIconIndex() * 16 + 128;
 
             guiGraphics.blit(SkillScreen.RESOURCES, x, y, u, v, 16, 16);
             return;
@@ -141,10 +146,6 @@ public class Overlay implements LayeredDraw.Layer {
     }
 
     private static Skill getVanillaSkillOrNull(String skillId) {
-        try {
-            return Skill.valueOf(skillId.toUpperCase(Locale.ROOT));
-        } catch (Exception e) {
-            return null;
-        }
+        return Configuration.resolveBuiltInSkill(skillId);
     }
 }
