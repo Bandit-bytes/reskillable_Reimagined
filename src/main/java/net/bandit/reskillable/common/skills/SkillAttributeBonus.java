@@ -43,8 +43,7 @@ public enum SkillAttributeBonus {
 
     public Attribute getAttribute() {
         Attribute configured = Configuration.getConfiguredAttribute(this.skill);
-        Attribute legacy = configured != null ? configured : attributeSupplier.get();
-        return Configuration.getBuiltInPerkAttribute(this.skill, legacy);
+        return configured != null ? configured : attributeSupplier.get();
     }
 
     public AttributeModifier.Operation getOperation() {

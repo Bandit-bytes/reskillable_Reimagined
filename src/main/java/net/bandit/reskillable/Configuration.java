@@ -227,7 +227,7 @@ public class Configuration {
                   "displayName": "",
                   "enabled": true,
                   "icon": "",
-                  "perkAttribute": null,
+                  "perkAttributes": null,
                   "perkOperation": null,
                   "perkAmountPerStep": null,
                   "perkStep": 5
@@ -238,7 +238,7 @@ public class Configuration {
                   "displayName": "",
                   "enabled": true,
                   "icon": "",
-                  "perkAttribute": null,
+                  "perkAttributes": null,
                   "perkOperation": null,
                   "perkAmountPerStep": null,
                   "perkStep": 5
@@ -249,7 +249,7 @@ public class Configuration {
                   "displayName": "",
                   "enabled": true,
                   "icon": "",
-                  "perkAttribute": null,
+                  "perkAttributes": null,
                   "perkOperation": null,
                   "perkAmountPerStep": null,
                   "perkStep": 5
@@ -260,7 +260,7 @@ public class Configuration {
                   "displayName": "",
                   "enabled": true,
                   "icon": "",
-                  "perkAttribute": null,
+                  "perkAttributes": null,
                   "perkOperation": null,
                   "perkAmountPerStep": null,
                   "perkStep": 5
@@ -271,7 +271,7 @@ public class Configuration {
                   "displayName": "",
                   "enabled": true,
                   "icon": "",
-                  "perkAttribute": null,
+                  "perkAttributes": null,
                   "perkOperation": null,
                   "perkAmountPerStep": null,
                   "perkStep": 5
@@ -282,7 +282,7 @@ public class Configuration {
                   "displayName": "",
                   "enabled": true,
                   "icon": "",
-                  "perkAttribute": null,
+                  "perkAttributes": null,
                   "perkOperation": null,
                   "perkAmountPerStep": null,
                   "perkStep": 5
@@ -293,7 +293,7 @@ public class Configuration {
                   "displayName": "",
                   "enabled": true,
                   "icon": "",
-                  "perkAttribute": null,
+                  "perkAttributes": null,
                   "perkOperation": null,
                   "perkAmountPerStep": null,
                   "perkStep": 5
@@ -304,7 +304,7 @@ public class Configuration {
                   "displayName": "",
                   "enabled": true,
                   "icon": "",
-                  "perkAttribute": null,
+                  "perkAttributes": null,
                   "perkOperation": null,
                   "perkAmountPerStep": null,
                   "perkStep": 5
@@ -568,46 +568,62 @@ public class Configuration {
             System.err.println("[Reskillable] Invalid built-in skill id '" + id + "' for '" + baseSkill.getSerializedName() + "'. Disabling this entry.");
             return BuiltInSkillSlot.disabled(baseSkill);
         }
-
         if (!icon.isBlank() && tryParseIdentifier(icon) == null) {
             System.err.println("[Reskillable] Invalid built-in icon '" + icon + "' for skill '" + baseSkill.getSerializedName() + "'. Falling back to the original sprite.");
             icon = "";
         }
-
         if (perkAttribute != null && !perkAttribute.isBlank() && !perkAttribute.equalsIgnoreCase("none")) {
             Identifier attrId = tryParseIdentifier(perkAttribute);
             if (attrId == null || !BuiltInRegistries.ATTRIBUTE.containsKey(attrId)) {
-                System.err.println("[Reskillable] Unknown built-in perk attribute '" + perkAttribute + "' for skill '" + id + "'. Falling back to the legacy config.");
-                perkAttribute = null;
+                System.err.println("[Reskillable] Unknown built-in perk attribute '" + perkAttribute + "' for skill '" + id + "'. The explicit perk override will be disabled instead of restoring the original perk.");
+                perkAttribute = "none";
             }
         }
-
         if (perkOperation != null && !perkOperation.isBlank() && !isValidAttributeOperation(perkOperation)) {
-            System.err.println("[Reskillable] Invalid built-in perk operation '" + perkOperation + "' for skill '" + id + "'. Falling back to the legacy config.");
+            System.err.println("[Reskillable] Invalid built-in perk operation '" + perkOperation + "' for skill '" + id + "'. Falling back to the legacy operation.");
             perkOperation = null;
         }
-
         if (perkAmountPerStep != null && perkAmountPerStep < 0.0) {
-            System.err.println("[Reskillable] Negative built-in perk amount for skill '" + id + "'. Falling back to the legacy config.");
+            System.err.println("[Reskillable] Negative built-in perk amount for skill '" + id + "'. Falling back to the legacy amount.");
             perkAmountPerStep = null;
         }
-
         if (perkStep != null && perkStep < 1) {
             System.err.println("[Reskillable] Invalid built-in perkStep for skill '" + id + "'. Falling back to 5.");
             perkStep = null;
         }
 
-        return new BuiltInSkillSlot(
-                baseSkill.getSerializedName(),
-                id,
-                displayName,
-                slot.enabled && !id.isBlank(),
-                icon,
-                perkAttribute,
-                perkOperation,
-                perkAmountPerStep,
-                perkStep
-        );
+        List<PerkAttributeDefinition> perkAttributes = normalizePerkAttributeDefinitions(
+                slot.perkAttributes, id, perkStep == null ? 5 : perkStep);
+
+        return new BuiltInSkillSlot(baseSkill.getSerializedName(), id, displayName,
+                slot.enabled && !id.isBlank(), icon, perkAttribute, perkOperation,
+                perkAmountPerStep, perkStep, perkAttributes);
+    }
+
+    private static List<PerkAttributeDefinition> normalizePerkAttributeDefinitions(
+            List<PerkAttributeDefinition> definitions, String skillId, int defaultStep) {
+        if (definitions == null) return null;
+        List<PerkAttributeDefinition> normalized = new ArrayList<>();
+        for (int i = 0; i < definitions.size(); i++) {
+            PerkAttributeDefinition definition = definitions.get(i);
+            if (definition == null) continue;
+            String attribute = definition.attribute == null ? "" : definition.attribute.trim();
+            if (attribute.isBlank() || attribute.equalsIgnoreCase("none")) continue;
+            Identifier attrId = tryParseIdentifier(attribute);
+            if (attrId == null || !BuiltInRegistries.ATTRIBUTE.containsKey(attrId)) {
+                System.err.println("[Reskillable] Unknown perkAttributes[" + i + "] attribute '" + attribute + "' for skill '" + skillId + "'. Skipping that attribute.");
+                continue;
+            }
+            String operation = definition.operation == null ? "ADDITION" : definition.operation.trim().toUpperCase(Locale.ROOT);
+            if (!isValidAttributeOperation(operation)) {
+                System.err.println("[Reskillable] Invalid perkAttributes[" + i + "] operation '" + operation + "' for skill '" + skillId + "'. Using ADDITION.");
+                operation = "ADDITION";
+            }
+            double amountPerStep = Math.max(0.0, definition.amountPerStep);
+            int step = definition.perkStep == null ? Math.max(1, defaultStep) : Math.max(1, definition.perkStep);
+            normalized.add(new PerkAttributeDefinition(attribute, operation, amountPerStep, step));
+        }
+        return normalized;
     }
 
     private static List<CustomSkillSlot> loadCustomSkills(String filename, String defaultContent) {
@@ -708,6 +724,7 @@ public class Configuration {
 
         CustomSkillSlot normalized = new CustomSkillSlot(id, displayName, perkAttribute, icon, perkOperation, perkAmountPerStep, perkStep);
         normalized.enabled = slot.enabled == null || slot.enabled;
+        normalized.perkAttributes = normalizePerkAttributeDefinitions(slot.perkAttributes, id, perkStep);
         return normalized;
     }
 
@@ -761,6 +778,17 @@ public class Configuration {
         return slot == null ? null : slot.getResolvedIcon();
     }
 
+    public static boolean hasBuiltInPerkOverride(Skill skill) {
+        BuiltInSkillSlot slot = getBuiltInSkill(skill);
+        return slot != null && slot.hasPerkOverride();
+    }
+
+    public static List<PerkAttributeDefinition> getBuiltInPerkAttributes(Skill skill) {
+        BuiltInSkillSlot slot = getBuiltInSkill(skill);
+        if (slot == null || slot.perkAttributes == null) return null;
+        return Collections.unmodifiableList(slot.perkAttributes);
+    }
+
     public static Attribute getBuiltInPerkAttribute(Skill skill, Attribute fallback) {
         BuiltInSkillSlot slot = getBuiltInSkill(skill);
         if (slot == null) return fallback;
@@ -795,6 +823,25 @@ public class Configuration {
     public static int getBuiltInPerkStep(Skill skill) {
         BuiltInSkillSlot slot = getBuiltInSkill(skill);
         return slot == null ? 5 : slot.getPerkStep();
+    }
+
+    public static boolean isBuiltInPerkMilestone(Skill skill, int level) {
+        if (skill == null || level <= 0 || !isBuiltInSkillEnabled(skill)) return false;
+        BuiltInSkillSlot slot = getBuiltInSkill(skill);
+        if (slot != null && slot.hasPerkOverride()) {
+            if (slot.perkAttributes != null) {
+                for (PerkAttributeDefinition definition : slot.perkAttributes) {
+                    if (definition != null && definition.getAmountPerStep() > 0.0
+                            && level % Math.max(1, definition.getPerkStep()) == 0) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            String single = slot.getPerkAttributeOverride();
+            if (single == null || single.isBlank() || single.equalsIgnoreCase("none")) return false;
+        }
+        return level % Math.max(1, getBuiltInPerkStep(skill)) == 0;
     }
 
     /**
@@ -855,6 +902,23 @@ public class Configuration {
 
     public static SubpageNavPosition getSubpageNavPosition() {
         return SubpageNavPosition.fromString(SUBPAGE_NAV_POSITION.get());
+    }
+
+    public static boolean isCustomPerkMilestone(String skillId, int level) {
+        if (skillId == null || skillId.isBlank() || level <= 0) return false;
+        CustomSkillSlot slot = getCustomSkill(skillId);
+        if (slot == null || !slot.isEnabled()) return false;
+        if (slot.perkAttributes != null) {
+            for (PerkAttributeDefinition definition : slot.perkAttributes) {
+                if (definition != null && definition.getResolvedAttribute() != null
+                        && definition.getAmountPerStep() > 0.0
+                        && level % Math.max(1, definition.getPerkStep()) == 0) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        return slot.hasPerk() && level % Math.max(1, slot.getPerkStep()) == 0;
     }
 
     public static List<CustomSkillSlot> getCustomSkills() {
@@ -1008,6 +1072,31 @@ public class Configuration {
         };
     }
 
+    public static final class PerkAttributeDefinition {
+        public String attribute;
+        public String operation;
+        public double amountPerStep;
+        public Integer perkStep;
+
+        public PerkAttributeDefinition() { this("", "ADDITION", 0.0, 5); }
+        public PerkAttributeDefinition(String attribute, String operation, double amountPerStep, Integer perkStep) {
+            this.attribute = attribute == null ? "" : attribute;
+            this.operation = operation == null ? "ADDITION" : operation;
+            this.amountPerStep = Math.max(0.0, amountPerStep);
+            this.perkStep = perkStep == null ? 5 : Math.max(1, perkStep);
+        }
+        public String getAttributeId() { return attribute == null ? "" : attribute.trim(); }
+        public Attribute getResolvedAttribute() {
+            Identifier id = tryParseIdentifier(getAttributeId());
+            return id == null ? null : BuiltInRegistries.ATTRIBUTE.getValue(id);
+        }
+        public AttributeModifier.Operation getResolvedOperation() {
+            return parseAttributeOperation(operation, AttributeModifier.Operation.ADD_VALUE);
+        }
+        public double getAmountPerStep() { return Math.max(0.0, amountPerStep); }
+        public int getPerkStep() { return perkStep == null ? 5 : Math.max(1, perkStep); }
+    }
+
     public static final class BuiltInSkillSlot {
         public String skill;
         public String id;
@@ -1018,13 +1107,16 @@ public class Configuration {
         public String perkOperation;
         public Double perkAmountPerStep;
         public Integer perkStep;
+        public List<PerkAttributeDefinition> perkAttributes;
 
-        public BuiltInSkillSlot() {
-            this("", "", "", true, "", null, null, null, null);
-        }
-
+        public BuiltInSkillSlot() { this("", "", "", true, "", null, null, null, null, null); }
         public BuiltInSkillSlot(String skill, String id, String displayName, boolean enabled, String icon,
                                 String perkAttribute, String perkOperation, Double perkAmountPerStep, Integer perkStep) {
+            this(skill, id, displayName, enabled, icon, perkAttribute, perkOperation, perkAmountPerStep, perkStep, null);
+        }
+        public BuiltInSkillSlot(String skill, String id, String displayName, boolean enabled, String icon,
+                                String perkAttribute, String perkOperation, Double perkAmountPerStep, Integer perkStep,
+                                List<PerkAttributeDefinition> perkAttributes) {
             this.skill = skill == null ? "" : skill;
             this.id = id == null ? "" : id;
             this.displayName = displayName == null ? "" : displayName;
@@ -1034,58 +1126,34 @@ public class Configuration {
             this.perkOperation = perkOperation;
             this.perkAmountPerStep = perkAmountPerStep;
             this.perkStep = perkStep;
+            this.perkAttributes = perkAttributes;
         }
-
         public static BuiltInSkillSlot defaults(Skill skill) {
-            String id = skill.getSerializedName();
-            return new BuiltInSkillSlot(id, id, "", true, "", null, null, null, 5);
+            String id = skill.getSerializedName(); return new BuiltInSkillSlot(id, id, "", true, "", null, null, null, 5, null);
         }
-
         public static BuiltInSkillSlot disabled(Skill skill) {
-            String id = skill.getSerializedName();
-            return new BuiltInSkillSlot(id, id, "", false, "", null, null, null, 5);
+            String id = skill.getSerializedName(); return new BuiltInSkillSlot(id, id, "", false, "", null, null, null, 5, null);
         }
-
-        public Skill getBaseSkill() {
-            return Skill.fromString(skill);
+        public Skill getBaseSkill() { return Skill.fromString(skill); }
+        public boolean isEnabled() { return enabled && getBaseSkill() != null && !getId().isBlank(); }
+        public String getId() { return id == null ? "" : id.trim().toLowerCase(Locale.ROOT); }
+        public String getDisplayName() { return displayName == null ? "" : displayName.trim(); }
+        public String getIcon() { return icon == null ? "" : icon.trim(); }
+        public Identifier getResolvedIcon() { return getIcon().isBlank() ? null : tryParseIdentifier(getIcon()); }
+        public String getPerkAttributeOverride() { return perkAttribute == null ? null : perkAttribute.trim(); }
+        public String getPerkOperationOverride() { return perkOperation == null ? null : perkOperation.trim().toUpperCase(Locale.ROOT); }
+        public Double getPerkAmountPerStepOverride() { return perkAmountPerStep; }
+        public int getPerkStep() { return perkStep == null ? 5 : Math.max(1, perkStep); }
+        public boolean hasPerkOverride() {
+            if (perkAttributes != null) return true;
+            String single = getPerkAttributeOverride();
+            return single != null && !single.isBlank();
         }
-
-        public boolean isEnabled() {
-            return enabled && getBaseSkill() != null && !getId().isBlank();
-        }
-
-        public String getId() {
-            return id == null ? "" : id.trim().toLowerCase(Locale.ROOT);
-        }
-
-        /** Blank means use the original translated built-in name. */
-        public String getDisplayName() {
-            return displayName == null ? "" : displayName.trim();
-        }
-
-        public String getIcon() {
-            return icon == null ? "" : icon.trim();
-        }
-
-        public Identifier getResolvedIcon() {
-            if (getIcon().isBlank()) return null;
-            return tryParseIdentifier(getIcon());
-        }
-
-        public String getPerkAttributeOverride() {
-            return perkAttribute == null ? null : perkAttribute.trim();
-        }
-
-        public String getPerkOperationOverride() {
-            return perkOperation == null ? null : perkOperation.trim().toUpperCase(Locale.ROOT);
-        }
-
-        public Double getPerkAmountPerStepOverride() {
-            return perkAmountPerStep;
-        }
-
-        public int getPerkStep() {
-            return perkStep == null ? 5 : Math.max(1, perkStep);
+        public Attribute getResolvedLegacySinglePerkAttribute() {
+            String single = getPerkAttributeOverride();
+            if (single == null || single.isBlank() || single.equalsIgnoreCase("none")) return null;
+            Identifier id = tryParseIdentifier(single);
+            return id == null ? null : BuiltInRegistries.ATTRIBUTE.getValue(id);
         }
     }
 
@@ -1098,6 +1166,7 @@ public class Configuration {
         public String perkOperation;
         public double perkAmountPerStep;
         public int perkStep;
+        public List<PerkAttributeDefinition> perkAttributes;
 
         public CustomSkillSlot() {
             this("", "", "", "", "ADDITION", 0.0, 5);
@@ -1150,6 +1219,14 @@ public class Configuration {
         }
 
         public boolean hasPerk() {
+            if (perkAttributes != null) {
+                for (PerkAttributeDefinition definition : perkAttributes) {
+                    if (definition != null && definition.getResolvedAttribute() != null && definition.getAmountPerStep() > 0.0) {
+                        return true;
+                    }
+                }
+                return false;
+            }
             return !getPerkAttribute().isBlank() && perkAmountPerStep > 0.0;
         }
 

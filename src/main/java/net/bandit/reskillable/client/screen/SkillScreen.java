@@ -29,6 +29,7 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.ai.attributes.Attribute;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.NotNull;
 
@@ -478,45 +479,44 @@ public class SkillScreen extends Screen {
         }
     }
 
-    private Component buildCustomPerkLine(Configuration.CustomSkillSlot slot, int skillLevel) {
-        Component skillName = Component.literal(slot.displayName)
-                .withStyle(ChatFormatting.GOLD);
+    private Component buildCustomPerkLine(Configuration.CustomSkillSlot slot, int skillLevel){
+        Component skillName = Component.literal(slot.getDisplayName()).withStyle(ChatFormatting.GOLD);
+        var effects = Component.literal("");
+        boolean added = false;
 
-        int step = Math.max(1, slot.perkStep);
-        int bonusSteps = skillLevel / step;
-        double totalBonus = bonusSteps * slot.perkAmountPerStep;
-
-        String operation = slot.perkOperation == null
-                ? "ADDITION"
-                : slot.perkOperation.trim().toUpperCase(Locale.ROOT);
-
-        String amountText;
-        if (operation.contains("MULTIPLY")) {
-            amountText = String.format("+%.0f%%", totalBonus * 100.0);
-        } else {
-            amountText = String.format("+%.2f", totalBonus);
-        }
-
-        Component amount = Component.literal(amountText).withStyle(ChatFormatting.AQUA);
-
-        Attribute attr = null;
-        try {
-            if (slot.perkAttribute != null && !slot.perkAttribute.isBlank()) {
-                attr = BuiltInRegistries.ATTRIBUTE.getValue(Identifier.parse(slot.perkAttribute));
+        if (slot.perkAttributes != null) {
+            for (Configuration.PerkAttributeDefinition definition : slot.perkAttributes) {
+                if (definition == null) continue;
+                Attribute attr = definition.getResolvedAttribute();
+                if (attr == null || definition.getAmountPerStep() <= 0.0) continue;
+                int steps = skillLevel / Math.max(1, definition.getPerkStep());
+                double totalBonus = steps * definition.getAmountPerStep();
+                if (added) effects.append(Component.literal(", ").withStyle(ChatFormatting.DARK_GRAY));
+                effects.append(formatPerkAmount(totalBonus, definition.getResolvedOperation()))
+                        .append(" ")
+                        .append(Component.translatable(attr.getDescriptionId()).withStyle(ChatFormatting.GRAY));
+                added = true;
             }
-        } catch (Exception ignored) {
+        } else {
+            Attribute attr = slot.getResolvedPerkAttribute();
+            if (attr != null && slot.getPerkAmountPerStep() > 0.0) {
+                int steps = skillLevel / Math.max(1, slot.getPerkStep());
+                double totalBonus = steps * slot.getPerkAmountPerStep();
+                effects.append(formatPerkAmount(totalBonus, slot.getResolvedPerkOperation()))
+                        .append(" ")
+                        .append(Component.translatable(attr.getDescriptionId()).withStyle(ChatFormatting.GRAY));
+                added = true;
+            }
         }
 
-        Component effect = attr != null
-                ? Component.translatable(attr.getDescriptionId()).withStyle(ChatFormatting.GRAY)
-                : Component.literal("No Attribute").withStyle(ChatFormatting.GRAY);
+        if (!added) {
+            effects.append(Component.literal("No Perk").withStyle(ChatFormatting.GRAY));
+        }
 
         return Component.literal("")
                 .append(skillName)
                 .append(": ")
-                .append(amount)
-                .append(" ")
-                .append(effect);
+                .append(effects);
     }
 
     private Component buildSinglePerkLine(Skill skill, int skillLevel) {
@@ -525,88 +525,77 @@ public class SkillScreen extends Screen {
                 ? Component.translatable(skill.getDisplayName())
                 : Component.literal(configuredName)).withStyle(ChatFormatting.GOLD);
 
-        Component amount;
-        Component effect;
-
-        switch (skill) {
-            case AGILITY -> {
-                SkillAttributeBonus bonus = SkillAttributeBonus.getBySkill(skill);
-                double perStep = bonus != null ? bonus.getBonusPerStep() : 0.0;
-                int steps = bonus != null ? skillLevel / bonus.getPerkStep() : 0;
-                double pct = steps * perStep * 100.0;
-
-                amount = Component.literal(String.format("+%.0f%%", pct))
-                        .withStyle(ChatFormatting.AQUA);
-
-                Attribute attr = bonus != null ? bonus.getAttribute() : null;
-                effect = attr != null
-                        ? Component.translatable(attr.getDescriptionId()).withStyle(ChatFormatting.GRAY)
-                        : Component.translatable("tooltip.rereskillable.run_speed").withStyle(ChatFormatting.GRAY);
-            }
-
-            case MINING -> {
-                SkillAttributeBonus bonus = SkillAttributeBonus.getBySkill(skill);
-                double perStep = bonus != null ? bonus.getBonusPerStep() : 0.0;
-                int steps = bonus != null ? skillLevel / bonus.getPerkStep() : 0;
-                double pct = steps * perStep * 100.0;
-                amount = Component.literal(String.format("+%.0f%%", pct))
-                        .withStyle(ChatFormatting.AQUA);
-                effect = Component.translatable("tooltip.rereskillable.break_speed")
-                        .withStyle(ChatFormatting.GRAY);
-            }
-
-            case GATHERING -> {
-                SkillAttributeBonus bonus = SkillAttributeBonus.getBySkill(skill);
-                double perStep = bonus != null ? bonus.getBonusPerStep() : 0.0;
-                int steps = bonus != null ? skillLevel / bonus.getPerkStep() : 0;
-                double pct = steps * perStep * 100.0;
-
-                amount = Component.literal(String.format("+%.0f%%", pct))
-                        .withStyle(ChatFormatting.AQUA);
-
-                effect = Component.translatable("tooltip.rereskillable.bonus_xp_orbs")
-                        .withStyle(ChatFormatting.GRAY);
-            }
-
-            case FARMING -> {
-                SkillAttributeBonus bonus = SkillAttributeBonus.getBySkill(skill);
-                double perStep = bonus != null ? bonus.getBonusPerStep() : 0.0;
-                int steps = bonus != null ? skillLevel / bonus.getPerkStep() : 0;
-                double pct = steps * perStep * 100.0;
-
-                amount = Component.literal(String.format("+%.0f%%", pct))
-                        .withStyle(ChatFormatting.AQUA);
-
-                effect = Component.translatable("tooltip.rereskillable.crop_growth")
-                        .withStyle(ChatFormatting.GRAY);
-            }
-
-            default -> {
-                SkillAttributeBonus bonus = SkillAttributeBonus.getBySkill(skill);
-                if (bonus == null) {
-                    return Component.empty();
-                }
-
-                double perStep = bonus.getBonusPerStep();
-                int steps = bonus != null ? skillLevel / bonus.getPerkStep() : 0;
-                double pct = steps * perStep * 100.0;
-
-                amount = Component.literal(String.format("+%.0f%%", pct))
-                        .withStyle(ChatFormatting.AQUA);
-
-                Attribute attr = bonus.getAttribute();
-                effect = attr != null
-                        ? Component.translatable(attr.getDescriptionId()).withStyle(ChatFormatting.GRAY)
-                        : Component.empty();
-            }
+        Configuration.BuiltInSkillSlot slot = Configuration.getBuiltInSkill(skill);
+        SkillAttributeBonus legacyBonus = SkillAttributeBonus.getBySkill(skill);
+        if (slot != null && slot.hasPerkOverride()) {
+            return Component.literal("").append(skillName).append(": ")
+                    .append(buildConfiguredBuiltInPerkEffects(slot, legacyBonus, skillLevel));
         }
 
-        return Component.literal("")
-                .append(skillName)
-                .append(": ")
-                .append(amount)
-                .append(" ")
-                .append(effect);
+        Component amount;
+        Component effect;
+        int step = legacyBonus != null ? Math.max(1, legacyBonus.getPerkStep()) : 5;
+        int bonusSteps = skillLevel / step;
+        double totalBonus = legacyBonus != null ? bonusSteps * legacyBonus.getBonusPerStep() : 0.0;
+        switch (skill) {
+            case MINING -> {
+                amount = Component.literal(String.format("+%.0f%%", totalBonus * 100.0)).withStyle(ChatFormatting.AQUA);
+                effect = Component.translatable("tooltip.rereskillable.break_speed").withStyle(ChatFormatting.GRAY);
+            }
+            case GATHERING -> {
+                amount = Component.literal(String.format("+%.0f%%", totalBonus * 100.0)).withStyle(ChatFormatting.AQUA);
+                effect = Component.translatable("tooltip.rereskillable.bonus_xp_orbs").withStyle(ChatFormatting.GRAY);
+            }
+            case FARMING -> {
+                amount = Component.literal(String.format("+%.0f%%", totalBonus * 100.0)).withStyle(ChatFormatting.AQUA);
+                effect = Component.translatable("tooltip.rereskillable.crop_growth").withStyle(ChatFormatting.GRAY);
+            }
+            default -> {
+                if (legacyBonus == null) return Component.empty();
+                amount = formatPerkAmount(totalBonus, legacyBonus.getOperation());
+                Attribute attr = legacyBonus.getAttribute();
+                effect = attr != null ? Component.translatable(attr.getDescriptionId()).withStyle(ChatFormatting.GRAY)
+                        : (skill == Skill.AGILITY ? Component.translatable("tooltip.rereskillable.run_speed").withStyle(ChatFormatting.GRAY) : Component.empty());
+            }
+        }
+        return Component.literal("").append(skillName).append(": ").append(amount).append(" ").append(effect);
+    }
+
+    private Component buildConfiguredBuiltInPerkEffects(Configuration.BuiltInSkillSlot slot,
+                                                         SkillAttributeBonus legacyBonus,
+                                                         int skillLevel) {
+        var result = Component.literal("");
+        boolean added = false;
+        if (slot.perkAttributes != null) {
+            for (Configuration.PerkAttributeDefinition definition : slot.perkAttributes) {
+                if (definition == null) continue;
+                Attribute attr = definition.getResolvedAttribute();
+                if (attr == null) continue;
+                int steps = skillLevel / Math.max(1, definition.getPerkStep());
+                double totalBonus = steps * definition.getAmountPerStep();
+                if (added) result.append(Component.literal(", ").withStyle(ChatFormatting.DARK_GRAY));
+                result.append(formatPerkAmount(totalBonus, definition.getResolvedOperation()))
+                        .append(" ").append(Component.translatable(attr.getDescriptionId()).withStyle(ChatFormatting.GRAY));
+                added = true;
+            }
+        } else {
+            Attribute attr = slot.getResolvedLegacySinglePerkAttribute();
+            if (attr != null && legacyBonus != null) {
+                int steps = skillLevel / Math.max(1, legacyBonus.getPerkStep());
+                double totalBonus = steps * legacyBonus.getBonusPerStep();
+                result.append(formatPerkAmount(totalBonus, legacyBonus.getOperation()))
+                        .append(" ").append(Component.translatable(attr.getDescriptionId()).withStyle(ChatFormatting.GRAY));
+                added = true;
+            }
+        }
+        return added ? result : Component.literal("No Perk").withStyle(ChatFormatting.GRAY);
+    }
+
+    private Component formatPerkAmount(double totalBonus, AttributeModifier.Operation operation) {
+        if (operation == AttributeModifier.Operation.ADD_VALUE) {
+            return Component.literal(String.format("+%.2f", totalBonus)).withStyle(ChatFormatting.AQUA);
+        }
+        return Component.literal(String.format("+%.0f%%", totalBonus * 100.0)).withStyle(ChatFormatting.AQUA);
     }
 
     private int calculateTotalXP(Player player) {

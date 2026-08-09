@@ -277,6 +277,7 @@ public class EventHandler {
 
     @SubscribeEvent
     public void onBreakSpeed(PlayerEvent.BreakSpeed event) {
+        if (Configuration.hasBuiltInPerkOverride(Skill.MINING)) return;
         Player player = event.getEntity();
         SkillModel model = SkillModel.get(player);
         if (model == null) return;
@@ -298,6 +299,7 @@ public class EventHandler {
 
     @SubscribeEvent
     public void onCropGrow(CropGrowEvent.Pre event) {
+        if (Configuration.hasBuiltInPerkOverride(Skill.FARMING)) return;
         if (!(event.getLevel() instanceof ServerLevel level)) return;
         SkillAttributeBonus farmingBonus = SkillAttributeBonus.getBySkill(Skill.FARMING);
         float chancePerStep = farmingBonus != null ? (float) farmingBonus.getBonusPerStep() : 0.0f;
@@ -325,6 +327,7 @@ public class EventHandler {
 
     @SubscribeEvent
     public void onXpPickup(PlayerXpEvent.PickupXp event) {
+        if (Configuration.hasBuiltInPerkOverride(Skill.GATHERING)) return;
         Player player = event.getEntity();
         if (player.level().isClientSide()) return;
 
