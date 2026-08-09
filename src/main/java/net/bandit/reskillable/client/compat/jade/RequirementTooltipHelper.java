@@ -6,6 +6,7 @@ import net.bandit.reskillable.common.skills.Requirement;
 import net.bandit.reskillable.common.skills.Skill;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import snownee.jade.api.ITooltip;
@@ -28,6 +29,7 @@ public class RequirementTooltipHelper {
         if (skillModel == null) {
             return;
         }
+
         tooltip.add(Component.literal(""));
 
         tooltip.add(
@@ -47,16 +49,19 @@ public class RequirementTooltipHelper {
         }
     }
 
-    private static Component getSkillDisplayComponent(String skillId) {
+    private static MutableComponent getSkillDisplayComponent(String skillId) {
         Skill builtIn = Configuration.resolveBuiltInSkill(skillId);
+
         if (builtIn != null) {
             String configuredName = Configuration.getBuiltInSkillDisplayName(builtIn);
+
             return configuredName.isBlank()
                     ? Component.translatable(builtIn.getDisplayName())
                     : Component.literal(configuredName);
         }
 
         Configuration.CustomSkillSlot custom = Configuration.getCustomSkill(skillId);
+
         if (custom != null) {
             return Component.literal(custom.getDisplayName());
         }
