@@ -12,6 +12,7 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.bandit.reskillable.Configuration;
 
 import java.io.*;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 import java.util.zip.GZIPInputStream;
@@ -20,6 +21,8 @@ import java.util.zip.GZIPOutputStream;
 public record SyncSkillConfig(Map<String, Requirement[]> skillLocks,
                               Map<String, Requirement[]> craftSkillLocks,
                               Map<String, Requirement[]> attackSkillLocks,
+                              List<Configuration.BuiltInSkillSlot> builtInSkills,
+                              List<Configuration.CustomSkillSlot> customSkills,
                               boolean isFinalChunk) implements CustomPacketPayload {
 
     public static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath("reskillable", "sync_config");
@@ -27,6 +30,8 @@ public record SyncSkillConfig(Map<String, Requirement[]> skillLocks,
     private static final Logger LOGGER = Logger.getLogger(SyncSkillConfig.class.getName());
     private static final Gson GSON = new Gson();
     private static final java.lang.reflect.Type REQ_MAP_TYPE = new TypeToken<Map<String, Requirement[]>>() {}.getType();
+    private static final java.lang.reflect.Type BUILT_IN_SKILL_LIST_TYPE = new TypeToken<List<Configuration.BuiltInSkillSlot>>() {}.getType();
+    private static final java.lang.reflect.Type CUSTOM_SKILL_LIST_TYPE = new TypeToken<List<Configuration.CustomSkillSlot>>() {}.getType();
 
     public static final StreamCodec<FriendlyByteBuf, SyncSkillConfig> STREAM_CODEC = StreamCodec.of(
             (buf, msg) -> {
@@ -34,6 +39,8 @@ public record SyncSkillConfig(Map<String, Requirement[]> skillLocks,
                         buf.writeByteArray(compress(GSON.toJson(msg.skillLocks)));
                         buf.writeByteArray(compress(GSON.toJson(msg.craftSkillLocks)));
                         buf.writeByteArray(compress(GSON.toJson(msg.attackSkillLocks)));
+                        buf.writeByteArray(compress(GSON.toJson(msg.builtInSkills)));
+                        buf.writeByteArray(compress(GSON.toJson(msg.customSkills)));
                         buf.writeBoolean(msg.isFinalChunk);
                     } catch (IOException e) {
                         throw new RuntimeException("Failed to compress SyncSkillConfig", e);
@@ -44,8 +51,10 @@ public record SyncSkillConfig(Map<String, Requirement[]> skillLocks,
                         Map<String, Requirement[]> skillLocks = GSON.fromJson(decompress(buf.readByteArray()), REQ_MAP_TYPE);
                         Map<String, Requirement[]> craftLocks = GSON.fromJson(decompress(buf.readByteArray()), REQ_MAP_TYPE);
                         Map<String, Requirement[]> attackLocks = GSON.fromJson(decompress(buf.readByteArray()), REQ_MAP_TYPE);
+                        List<Configuration.BuiltInSkillSlot> builtIns = GSON.fromJson(decompress(buf.readByteArray()), BUILT_IN_SKILL_LIST_TYPE);
+                        List<Configuration.CustomSkillSlot> customs = GSON.fromJson(decompress(buf.readByteArray()), CUSTOM_SKILL_LIST_TYPE);
                         boolean isFinal = buf.readBoolean();
-                        return new SyncSkillConfig(skillLocks, craftLocks, attackLocks, isFinal);
+                        return new SyncSkillConfig(skillLocks, craftLocks, attackLocks, builtIns, customs, isFinal);
                     } catch (IOException e) {
                         throw new RuntimeException("Failed to decompress SyncSkillConfig", e);
                     }
@@ -83,6 +92,8 @@ public record SyncSkillConfig(Map<String, Requirement[]> skillLocks,
                 Configuration.getSkillLocks(),
                 Configuration.getCraftSkillLocks(),
                 Configuration.getAttackSkillLocks(),
+                Configuration.getBuiltInSkills(),
+                Configuration.getCustomSkills(),
                 true
         ));
     }

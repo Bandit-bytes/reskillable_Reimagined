@@ -148,6 +148,7 @@ public final class EventHandler {
     }
 
     public static float applyMiningSpeedBonus(Player player, float original) {
+        if (Configuration.hasBuiltInPerkOverride(Skill.MINING)) return original;
         SkillModel model = SkillModel.get(player);
         if (!model.isPerkEnabled(Skill.MINING)) return original;
         SkillAttributeBonus bonus = SkillAttributeBonus.getBySkill(Skill.MINING);
@@ -157,6 +158,7 @@ public final class EventHandler {
     }
 
     public static boolean shouldForceCropGrowth(net.minecraft.server.level.ServerLevel level, net.minecraft.core.BlockPos pos) {
+        if (Configuration.hasBuiltInPerkOverride(Skill.FARMING)) return false;
         SkillAttributeBonus bonus = SkillAttributeBonus.getBySkill(Skill.FARMING);
         if (bonus == null) return false;
         for (ServerPlayer player : level.players()) {
@@ -170,6 +172,7 @@ public final class EventHandler {
     }
 
     public static int gatheringBonusXp(Player player, int originalXp) {
+        if (Configuration.hasBuiltInPerkOverride(Skill.GATHERING)) return 0;
         SkillModel model = SkillModel.get(player);
         if (!model.isPerkEnabled(Skill.GATHERING)) return 0;
         SkillAttributeBonus bonus = SkillAttributeBonus.getBySkill(Skill.GATHERING);

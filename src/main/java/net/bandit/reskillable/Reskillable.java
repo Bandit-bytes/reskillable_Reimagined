@@ -17,6 +17,7 @@ public class Reskillable implements ModInitializer {
 
     @Override
     public void onInitialize() {
+        // Load config/JSON before gameplay callbacks begin using them.
         Configuration.load();
 
         SkillAttachments.init();
