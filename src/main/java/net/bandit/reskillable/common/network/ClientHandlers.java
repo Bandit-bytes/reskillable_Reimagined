@@ -32,6 +32,7 @@ public class ClientHandlers {
             net.bandit.reskillable.Configuration.setSkillLocks(msg.skillLocks());
             net.bandit.reskillable.Configuration.setCraftSkillLocks(msg.craftSkillLocks());
             net.bandit.reskillable.Configuration.setAttackSkillLocks(msg.attackSkillLocks());
+            net.bandit.reskillable.Configuration.applySyncedSkillDefinitions(msg.builtInSkills(), msg.customSkills());
 
             if (msg.isFinalChunk()) {
                 player.sendSystemMessage(Component.literal("Skill configuration updated!"));

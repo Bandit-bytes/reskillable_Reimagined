@@ -42,9 +42,11 @@ public enum SkillAttributeBonus {
     }
 
     public Attribute getAttribute() {
+        // This enum represents the original built-in perk only. Explicit JSON
+        // attribute overrides are applied separately by SkillModel so they can
+        // fully replace the legacy perk and support more than one attribute.
         Attribute configured = Configuration.getConfiguredAttribute(this.skill);
-        Attribute legacy = configured != null ? configured : attributeSupplier.get();
-        return Configuration.getBuiltInPerkAttribute(this.skill, legacy);
+        return configured != null ? configured : attributeSupplier.get();
     }
 
     public AttributeModifier.Operation getOperation() {

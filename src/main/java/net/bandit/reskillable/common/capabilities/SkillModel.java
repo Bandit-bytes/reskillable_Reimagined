@@ -31,6 +31,10 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
     private final Map<String, Integer> skillLevels = new HashMap<>();
     private final Map<String, Integer> skillExperience = new HashMap<>();
     private final Set<String> disabledPerks = new HashSet<>();
+    // Tracks the exact attributes used by JSON built-in perks so /skills reload
+    // can remove modifiers from attributes that are no longer configured.
+    private final Map<ResourceLocation, Attribute> appliedBuiltInPerkAttributes = new HashMap<>();
+    private final Map<ResourceLocation, Attribute> appliedCustomPerkAttributes = new HashMap<>();
 
     public SkillModel() {
         resetSkills();
@@ -350,104 +354,171 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
     }
 
     public void updateSkillAttributeBonuses(Player player) {
-        // Built-in skill perks
+        clearAppliedBuiltInPerkModifiers(player);
+        clearAppliedCustomPerkModifiers(player);
+
+        // Built-in skill perks. A configured perkAttributes list (or the legacy
+        // single perkAttribute field) REPLACES the original perk rather than
+        // stacking on top of it.
         for (SkillAttributeBonus bonus : SkillAttributeBonus.values()) {
-            Attribute attribute = bonus.getAttribute();
-            if (attribute == null) continue;
-
-            Holder.Reference<Attribute> attr = BuiltInRegistries.ATTRIBUTE
-                    .getResourceKey(attribute)
-                    .flatMap(BuiltInRegistries.ATTRIBUTE::getHolder)
-                    .orElse(null);
-
-            if (attr == null) continue;
-
-            var attrInstance = player.getAttributes().getInstance(attr);
-            if (attrInstance == null) continue;
-
-            ResourceLocation id = ResourceLocation.fromNamespaceAndPath(
-                    "reskillable",
-                    bonus.skill.name().toLowerCase(Locale.ROOT)
-            );
-
-            attrInstance.getModifiers().stream()
-                    .filter(mod -> mod.id().equals(id))
-                    .findFirst()
-                    .ifPresent(attrInstance::removeModifier);
-
-            if (isPerkEnabled(bonus.skill)) {
-                int skillLevel = getSkillLevel(bonus.skill);
-                int bonusSteps = skillLevel / bonus.getPerkStep();
-                double totalBonus = bonusSteps * bonus.getBonusPerStep();
-
-                if (totalBonus > 0) {
-                    AttributeModifier modifier = new AttributeModifier(
-                            id,
-                            totalBonus,
-                            bonus.getOperation()
-                    );
-                    attrInstance.addTransientModifier(modifier);
-                }
+            Skill skill = bonus.skill;
+            if (!Configuration.isBuiltInSkillEnabled(skill) || !isPerkEnabled(skill)) {
+                continue;
             }
+
+            Configuration.BuiltInSkillSlot slot = Configuration.getBuiltInSkill(skill);
+            if (slot != null && slot.hasPerkOverride()) {
+                if (slot.perkAttributes != null) {
+                    for (int i = 0; i < slot.perkAttributes.size(); i++) {
+                        Configuration.PerkAttributeDefinition definition = slot.perkAttributes.get(i);
+                        if (definition == null) continue;
+                        applyBuiltInAttributeModifier(
+                                player,
+                                skill,
+                                i,
+                                definition.getResolvedAttribute(),
+                                definition.getResolvedOperation(),
+                                definition.getAmountPerStep(),
+                                definition.getPerkStep()
+                        );
+                    }
+                } else {
+                    // Backwards compatibility with the original single-attribute
+                    // JSON fields introduced in the first editable-built-ins build.
+                    applyBuiltInAttributeModifier(
+                            player,
+                            skill,
+                            0,
+                            slot.getResolvedLegacySinglePerkAttribute(),
+                            bonus.getOperation(),
+                            bonus.getBonusPerStep(),
+                            bonus.getPerkStep()
+                    );
+                }
+                continue;
+            }
+
+            // No JSON replacement: preserve the original Reskillable perk.
+            applyBuiltInAttributeModifier(
+                    player,
+                    skill,
+                    -1,
+                    bonus.getAttribute(),
+                    bonus.getOperation(),
+                    bonus.getBonusPerStep(),
+                    bonus.getPerkStep()
+            );
         }
 
-        // Custom skill perks
+        // Custom skill perks. perkAttributes, when present, replaces the legacy
+        // single custom perk and can grant multiple attributes.
         for (Configuration.CustomSkillSlot slot : Configuration.getCustomSkills()) {
-            if (slot == null || !slot.isEnabled() || !slot.hasPerk()) {
+            if (slot == null || !slot.isEnabled() || !isPerkEnabled(slot.getId())) {
                 continue;
             }
-
-            Attribute attribute = slot.getResolvedPerkAttribute();
-            if (attribute == null) {
-                continue;
-            }
-
-            Holder.Reference<Attribute> attr = BuiltInRegistries.ATTRIBUTE
-                    .getResourceKey(attribute)
-                    .flatMap(BuiltInRegistries.ATTRIBUTE::getHolder)
-                    .orElse(null);
-
-            if (attr == null) continue;
-
-            var attrInstance = player.getAttributes().getInstance(attr);
-            if (attrInstance == null) continue;
 
             String skillId = normalizeSkillId(slot.getId());
-
-            ResourceLocation modifierId = ResourceLocation.fromNamespaceAndPath(
-                    "reskillable",
-                    "custom_" + skillId
-            );
-
-            attrInstance.getModifiers().stream()
-                    .filter(mod -> mod.id().equals(modifierId))
-                    .findFirst()
-                    .ifPresent(attrInstance::removeModifier);
-
-            if (!isPerkEnabled(skillId)) {
+            if (slot.perkAttributes != null) {
+                for (int i = 0; i < slot.perkAttributes.size(); i++) {
+                    Configuration.PerkAttributeDefinition definition = slot.perkAttributes.get(i);
+                    if (definition == null) continue;
+                    applyCustomAttributeModifier(player, skillId, i,
+                            definition.getResolvedAttribute(), definition.getResolvedOperation(),
+                            definition.getAmountPerStep(), definition.getPerkStep());
+                }
                 continue;
             }
 
-            int skillLevel = getSkillLevel(skillId);
-            int step = Math.max(1, slot.getPerkStep());
-            int bonusSteps = skillLevel / step;
-            double totalBonus = bonusSteps * slot.getPerkAmountPerStep();
-
-            if (totalBonus <= 0) {
-                continue;
-            }
-
-            AttributeModifier modifier = new AttributeModifier(
-                    modifierId,
-                    totalBonus,
-                    slot.getResolvedPerkOperation()
-            );
-
-            attrInstance.addTransientModifier(modifier);
+            applyCustomAttributeModifier(player, skillId, -1,
+                    slot.getResolvedPerkAttribute(), slot.getResolvedPerkOperation(),
+                    slot.getPerkAmountPerStep(), slot.getPerkStep());
         }
 
         handleHealthBonus(player);
         forceAttributeSync(player);
+    }
+
+    private void clearAppliedBuiltInPerkModifiers(Player player) {
+        for (Map.Entry<ResourceLocation, Attribute> entry : appliedBuiltInPerkAttributes.entrySet()) {
+            Holder.Reference<Attribute> holder = BuiltInRegistries.ATTRIBUTE
+                    .getResourceKey(entry.getValue())
+                    .flatMap(BuiltInRegistries.ATTRIBUTE::getHolder)
+                    .orElse(null);
+            if (holder == null) continue;
+
+            var instance = player.getAttributes().getInstance(holder);
+            if (instance != null) {
+                instance.removeModifier(entry.getKey());
+            }
+        }
+        appliedBuiltInPerkAttributes.clear();
+    }
+
+    private void applyBuiltInAttributeModifier(Player player,
+                                               Skill skill,
+                                               int index,
+                                               Attribute attribute,
+                                               AttributeModifier.Operation operation,
+                                               double amountPerStep,
+                                               int perkStep) {
+        if (attribute == null || amountPerStep <= 0.0) return;
+
+        Holder.Reference<Attribute> holder = BuiltInRegistries.ATTRIBUTE
+                .getResourceKey(attribute)
+                .flatMap(BuiltInRegistries.ATTRIBUTE::getHolder)
+                .orElse(null);
+        if (holder == null) return;
+
+        var instance = player.getAttributes().getInstance(holder);
+        if (instance == null) return;
+
+        int steps = getSkillLevel(skill) / Math.max(1, perkStep);
+        double totalBonus = steps * amountPerStep;
+        if (totalBonus <= 0.0) return;
+
+        String path = index < 0
+                ? skill.name().toLowerCase(Locale.ROOT)
+                : "built_in_" + skill.name().toLowerCase(Locale.ROOT) + "_" + index;
+        ResourceLocation modifierId = ResourceLocation.fromNamespaceAndPath("reskillable", path);
+
+        instance.removeModifier(modifierId);
+        instance.addTransientModifier(new AttributeModifier(modifierId, totalBonus, operation));
+        appliedBuiltInPerkAttributes.put(modifierId, attribute);
+    }
+
+    private void clearAppliedCustomPerkModifiers(Player player) {
+        for (Map.Entry<ResourceLocation, Attribute> entry : appliedCustomPerkAttributes.entrySet()) {
+            Holder.Reference<Attribute> holder = BuiltInRegistries.ATTRIBUTE
+                    .getResourceKey(entry.getValue())
+                    .flatMap(BuiltInRegistries.ATTRIBUTE::getHolder)
+                    .orElse(null);
+            if (holder == null) continue;
+            var instance = player.getAttributes().getInstance(holder);
+            if (instance != null) instance.removeModifier(entry.getKey());
+        }
+        appliedCustomPerkAttributes.clear();
+    }
+
+    private void applyCustomAttributeModifier(Player player, String skillId, int index, Attribute attribute,
+                                              AttributeModifier.Operation operation, double amountPerStep, int perkStep) {
+        if (attribute == null || amountPerStep <= 0.0) return;
+        Holder.Reference<Attribute> holder = BuiltInRegistries.ATTRIBUTE
+                .getResourceKey(attribute)
+                .flatMap(BuiltInRegistries.ATTRIBUTE::getHolder)
+                .orElse(null);
+        if (holder == null) return;
+        var instance = player.getAttributes().getInstance(holder);
+        if (instance == null) return;
+
+        int steps = getSkillLevel(skillId) / Math.max(1, perkStep);
+        double totalBonus = steps * amountPerStep;
+        if (totalBonus <= 0.0) return;
+
+        String path = index < 0 ? "custom_" + skillId : "custom_" + skillId + "_" + index;
+        ResourceLocation modifierId = ResourceLocation.fromNamespaceAndPath("reskillable", path);
+        instance.removeModifier(modifierId);
+        instance.addTransientModifier(new AttributeModifier(modifierId, totalBonus, operation));
+        appliedCustomPerkAttributes.put(modifierId, attribute);
     }
 
     private void handleHealthBonus(Player player) {

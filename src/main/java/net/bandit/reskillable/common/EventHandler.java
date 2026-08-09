@@ -6,6 +6,7 @@ import net.bandit.reskillable.common.skills.Requirement;
 import net.bandit.reskillable.common.skills.Skill;
 import net.bandit.reskillable.common.skills.SkillAttributeBonus;
 import net.bandit.reskillable.common.network.payload.SyncToClient;
+import net.bandit.reskillable.common.network.payload.SyncSkillConfig;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -199,6 +200,7 @@ public class EventHandler {
         ServerPlayer player = (ServerPlayer) event.getEntity();
         SkillModel model = SkillModel.get(player);
         if (model != null) {
+            SyncSkillConfig.send(player);
             SyncToClient.send(player);
             model.updateSkillAttributeBonuses(player);
         }
@@ -260,6 +262,7 @@ public class EventHandler {
 
     @SubscribeEvent
     public void onBreakSpeed(PlayerEvent.BreakSpeed event) {
+        if (Configuration.hasBuiltInPerkOverride(Skill.MINING)) return;
         Player player = event.getEntity();
         SkillModel model = SkillModel.get(player);
         if (model == null) return;
@@ -281,6 +284,7 @@ public class EventHandler {
 
     @SubscribeEvent
     public void onCropGrow(CropGrowEvent.Pre event) {
+        if (Configuration.hasBuiltInPerkOverride(Skill.FARMING)) return;
         if (!(event.getLevel() instanceof ServerLevel level)) return;
         SkillAttributeBonus farmingBonus = SkillAttributeBonus.getBySkill(Skill.FARMING);
         float chancePerStep = farmingBonus != null ? (float) farmingBonus.getBonusPerStep() : 0.0f;
@@ -308,6 +312,7 @@ public class EventHandler {
 
     @SubscribeEvent
     public void onXpPickup(PlayerXpEvent.PickupXp event) {
+        if (Configuration.hasBuiltInPerkOverride(Skill.GATHERING)) return;
         Player player = event.getEntity();
         if (player.level().isClientSide) return;
 

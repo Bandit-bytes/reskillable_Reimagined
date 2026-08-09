@@ -100,8 +100,12 @@ public record RequestLevelUp(String skillId) implements CustomPacketPayload {
                     1.0F
             );
 
-            int perkStep = getPerkStep(skillId);
-            if (model.getSkillLevel(skillId) % perkStep == 0) {
+            int newLevel = model.getSkillLevel(skillId);
+            Skill builtInMilestone = Configuration.resolveBuiltInSkill(skillId);
+            boolean perkMilestone = builtInMilestone != null
+                    ? Configuration.isBuiltInPerkMilestone(builtInMilestone, newLevel)
+                    : Configuration.isCustomPerkMilestone(skillId, newLevel);
+            if (perkMilestone) {
                 player.level().playSound(
                         null,
                         player.blockPosition(),
