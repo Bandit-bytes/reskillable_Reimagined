@@ -138,179 +138,169 @@ public class Configuration {
             """;
 
     private static final String DEFAULT_CUSTOM_SKILLS = """
+{
+  "customSkills": [
     {
-      "customSkills": [
+      "id": "swimming",
+      "displayName": "Swimming",
+      "enabled": true,
+      "icon": "reskillable:textures/gui/custom_skills/swimming.png",
+      "perkAttributes": [
         {
-          "id": "swimming",
-          "displayName": "Swimming",
-          "enabled": true,
-          "perkAttribute": "forge:swim_speed",
-          "icon": "reskillable:textures/gui/custom_skills/swimming.png",
-          "perkOperation": "ADDITION",
-          "perkAmountPerStep": 0.1,
-          "perkStep": 5
-        },
-        {
-          "id": "",
-          "displayName": "",
-          "perkAttribute": "",
-          "icon": "",
-          "perkOperation": "ADDITION",
-          "perkAmountPerStep": 0.0,
-          "perkStep": 5
-        },
-        {
-          "id": "",
-          "displayName": "",
-          "perkAttribute": "",
-          "icon": "",
-          "perkOperation": "ADDITION",
-          "perkAmountPerStep": 0.0,
-          "perkStep": 5
-        },
-        {
-          "id": "",
-          "displayName": "",
-          "perkAttribute": "",
-          "icon": "",
-          "perkOperation": "ADDITION",
-          "perkAmountPerStep": 0.0,
-          "perkStep": 5
-        },
-        {
-          "id": "",
-          "displayName": "",
-          "perkAttribute": "",
-          "icon": "",
-          "perkOperation": "ADDITION",
-          "perkAmountPerStep": 0.0,
-          "perkStep": 5
-        },
-        {
-          "id": "",
-          "displayName": "",
-          "perkAttribute": "",
-          "icon": "",
-          "perkOperation": "ADDITION",
-          "perkAmountPerStep": 0.0,
-          "perkStep": 5
-        },
-        {
-          "id": "",
-          "displayName": "",
-          "perkAttribute": "",
-          "icon": "",
-          "perkOperation": "ADDITION",
-          "perkAmountPerStep": 0.0,
-          "perkStep": 5
-        },
-        {
-          "id": "",
-          "displayName": "",
-          "perkAttribute": "",
-          "icon": "",
-          "perkOperation": "ADDITION",
-          "perkAmountPerStep": 0.0,
+          "attribute": "forge:swim_speed",
+          "operation": "ADDITION",
+          "amountPerStep": 0.1,
           "perkStep": 5
         }
       ]
-    }
-    """;
-
-    private static final String DEFAULT_BUILT_IN_SKILLS = """
-{
-  "builtInSkills": [
-    {
-      "skill": "mining",
-      "id": "mining",
-      "displayName": "",
-      "enabled": true,
-      "icon": "",
-      "perkAttribute": null,
-      "perkOperation": null,
-      "perkAmountPerStep": null,
-      "perkStep": 5
     },
     {
-      "skill": "gathering",
-      "id": "gathering",
+      "id": "",
       "displayName": "",
       "enabled": true,
       "icon": "",
-      "perkAttribute": null,
-      "perkOperation": null,
-      "perkAmountPerStep": null,
-      "perkStep": 5
+      "perkAttributes": []
     },
     {
-      "skill": "attack",
-      "id": "attack",
+      "id": "",
       "displayName": "",
       "enabled": true,
       "icon": "",
-      "perkAttribute": null,
-      "perkOperation": null,
-      "perkAmountPerStep": null,
-      "perkStep": 5
+      "perkAttributes": []
     },
     {
-      "skill": "defense",
-      "id": "defense",
+      "id": "",
       "displayName": "",
       "enabled": true,
       "icon": "",
-      "perkAttribute": null,
-      "perkOperation": null,
-      "perkAmountPerStep": null,
-      "perkStep": 5
+      "perkAttributes": []
     },
     {
-      "skill": "building",
-      "id": "building",
+      "id": "",
       "displayName": "",
       "enabled": true,
       "icon": "",
-      "perkAttribute": null,
-      "perkOperation": null,
-      "perkAmountPerStep": null,
-      "perkStep": 5
+      "perkAttributes": []
     },
     {
-      "skill": "farming",
-      "id": "farming",
+      "id": "",
       "displayName": "",
       "enabled": true,
       "icon": "",
-      "perkAttribute": null,
-      "perkOperation": null,
-      "perkAmountPerStep": null,
-      "perkStep": 5
+      "perkAttributes": []
     },
     {
-      "skill": "agility",
-      "id": "agility",
+      "id": "",
       "displayName": "",
       "enabled": true,
       "icon": "",
-      "perkAttribute": null,
-      "perkOperation": null,
-      "perkAmountPerStep": null,
-      "perkStep": 5
+      "perkAttributes": []
     },
     {
-      "skill": "magic",
-      "id": "magic",
+      "id": "",
       "displayName": "",
       "enabled": true,
       "icon": "",
-      "perkAttribute": null,
-      "perkOperation": null,
-      "perkAmountPerStep": null,
-      "perkStep": 5
+      "perkAttributes": []
     }
   ]
 }
 """;
+
+    private static final String DEFAULT_BUILT_IN_SKILLS = """
+            {
+              "builtInSkills": [
+                {
+                  "skill": "mining",
+                  "id": "mining",
+                  "displayName": "",
+                  "enabled": true,
+                  "icon": "",
+                  "perkAttributes": null,
+                  "perkOperation": null,
+                  "perkAmountPerStep": null,
+                  "perkStep": 5
+                },
+                {
+                  "skill": "gathering",
+                  "id": "gathering",
+                  "displayName": "",
+                  "enabled": true,
+                  "icon": "",
+                  "perkAttributes": null,
+                  "perkOperation": null,
+                  "perkAmountPerStep": null,
+                  "perkStep": 5
+                },
+                {
+                  "skill": "attack",
+                  "id": "attack",
+                  "displayName": "",
+                  "enabled": true,
+                  "icon": "",
+                  "perkAttributes": null,
+                  "perkOperation": null,
+                  "perkAmountPerStep": null,
+                  "perkStep": 5
+                },
+                {
+                  "skill": "defense",
+                  "id": "defense",
+                  "displayName": "",
+                  "enabled": true,
+                  "icon": "",
+                  "perkAttributes": null,
+                  "perkOperation": null,
+                  "perkAmountPerStep": null,
+                  "perkStep": 5
+                },
+                {
+                  "skill": "building",
+                  "id": "building",
+                  "displayName": "",
+                  "enabled": true,
+                  "icon": "",
+                  "perkAttributes": null,
+                  "perkOperation": null,
+                  "perkAmountPerStep": null,
+                  "perkStep": 5
+                },
+                {
+                  "skill": "farming",
+                  "id": "farming",
+                  "displayName": "",
+                  "enabled": true,
+                  "icon": "",
+                  "perkAttributes": null,
+                  "perkOperation": null,
+                  "perkAmountPerStep": null,
+                  "perkStep": 5
+                },
+                {
+                  "skill": "agility",
+                  "id": "agility",
+                  "displayName": "",
+                  "enabled": true,
+                  "icon": "",
+                  "perkAttributes": null,
+                  "perkOperation": null,
+                  "perkAmountPerStep": null,
+                  "perkStep": 5
+                },
+                {
+                  "skill": "magic",
+                  "id": "magic",
+                  "displayName": "",
+                  "enabled": true,
+                  "icon": "",
+                  "perkAttributes": null,
+                  "perkOperation": null,
+                  "perkAmountPerStep": null,
+                  "perkStep": 5
+                }
+              ]
+            }
+            """;
 
     static {
         ForgeConfigSpec.Builder builder = new ForgeConfigSpec.Builder();
@@ -606,59 +596,74 @@ public class Configuration {
             System.err.println("[Reskillable] Invalid built-in skill id '" + id + "' for '" + baseSkill.getSerializedName() + "'. Disabling this entry.");
             return BuiltInSkillSlot.disabled(baseSkill);
         }
-
         if (!icon.isBlank()) {
-            try {
-                new ResourceLocation(icon);
-            } catch (Exception e) {
+            try { new ResourceLocation(icon); } catch (Exception e) {
                 System.err.println("[Reskillable] Invalid built-in icon '" + icon + "' for skill '" + baseSkill.getSerializedName() + "'. Falling back to the original sprite.");
                 icon = "";
             }
         }
-
         if (perkAttribute != null && !perkAttribute.isBlank() && !perkAttribute.equalsIgnoreCase("none")) {
             try {
                 ResourceLocation attrId = new ResourceLocation(perkAttribute);
                 if (!ForgeRegistries.ATTRIBUTES.containsKey(attrId)) {
-                    System.err.println("[Reskillable] Unknown built-in perk attribute '" + perkAttribute + "' for skill '" + id + "'. Falling back to the legacy config.");
-                    perkAttribute = null;
+                    System.err.println("[Reskillable] Unknown built-in perk attribute '" + perkAttribute + "' for skill '" + id + "'. The explicit perk override will be disabled instead of restoring the original perk.");
+                    perkAttribute = "none";
                 }
             } catch (Exception e) {
-                System.err.println("[Reskillable] Invalid built-in perk attribute '" + perkAttribute + "' for skill '" + id + "'. Falling back to the legacy config.");
-                perkAttribute = null;
+                System.err.println("[Reskillable] Invalid built-in perk attribute '" + perkAttribute + "' for skill '" + id + "'. The explicit perk override will be disabled instead of restoring the original perk.");
+                perkAttribute = "none";
             }
         }
-
         if (perkOperation != null && !perkOperation.isBlank()) {
-            try {
-                AttributeModifier.Operation.valueOf(perkOperation);
-            } catch (Exception e) {
-                System.err.println("[Reskillable] Invalid built-in perk operation '" + perkOperation + "' for skill '" + id + "'. Falling back to the legacy config.");
+            try { AttributeModifier.Operation.valueOf(perkOperation); } catch (Exception e) {
+                System.err.println("[Reskillable] Invalid built-in perk operation '" + perkOperation + "' for skill '" + id + "'. Falling back to the legacy operation.");
                 perkOperation = null;
             }
         }
-
         if (perkAmountPerStep != null && perkAmountPerStep < 0.0) {
-            System.err.println("[Reskillable] Negative built-in perk amount for skill '" + id + "'. Falling back to the legacy config.");
+            System.err.println("[Reskillable] Negative built-in perk amount for skill '" + id + "'. Falling back to the legacy amount.");
             perkAmountPerStep = null;
         }
-
         if (perkStep != null && perkStep < 1) {
             System.err.println("[Reskillable] Invalid built-in perkStep for skill '" + id + "'. Falling back to 5.");
             perkStep = null;
         }
+        List<PerkAttributeDefinition> perkAttributes = normalizePerkAttributeDefinitions(
+                slot.perkAttributes, id, perkStep == null ? 5 : perkStep);
+        return new BuiltInSkillSlot(baseSkill.getSerializedName(), id, displayName,
+                slot.enabled && !id.isBlank(), icon, perkAttribute, perkOperation,
+                perkAmountPerStep, perkStep, perkAttributes);
+    }
 
-        return new BuiltInSkillSlot(
-                baseSkill.getSerializedName(),
-                id,
-                displayName,
-                slot.enabled && !id.isBlank(),
-                icon,
-                perkAttribute,
-                perkOperation,
-                perkAmountPerStep,
-                perkStep
-        );
+    private static List<PerkAttributeDefinition> normalizePerkAttributeDefinitions(
+            List<PerkAttributeDefinition> definitions, String skillId, int defaultStep) {
+        if (definitions == null) return null;
+        List<PerkAttributeDefinition> normalized = new ArrayList<>();
+        for (int i = 0; i < definitions.size(); i++) {
+            PerkAttributeDefinition definition = definitions.get(i);
+            if (definition == null) continue;
+            String attribute = definition.attribute == null ? "" : definition.attribute.trim();
+            if (attribute.isBlank() || attribute.equalsIgnoreCase("none")) continue;
+            try {
+                ResourceLocation attrId = new ResourceLocation(attribute);
+                if (!ForgeRegistries.ATTRIBUTES.containsKey(attrId)) {
+                    System.err.println("[Reskillable] Unknown perkAttributes[" + i + "] attribute '" + attribute + "' for skill '" + skillId + "'. Skipping that attribute.");
+                    continue;
+                }
+            } catch (Exception e) {
+                System.err.println("[Reskillable] Invalid perkAttributes[" + i + "] attribute '" + attribute + "' for skill '" + skillId + "'. Skipping that attribute.");
+                continue;
+            }
+            String operation = definition.operation == null ? "ADDITION" : definition.operation.trim().toUpperCase(Locale.ROOT);
+            try { AttributeModifier.Operation.valueOf(operation); } catch (Exception e) {
+                System.err.println("[Reskillable] Invalid perkAttributes[" + i + "] operation '" + operation + "' for skill '" + skillId + "'. Using ADDITION.");
+                operation = "ADDITION";
+            }
+            double amountPerStep = Math.max(0.0, definition.amountPerStep);
+            int step = definition.perkStep == null ? Math.max(1, defaultStep) : Math.max(1, definition.perkStep);
+            normalized.add(new PerkAttributeDefinition(attribute, operation, amountPerStep, step));
+        }
+        return normalized;
     }
 
     private static List<CustomSkillSlot> loadCustomSkills(String filename, String defaultContent) {
@@ -753,6 +758,7 @@ public class Configuration {
 
         CustomSkillSlot normalized = new CustomSkillSlot(id, displayName, perkAttribute, icon, perkOperation, perkAmountPerStep, perkStep);
         normalized.enabled = slot.enabled == null || slot.enabled;
+        normalized.perkAttributes = normalizePerkAttributeDefinitions(slot.perkAttributes, id, perkStep);
         return normalized;
 
     }
@@ -806,6 +812,17 @@ public class Configuration {
         return slot == null ? null : slot.getResolvedIcon();
     }
 
+    public static boolean hasBuiltInPerkOverride(Skill skill) {
+        BuiltInSkillSlot slot = getBuiltInSkill(skill);
+        return slot != null && slot.hasPerkOverride();
+    }
+
+    public static List<PerkAttributeDefinition> getBuiltInPerkAttributes(Skill skill) {
+        BuiltInSkillSlot slot = getBuiltInSkill(skill);
+        if (slot == null || slot.perkAttributes == null) return null;
+        return Collections.unmodifiableList(slot.perkAttributes);
+    }
+
     public static Attribute getBuiltInPerkAttribute(Skill skill, Attribute fallback) {
         BuiltInSkillSlot slot = getBuiltInSkill(skill);
         if (slot == null) return fallback;
@@ -847,6 +864,25 @@ public class Configuration {
         return slot == null ? 5 : slot.getPerkStep();
     }
 
+    public static boolean isBuiltInPerkMilestone(Skill skill, int level) {
+        if (skill == null || level <= 0 || !isBuiltInSkillEnabled(skill)) return false;
+        BuiltInSkillSlot slot = getBuiltInSkill(skill);
+        if (slot != null && slot.hasPerkOverride()) {
+            if (slot.perkAttributes != null) {
+                for (PerkAttributeDefinition definition : slot.perkAttributes) {
+                    if (definition != null && definition.getAmountPerStep() > 0.0
+                            && level % Math.max(1, definition.getPerkStep()) == 0) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            String single = slot.getPerkAttributeOverride();
+            if (single == null || single.isBlank() || single.equalsIgnoreCase("none")) return false;
+        }
+        return level % Math.max(1, getBuiltInPerkStep(skill)) == 0;
+    }
+
     /**
      * Resolves either a configured public ID (e.g. "combat") or the legacy/internal
      * ID (e.g. "attack") to its built-in semantic skill. Disabled skills do not
@@ -871,6 +907,23 @@ public class Configuration {
         if (builtIn != null) return getBuiltInSkillId(builtIn);
         CustomSkillSlot custom = findCustomSkillById(id);
         return custom != null ? custom.getId() : (id == null ? "" : id.trim().toLowerCase(Locale.ROOT));
+    }
+
+    public static boolean isCustomPerkMilestone(String skillId, int level) {
+        if (skillId == null || skillId.isBlank() || level <= 0) return false;
+        CustomSkillSlot slot = findCustomSkillById(skillId);
+        if (slot == null || !slot.isEnabled()) return false;
+        if (slot.perkAttributes != null) {
+            for (PerkAttributeDefinition definition : slot.perkAttributes) {
+                if (definition != null && definition.getResolvedAttribute() != null
+                        && definition.getAmountPerStep() > 0.0
+                        && level % Math.max(1, definition.getPerkStep()) == 0) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        return slot.hasPerk() && level % Math.max(1, slot.getPerkStep()) == 0;
     }
 
     public static List<CustomSkillSlot> getCustomSkills() {
@@ -964,6 +1017,32 @@ public class Configuration {
         }
     }
 
+    public static final class PerkAttributeDefinition {
+        public String attribute;
+        public String operation;
+        public double amountPerStep;
+        public Integer perkStep;
+
+        public PerkAttributeDefinition() { this("", "ADDITION", 0.0, 5); }
+        public PerkAttributeDefinition(String attribute, String operation, double amountPerStep, Integer perkStep) {
+            this.attribute = attribute == null ? "" : attribute;
+            this.operation = operation == null ? "ADDITION" : operation;
+            this.amountPerStep = Math.max(0.0, amountPerStep);
+            this.perkStep = perkStep == null ? 5 : Math.max(1, perkStep);
+        }
+        public String getAttributeId() { return attribute == null ? "" : attribute.trim(); }
+        public Attribute getResolvedAttribute() {
+            try { return ForgeRegistries.ATTRIBUTES.getValue(new ResourceLocation(getAttributeId())); }
+            catch (Exception e) { return null; }
+        }
+        public AttributeModifier.Operation getResolvedOperation() {
+            try { return AttributeModifier.Operation.valueOf(operation == null ? "ADDITION" : operation.trim().toUpperCase(Locale.ROOT)); }
+            catch (Exception e) { return AttributeModifier.Operation.ADDITION; }
+        }
+        public double getAmountPerStep() { return Math.max(0.0, amountPerStep); }
+        public int getPerkStep() { return perkStep == null ? 5 : Math.max(1, perkStep); }
+    }
+
     public static final class BuiltInSkillSlot {
         public String skill;
         public String id;
@@ -974,14 +1053,16 @@ public class Configuration {
         public String perkOperation;
         public Double perkAmountPerStep;
         public Integer perkStep;
+        public List<PerkAttributeDefinition> perkAttributes;
 
-        public BuiltInSkillSlot() {
-            // Keep omitted "enabled" fields backward-friendly when users hand-edit JSON.
-            this("", "", "", true, "", null, null, null, null);
-        }
-
+        public BuiltInSkillSlot() { this("", "", "", true, "", null, null, null, null, null); }
         public BuiltInSkillSlot(String skill, String id, String displayName, boolean enabled, String icon,
                                 String perkAttribute, String perkOperation, Double perkAmountPerStep, Integer perkStep) {
+            this(skill, id, displayName, enabled, icon, perkAttribute, perkOperation, perkAmountPerStep, perkStep, null);
+        }
+        public BuiltInSkillSlot(String skill, String id, String displayName, boolean enabled, String icon,
+                                String perkAttribute, String perkOperation, Double perkAmountPerStep, Integer perkStep,
+                                List<PerkAttributeDefinition> perkAttributes) {
             this.skill = skill == null ? "" : skill;
             this.id = id == null ? "" : id;
             this.displayName = displayName == null ? "" : displayName;
@@ -991,61 +1072,37 @@ public class Configuration {
             this.perkOperation = perkOperation;
             this.perkAmountPerStep = perkAmountPerStep;
             this.perkStep = perkStep;
+            this.perkAttributes = perkAttributes;
         }
-
         public static BuiltInSkillSlot defaults(Skill skill) {
-            String id = skill.getSerializedName();
-            return new BuiltInSkillSlot(id, id, "", true, "", null, null, null, 5);
+            String id = skill.getSerializedName(); return new BuiltInSkillSlot(id, id, "", true, "", null, null, null, 5, null);
         }
-
         public static BuiltInSkillSlot disabled(Skill skill) {
-            String id = skill.getSerializedName();
-            return new BuiltInSkillSlot(id, id, "", false, "", null, null, null, 5);
+            String id = skill.getSerializedName(); return new BuiltInSkillSlot(id, id, "", false, "", null, null, null, 5, null);
         }
-
-        public Skill getBaseSkill() {
-            return Skill.fromString(skill);
-        }
-
-        public boolean isEnabled() {
-            return enabled && getBaseSkill() != null && !getId().isBlank();
-        }
-
-        public String getId() {
-            return id == null ? "" : id.trim().toLowerCase(Locale.ROOT);
-        }
-
-        public String getDisplayName() {
-            return displayName == null ? "" : displayName.trim();
-        }
-
-        public String getIcon() {
-            return icon == null ? "" : icon.trim();
-        }
-
+        public Skill getBaseSkill() { return Skill.fromString(skill); }
+        public boolean isEnabled() { return enabled && getBaseSkill() != null && !getId().isBlank(); }
+        public String getId() { return id == null ? "" : id.trim().toLowerCase(Locale.ROOT); }
+        public String getDisplayName() { return displayName == null ? "" : displayName.trim(); }
+        public String getIcon() { return icon == null ? "" : icon.trim(); }
         public ResourceLocation getResolvedIcon() {
             if (getIcon().isBlank()) return null;
-            try {
-                return new ResourceLocation(getIcon());
-            } catch (Exception e) {
-                return null;
-            }
+            try { return new ResourceLocation(getIcon()); } catch (Exception e) { return null; }
         }
-
-        public String getPerkAttributeOverride() {
-            return perkAttribute == null ? null : perkAttribute.trim();
+        public String getPerkAttributeOverride() { return perkAttribute == null ? null : perkAttribute.trim(); }
+        public String getPerkOperationOverride() { return perkOperation == null ? null : perkOperation.trim().toUpperCase(Locale.ROOT); }
+        public Double getPerkAmountPerStepOverride() { return perkAmountPerStep; }
+        public int getPerkStep() { return perkStep == null ? 5 : Math.max(1, perkStep); }
+        public boolean hasPerkOverride() {
+            if (perkAttributes != null) return true;
+            String single = getPerkAttributeOverride();
+            return single != null && !single.isBlank();
         }
-
-        public String getPerkOperationOverride() {
-            return perkOperation == null ? null : perkOperation.trim().toUpperCase(Locale.ROOT);
-        }
-
-        public Double getPerkAmountPerStepOverride() {
-            return perkAmountPerStep;
-        }
-
-        public int getPerkStep() {
-            return perkStep == null ? 5 : Math.max(1, perkStep);
+        public Attribute getResolvedLegacySinglePerkAttribute() {
+            String single = getPerkAttributeOverride();
+            if (single == null || single.isBlank() || single.equalsIgnoreCase("none")) return null;
+            try { return ForgeRegistries.ATTRIBUTES.getValue(new ResourceLocation(single)); }
+            catch (Exception e) { return null; }
         }
     }
 
@@ -1058,6 +1115,7 @@ public class Configuration {
         public String perkOperation;
         public double perkAmountPerStep;
         public int perkStep;
+        public List<PerkAttributeDefinition> perkAttributes;
 
         public CustomSkillSlot() {
             this("", "", "", "", "ADDITION", 0.0, 5);
@@ -1110,6 +1168,14 @@ public class Configuration {
         }
 
         public boolean hasPerk() {
+            if (perkAttributes != null) {
+                for (PerkAttributeDefinition definition : perkAttributes) {
+                    if (definition != null && definition.getResolvedAttribute() != null && definition.getAmountPerStep() > 0.0) {
+                        return true;
+                    }
+                }
+                return false;
+            }
             return !getPerkAttribute().isBlank() && perkAmountPerStep > 0.0;
         }
 
@@ -1511,6 +1577,37 @@ public class Configuration {
 
     public static void setAttackSkillLocks(Map<String, Requirement[]> newAttackSkillLocks) {
         attackSkillLocks = newAttackSkillLocks;
+    }
+
+    public static void applySyncedSkillDefinitions(List<BuiltInSkillSlot> syncedBuiltInSkills,
+                                                   List<CustomSkillSlot> syncedCustomSkills) {
+        if (syncedBuiltInSkills == null) {
+            builtInSkills = createDefaultBuiltInSkillSlots();
+        } else {
+            List<BuiltInSkillSlot> normalizedBuiltIns = new ArrayList<>();
+            Set<Skill> seen = EnumSet.noneOf(Skill.class);
+            for (BuiltInSkillSlot slot : syncedBuiltInSkills) {
+                if (slot == null) continue;
+                Skill baseSkill = Skill.fromString(slot.skill);
+                if (baseSkill == null || !seen.add(baseSkill)) continue;
+                normalizedBuiltIns.add(normalizeBuiltInSkillSlot(slot, baseSkill));
+            }
+            for (Skill skill : Skill.values()) if (!seen.contains(skill)) normalizedBuiltIns.add(BuiltInSkillSlot.disabled(skill));
+            builtInSkills = normalizedBuiltIns;
+        }
+        if (syncedCustomSkills == null) {
+            customSkills = createEmptyCustomSkillSlots();
+        } else {
+            List<CustomSkillSlot> normalized = new ArrayList<>();
+            for (int i = 0; i < MAX_CUSTOM_SKILLS; i++) {
+                CustomSkillSlot slot = i < syncedCustomSkills.size() && syncedCustomSkills.get(i) != null
+                        ? syncedCustomSkills.get(i)
+                        : new CustomSkillSlot("", "", "", "", "ADDITION", 0.0, 5);
+                normalized.add(normalizeCustomSkillSlot(slot));
+            }
+            customSkills = normalized;
+        }
+        validateSkillIds();
     }
 
     @SubscribeEvent

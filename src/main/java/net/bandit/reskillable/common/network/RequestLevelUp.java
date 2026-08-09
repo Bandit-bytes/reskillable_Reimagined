@@ -130,8 +130,7 @@ public class RequestLevelUp {
         model.increaseSkillLevel(skill, player);
         int newLevel = model.getSkillLevel(skill);
 
-        SkillAttributeBonus bonus = SkillAttributeBonus.getBySkill(skill);
-        playLevelSounds(player, newLevel, bonus != null ? bonus.getPerkStep() : 5);
+        playLevelSounds(player, Configuration.isBuiltInPerkMilestone(skill, newLevel));
 
         SyncToClient.send(player);
         sendGatePreview(player, model);
@@ -198,13 +197,13 @@ public class RequestLevelUp {
         model.increaseCustomSkillLevel(slot.getId(), player);
         int newLevel = model.getCustomSkillLevel(slot.getId());
 
-        playLevelSounds(player, newLevel, slot.getPerkStep());
+        playLevelSounds(player, Configuration.isCustomPerkMilestone(slot.getId(), newLevel));
 
         SyncToClient.send(player);
         sendGatePreview(player, model);
     }
 
-    private static void playLevelSounds(ServerPlayer player, int newLevel, int perkStep) {
+    private static void playLevelSounds(ServerPlayer player, boolean perkMilestone) {
         player.level().playSound(
                 null,
                 player.blockPosition(),
@@ -214,7 +213,7 @@ public class RequestLevelUp {
                 1.0F
         );
 
-        if (newLevel % Math.max(1, perkStep) == 0) {
+        if (perkMilestone) {
             player.level().playSound(
                     null,
                     player.blockPosition(),

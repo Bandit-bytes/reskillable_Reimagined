@@ -7,10 +7,12 @@ import net.bandit.reskillable.common.commands.skills.Requirement;
 import net.bandit.reskillable.common.commands.skills.Skill;
 import net.bandit.reskillable.common.commands.skills.SkillAttributeBonus;
 import net.bandit.reskillable.common.network.SyncToClient;
+import net.bandit.reskillable.common.network.SyncSkillConfigPacket;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
@@ -44,7 +46,11 @@ import java.util.concurrent.ConcurrentHashMap;
 public class EventHandler {
     private static final Map<UUID, SkillModel> lastDiedPlayerSkillsMap = new ConcurrentHashMap<>();
 
-
+    /**
+     * Automation mods such as Create use Forge FakePlayer instances to perform
+     * block and item interactions. Fake players cannot earn Reskillable levels,
+     * so they must not be blocked by normal player skill requirements.
+     */
     private static boolean bypassSkillRequirements(Player player) {
         return player instanceof FakePlayer;
     }
@@ -214,6 +220,9 @@ public class EventHandler {
         SkillModel skillModel = SkillModel.get(player);
 
         if (skillModel != null) {
+            if (player instanceof ServerPlayer serverPlayer) {
+                SyncSkillConfigPacket.sendToClient(serverPlayer);
+            }
             SyncToClient.send(player);
             skillModel.updateSkillAttributeBonuses(player);
         }
@@ -249,6 +258,7 @@ public class EventHandler {
 
     @SubscribeEvent
     public void onBreakSpeed(PlayerEvent.BreakSpeed event) {
+        if (Configuration.hasBuiltInPerkOverride(Skill.MINING)) return;
         Player player = event.getEntity();
         if (bypassSkillRequirements(player)) return;
 
@@ -267,6 +277,7 @@ public class EventHandler {
 
     @SubscribeEvent
     public void onCropGrow(BlockEvent.CropGrowEvent.Pre event) {
+        if (Configuration.hasBuiltInPerkOverride(Skill.FARMING)) return;
         if (!(event.getLevel() instanceof ServerLevel level)) return;
 
         SkillAttributeBonus farmingBonus = SkillAttributeBonus.getBySkill(Skill.FARMING);
@@ -298,6 +309,7 @@ public class EventHandler {
 
     @SubscribeEvent
     public void onXpPickup(PlayerXpEvent.PickupXp event) {
+        if (Configuration.hasBuiltInPerkOverride(Skill.GATHERING)) return;
         Player player = event.getEntity();
         if (bypassSkillRequirements(player)) return;
         if (player.level().isClientSide()) return;

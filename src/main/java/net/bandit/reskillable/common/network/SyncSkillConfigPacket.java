@@ -8,6 +8,7 @@ import net.bandit.reskillable.common.commands.skills.Requirement;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.network.NetworkEvent;
@@ -32,15 +33,21 @@ public class SyncSkillConfigPacket {
     private final Map<String, Requirement[]> skillLocks;
     private final Map<String, Requirement[]> craftSkillLocks;
     private final Map<String, Requirement[]> attackSkillLocks;
+    private final List<Configuration.BuiltInSkillSlot> builtInSkills;
+    private final List<Configuration.CustomSkillSlot> customSkills;
     private final boolean isFinalChunk;
 
     public SyncSkillConfigPacket(Map<String, Requirement[]> skillLocks,
                                  Map<String, Requirement[]> craftSkillLocks,
                                  Map<String, Requirement[]> attackSkillLocks,
+                                 List<Configuration.BuiltInSkillSlot> builtInSkills,
+                                 List<Configuration.CustomSkillSlot> customSkills,
                                  boolean isFinalChunk) {
         this.skillLocks = skillLocks;
         this.craftSkillLocks = craftSkillLocks;
         this.attackSkillLocks = attackSkillLocks;
+        this.builtInSkills = builtInSkills;
+        this.customSkills = customSkills;
         this.isFinalChunk = isFinalChunk;
     }
 
@@ -48,10 +55,14 @@ public class SyncSkillConfigPacket {
         Gson gson = new Gson();
         try {
             Type mapType = new TypeToken<Map<String, Requirement[]>>() {}.getType();
+            Type builtInType = new TypeToken<List<Configuration.BuiltInSkillSlot>>() {}.getType();
+            Type customType = new TypeToken<List<Configuration.CustomSkillSlot>>() {}.getType();
 
             this.skillLocks = gson.fromJson(decompress(buf.readByteArray()), mapType);
             this.craftSkillLocks = gson.fromJson(decompress(buf.readByteArray()), mapType);
             this.attackSkillLocks = gson.fromJson(decompress(buf.readByteArray()), mapType);
+            this.builtInSkills = gson.fromJson(decompress(buf.readByteArray()), builtInType);
+            this.customSkills = gson.fromJson(decompress(buf.readByteArray()), customType);
             this.isFinalChunk = buf.readBoolean();
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Failed to deserialize SyncSkillConfigPacket", e);
@@ -65,6 +76,8 @@ public class SyncSkillConfigPacket {
             buf.writeByteArray(compress(gson.toJson(skillLocks)));
             buf.writeByteArray(compress(gson.toJson(craftSkillLocks)));
             buf.writeByteArray(compress(gson.toJson(attackSkillLocks)));
+            buf.writeByteArray(compress(gson.toJson(builtInSkills)));
+            buf.writeByteArray(compress(gson.toJson(customSkills)));
             buf.writeBoolean(isFinalChunk);
         } catch (IOException e) {
             LOGGER.log(Level.SEVERE, "Failed to serialize SyncSkillConfigPacket", e);
@@ -80,6 +93,7 @@ public class SyncSkillConfigPacket {
                         Configuration.setSkillLocks(msg.skillLocks);
                         Configuration.setCraftSkillLocks(msg.craftSkillLocks);
                         Configuration.setAttackSkillLocks(msg.attackSkillLocks);
+                        Configuration.applySyncedSkillDefinitions(msg.builtInSkills, msg.customSkills);
 
                         if (msg.isFinalChunk) {
                             refreshClientUI();
@@ -104,6 +118,19 @@ public class SyncSkillConfigPacket {
                 mc.player.sendSystemMessage(Component.literal("Skill configuration updated!"));
             }
         });
+    }
+
+
+    public static void sendToClient(ServerPlayer player) {
+        SyncSkillConfigPacket packet = new SyncSkillConfigPacket(
+                Configuration.getSkillLocks(),
+                Configuration.getCraftSkillLocks(),
+                Configuration.getAttackSkillLocks(),
+                Configuration.getBuiltInSkills(),
+                Configuration.getCustomSkills(),
+                true
+        );
+        Reskillable.NETWORK.send(PacketDistributor.PLAYER.with(() -> player), packet);
     }
 
     public static void sendToAllClients() {
@@ -140,7 +167,9 @@ public class SyncSkillConfigPacket {
                         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
                 boolean isFinalChunk = (i + CHUNK_SIZE) >= maxSize;
-                SyncSkillConfigPacket packet = new SyncSkillConfigPacket(skillLockChunk, craftSkillLockChunk, attackSkillLockChunk, isFinalChunk);
+                SyncSkillConfigPacket packet = new SyncSkillConfigPacket(
+                        skillLockChunk, craftSkillLockChunk, attackSkillLockChunk,
+                        Configuration.getBuiltInSkills(), Configuration.getCustomSkills(), isFinalChunk);
                 Reskillable.NETWORK.send(PacketDistributor.ALL.noArg(), packet);
 
                 LOGGER.info("Sent chunk " + (i / CHUNK_SIZE + 1) + " to all clients.");
