@@ -45,6 +45,8 @@ public class SkillScreen extends Screen {
     private static final int PERK_BOX_Y = 29;
     private static final int PERK_ROW_HEIGHT = 15;
     private static final int PERK_TEXT_OFFSET_X = 15;
+    private static final int PERK_ICON_OFFSET_X = -2;
+    private static final int PERK_ICON_OFFSET_Y = 0;
     private static final int SUBPAGE_TITLE_Y = -10;
     private static final int SUBPAGE_BUTTON_WIDTH = 16;
     private static final int SUBPAGE_BUTTON_HEIGHT = 14;
@@ -364,10 +366,10 @@ public class SkillScreen extends Screen {
             ResourceLocation configuredIcon = Configuration.getBuiltInSkillIcon(skill);
             if (configuredIcon != null) {
                 RenderSystem.setShaderTexture(0, configuredIcon);
-                gui.blit(configuredIcon, boxX + 2, boxY + 2, 0, 0, 12, 12, 12, 12);
+                gui.blit(configuredIcon, boxX + PERK_ICON_OFFSET_X, boxY + PERK_ICON_OFFSET_Y, 0, 0, 12, 12, 12, 12);
             } else {
                 RenderSystem.setShaderTexture(0, PERKS_TEXTURE);
-                gui.blit(PERKS_TEXTURE, boxX + 2, boxY + 2, 10, 29 + (skill.getIconIndex() * PERK_ROW_HEIGHT), 12, 12);
+                gui.blit(PERKS_TEXTURE, boxX + PERK_ICON_OFFSET_X, boxY + PERK_ICON_OFFSET_Y, 10, 29 + (skill.getIconIndex() * PERK_ROW_HEIGHT), 12, 12);
             }
             RenderSystem.setShaderTexture(0, PERKS_ADDITIONAL_TEXTURE);
 
@@ -440,7 +442,7 @@ public class SkillScreen extends Screen {
 
             if (icon != null) {
                 RenderSystem.setShaderTexture(0, icon);
-                gui.blit(icon, boxX + 2, boxY + 2, 0, 0, 12, 12, 12, 12);
+                gui.blit(icon, boxX + PERK_ICON_OFFSET_X, boxY + PERK_ICON_OFFSET_Y, 0, 0, 12, 12, 12, 12);
                 RenderSystem.setShaderTexture(0, SkillScreen.PERKS_ADDITIONAL_TEXTURE);
             }
 
@@ -546,16 +548,16 @@ public class SkillScreen extends Screen {
                 effect = attr != null
                         ? Component.translatable(attr.getDescriptionId()).withStyle(ChatFormatting.GRAY)
                         : (skill == Skill.AGILITY
-                            ? Component.translatable("tooltip.rereskillable.run_speed").withStyle(ChatFormatting.GRAY)
-                            : Component.empty());
+                        ? Component.translatable("tooltip.rereskillable.run_speed").withStyle(ChatFormatting.GRAY)
+                        : Component.empty());
             }
         }
         return Component.literal("").append(skillName).append(": ").append(amount).append(" ").append(effect);
     }
 
     private Component buildConfiguredBuiltInPerkEffects(Configuration.BuiltInSkillSlot slot,
-                                                         SkillAttributeBonus legacyBonus,
-                                                         int skillLevel) {
+                                                        SkillAttributeBonus legacyBonus,
+                                                        int skillLevel) {
         var result = Component.literal("");
         boolean added = false;
         if (slot.perkAttributes != null) {
