@@ -47,6 +47,7 @@ public class SkillScreen extends Screen {
     private static final int PERK_TEXT_OFFSET_X = 15;
     private static final int PERK_ICON_OFFSET_X = -2;
     private static final int PERK_ICON_OFFSET_Y = 0;
+    private static final int PERK_ICON_SIZE = 13;
 
     private static final int SUBPAGE_TITLE_Y = -6;
     private static final int SUBPAGE_BUTTON_WIDTH = 16;
@@ -359,7 +360,7 @@ public class SkillScreen extends Screen {
 
             if (icon != null) {
                 RenderSystem.setShaderTexture(0, icon);
-                gui.blit(icon, boxX + PERK_ICON_OFFSET_X, boxY + PERK_ICON_OFFSET_Y, 0, 0, 12, 12, 12, 12);
+                gui.blit(icon, boxX + PERK_ICON_OFFSET_X, boxY + PERK_ICON_OFFSET_Y, 0, 0, PERK_ICON_SIZE, PERK_ICON_SIZE, PERK_ICON_SIZE, PERK_ICON_SIZE);
                 RenderSystem.setShaderTexture(0, SkillScreen.PERKS_ADDITIONAL_TEXTURE);
             }
 
@@ -442,12 +443,12 @@ public class SkillScreen extends Screen {
             ResourceLocation configuredIcon = Configuration.getBuiltInSkillIcon(skill);
             if (configuredIcon != null) {
                 RenderSystem.setShaderTexture(0, configuredIcon);
-                gui.blit(configuredIcon, boxX + PERK_ICON_OFFSET_X, boxY + PERK_ICON_OFFSET_Y, 0, 0, 12, 12, 12, 12);
+                gui.blit(configuredIcon, boxX + PERK_ICON_OFFSET_X, boxY + PERK_ICON_OFFSET_Y, 0, 0, PERK_ICON_SIZE, PERK_ICON_SIZE, PERK_ICON_SIZE, PERK_ICON_SIZE);
             } else {
                 // Preserve the original built-in art by copying the corresponding
-                // 12x12 icon out of the legacy perks texture.
+                // 13x13 icon out of the legacy perks texture.
                 RenderSystem.setShaderTexture(0, PERKS_TEXTURE);
-                gui.blit(PERKS_TEXTURE, boxX + PERK_ICON_OFFSET_X, boxY + PERK_ICON_OFFSET_Y, 10, 29 + (skill.index * PERK_ROW_HEIGHT), 12, 12);
+                gui.blit(PERKS_TEXTURE, boxX + PERK_ICON_OFFSET_X, boxY + PERK_ICON_OFFSET_Y, 10, 29 + (skill.index * PERK_ROW_HEIGHT), PERK_ICON_SIZE, PERK_ICON_SIZE);
             }
             RenderSystem.setShaderTexture(0, PERKS_ADDITIONAL_TEXTURE);
 
@@ -563,8 +564,8 @@ public class SkillScreen extends Screen {
     }
 
     private Component buildConfiguredBuiltInPerkEffects(Configuration.BuiltInSkillSlot slot,
-                                                         SkillAttributeBonus legacyBonus,
-                                                         int skillLevel) {
+                                                        SkillAttributeBonus legacyBonus,
+                                                        int skillLevel) {
         var result = Component.literal("");
         boolean added = false;
         if (slot.perkAttributes != null) {
