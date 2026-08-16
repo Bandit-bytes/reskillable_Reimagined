@@ -49,11 +49,9 @@ public class SkillScreen extends Screen {
     private static final int PERK_BOX_Y = 29;
     private static final int PERK_ROW_HEIGHT = 15;
     private static final int PERK_TEXT_OFFSET_X = 15;
-    // Match the icon coordinates baked into the original perks.png exactly.
-    // PERK_BOX_X is 12, while the legacy icon starts at x=10; the first row
-    // starts at y=29 with no additional vertical inset.
     private static final int PERK_ICON_OFFSET_X = -2;
     private static final int PERK_ICON_OFFSET_Y = 0;
+    private static final int PERK_ICON_SIZE = 13;
     private static final int SUBPAGE_TITLE_Y = -10;
     private static final int SUBPAGE_BUTTON_WIDTH = 16;
     private static final int SUBPAGE_BUTTON_HEIGHT = 14;
@@ -375,10 +373,10 @@ public class SkillScreen extends Screen {
                         boxY + PERK_ICON_OFFSET_Y,
                         0,
                         0,
-                        12,
-                        12,
-                        12,
-                        12
+                        PERK_ICON_SIZE,
+                        PERK_ICON_SIZE,
+                        PERK_ICON_SIZE,
+                        PERK_ICON_SIZE
                 );
             } else {
                 gui.blit(
@@ -388,8 +386,8 @@ public class SkillScreen extends Screen {
                         boxY + PERK_ICON_OFFSET_Y,
                         10,
                         29 + (skill.getIconIndex() * PERK_ROW_HEIGHT),
-                        12,
-                        12,
+                        PERK_ICON_SIZE,
+                        PERK_ICON_SIZE,
                         256,
                         256
                 );
@@ -458,7 +456,7 @@ public class SkillScreen extends Screen {
             }
 
             if (icon != null) {
-                gui.blit(RenderPipelines.GUI_TEXTURED, icon, boxX + PERK_ICON_OFFSET_X, boxY + PERK_ICON_OFFSET_Y, 0, 0, 12, 12, 12, 12);
+                gui.blit(RenderPipelines.GUI_TEXTURED, icon, boxX + PERK_ICON_OFFSET_X, boxY + PERK_ICON_OFFSET_Y, 0, 0, PERK_ICON_SIZE, PERK_ICON_SIZE, PERK_ICON_SIZE, PERK_ICON_SIZE);
             }
 
             int textX = boxX + PERK_TEXT_OFFSET_X;
