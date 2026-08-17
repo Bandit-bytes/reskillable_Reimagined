@@ -114,9 +114,6 @@ public class SyncSkillConfigPacket {
     private static void refreshClientUI() {
         DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
             Minecraft mc = Minecraft.getInstance();
-            if (mc.player != null) {
-                mc.player.sendSystemMessage(Component.literal("Skill configuration updated!"));
-            }
         });
     }
 

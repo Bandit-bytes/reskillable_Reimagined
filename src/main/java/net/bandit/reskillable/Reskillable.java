@@ -36,10 +36,7 @@ import java.util.Optional;
 public class Reskillable {
     public static final String MOD_ID = "reskillable";
 
-    /*
-     * Increment this whenever an existing packet layout or packet
-     * registration order changes incompatibly.
-     */
+
     public static final String NETWORK_PROTOCOL = "2";
 
     public static SimpleChannel NETWORK;

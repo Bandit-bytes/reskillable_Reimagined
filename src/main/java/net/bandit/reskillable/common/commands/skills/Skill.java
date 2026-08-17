@@ -2,9 +2,7 @@ package net.bandit.reskillable.common.commands.skills;
 
 import java.util.Locale;
 
-/**
- * Enum representing different built-in skills in the game.
- */
+
 public enum Skill {
     MINING(0, "skill.mining"),
     GATHERING(1, "skill.gathering"),
