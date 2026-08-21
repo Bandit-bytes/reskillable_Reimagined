@@ -1,7 +1,5 @@
 package net.bandit.reskillable.common.network.payload;
 
-import net.bandit.reskillable.Configuration;
-import net.bandit.reskillable.common.skills.Skill;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
@@ -28,8 +26,6 @@ public record RequestGateStatus() implements CustomPacketPayload {
     }
 
     public static void handle(RequestGateStatus msg, ServerPlayer player) {
-        for (Skill s : Configuration.getEnabledBuiltInSkills()) {
-            SyncGateStatus.send(player, s);
-        }
+        SyncGateStatus.sendAll(player);
     }
 }

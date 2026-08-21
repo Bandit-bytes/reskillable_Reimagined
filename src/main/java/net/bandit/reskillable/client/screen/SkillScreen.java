@@ -5,13 +5,13 @@ import net.bandit.reskillable.Configuration;
 import net.bandit.reskillable.client.screen.buttons.KeyBinding;
 import net.bandit.reskillable.client.screen.buttons.SkillButton;
 import net.bandit.reskillable.common.capabilities.SkillModel;
+import net.bandit.reskillable.common.gating.GateClientCache;
+import net.bandit.reskillable.common.network.payload.RequestGateStatus;
 import net.bandit.reskillable.common.network.payload.RequestLevelUp;
 import net.bandit.reskillable.common.network.payload.TogglePerk;
 import net.bandit.reskillable.common.skills.Skill;
 import net.bandit.reskillable.common.skills.SkillAttributeBonus;
 import net.minecraft.ChatFormatting;
-import net.minecraft.advancements.AdvancementHolder;
-import net.minecraft.advancements.DisplayInfo;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -21,7 +21,6 @@ import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
-import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.ai.attributes.Attribute;
@@ -65,9 +64,11 @@ public class SkillScreen extends Screen {
     private Button perksTab;
     private Button previousSkillPageButton;
     private Button nextSkillPageButton;
+    private int gateStatusRefreshTicks = 0;
 
     public SkillScreen() {
         super(Component.empty());
+        GateClientCache.clear();
     }
 
     private int getCurrentSubPage() {
@@ -236,6 +237,11 @@ public class SkillScreen extends Screen {
             previousSkillPageButton.active = currentSubPage > 0;
             nextSkillPageButton.active = currentSubPage < maxSubPage;
         }
+
+        // Gate requirements that depend on advancements must be checked on the server.
+        // Request an authoritative snapshot whenever the screen is (re)initialized.
+        RequestGateStatus.send();
+        gateStatusRefreshTicks = 0;
     }
 
     @Override
@@ -635,6 +641,14 @@ public class SkillScreen extends Screen {
         SkillModel model = SkillModel.get(player);
         if (model == null) return;
 
+        // Advancement progress is server-owned. Refresh once per second while this
+        // screen is open so a newly completed advancement unlocks without reopening it.
+        gateStatusRefreshTicks++;
+        if (gateStatusRefreshTicks >= 20) {
+            gateStatusRefreshTicks = 0;
+            RequestGateStatus.send();
+        }
+
         boolean levelingEnabled = Configuration.isSkillLevelingEnabled();
         int max = Configuration.getMaxLevel();
 
@@ -656,12 +670,14 @@ public class SkillScreen extends Screen {
 
                 boolean maxed = level >= max;
 
-                GateUiResult gate = checkGateClient(model, skillId, level);
+                GateClientCache.Entry gate = GateClientCache.get(skillId);
 
                 btn.active = true;
 
-                boolean blockedByGate = levelingEnabled && !maxed && !gate.allowed;
-                Component tooltip = blockedByGate ? gate.missingListComponent() : null;
+                // Fail open while the first server response is in flight; RequestLevelUp
+                // still performs the authoritative server-side gate check on click.
+                boolean blockedByGate = levelingEnabled && !maxed && gate != null && gate.blocked();
+                Component tooltip = blockedByGate ? gate.missingList() : null;
 
                 btn.setGateBlocked(blockedByGate, tooltip);
             } else if (widget instanceof CustomSkillButton btn) {
@@ -683,11 +699,11 @@ public class SkillScreen extends Screen {
 
                 boolean maxed = level >= max;
 
-                GateUiResult gate = checkGateClient(model, skillId, level);
+                GateClientCache.Entry gate = GateClientCache.get(skillId);
                 btn.active = true;
 
-                boolean blockedByGate = levelingEnabled && !maxed && !gate.allowed;
-                Component tooltip = blockedByGate ? gate.missingListComponent() : null;
+                boolean blockedByGate = levelingEnabled && !maxed && gate != null && gate.blocked();
+                Component tooltip = blockedByGate ? gate.missingList() : null;
 
                 btn.setGateBlocked(blockedByGate, tooltip);
             }
@@ -711,287 +727,6 @@ public class SkillScreen extends Screen {
         }
 
         return super.keyPressed(keyCode, scanCode, modifiers);
-    }
-
-    private static GateUiResult checkGateClient(SkillModel model, String levelingSkillId, int currentLevel) {
-        List<? extends String> rules;
-        try {
-            rules = Configuration.SKILL_LEVEL_GATES.get();
-        } catch (Throwable t) {
-            return GateUiResult.allowed();
-        }
-
-        if (rules == null || rules.isEmpty()) return GateUiResult.allowed();
-
-        int totalLevels = 0;
-        for (Skill s : Configuration.getEnabledBuiltInSkills()) totalLevels += model.getSkillLevel(s);
-        for (Configuration.CustomSkillSlot slot : Configuration.getCustomSkills()) {
-            if (slot != null && slot.isEnabled()) {
-                totalLevels += model.getSkillLevel(normalizeSkillId(slot.id));
-            }
-        }
-
-        List<MissingUiReq> missing = new ArrayList<>();
-
-        for (String line : rules) {
-            GateUiRule rule = GateUiRule.parse(line);
-            if (rule == null) continue;
-
-            if (!rule.matchesTarget(levelingSkillId)) continue;
-            if (currentLevel < rule.minCurrentLevel) continue;
-
-            if (rule.minTotalLevels != null && totalLevels < rule.minTotalLevels) {
-                missing.add(MissingUiReq.total(rule.minTotalLevels));
-            }
-
-            for (Map.Entry<String, Integer> e : rule.minSkillLevels.entrySet()) {
-                String reqSkillId = normalizeSkillId(e.getKey());
-                int reqLevel = e.getValue();
-
-                int actual = model.getSkillLevel(reqSkillId);
-                if (actual < reqLevel) {
-                    missing.add(MissingUiReq.skill(reqSkillId, reqLevel));
-                }
-            }
-
-            for (ResourceLocation advId : rule.requiredAdvancements) {
-                missing.add(MissingUiReq.advancement(advId));
-            }
-        }
-
-        if (missing.isEmpty()) return GateUiResult.allowed();
-
-        Map<String, MissingUiReq> best = new LinkedHashMap<>();
-        for (MissingUiReq req : missing) {
-            String key = req.key();
-            MissingUiReq existing = best.get(key);
-            if (existing == null || req.required > existing.required) {
-                best.put(key, req);
-            }
-        }
-
-        return GateUiResult.blocked(new ArrayList<>(best.values()));
-    }
-
-    private static final class GateUiRule {
-        final String targetSkillId;
-        final int minCurrentLevel;
-        final Integer minTotalLevels;
-        final Map<String, Integer> minSkillLevels;
-        final List<ResourceLocation> requiredAdvancements;
-
-        private GateUiRule(String targetSkillId, int minCurrentLevel, Integer minTotalLevels,
-                           Map<String, Integer> minSkillLevels,
-                           List<ResourceLocation> requiredAdvancements) {
-            this.targetSkillId = targetSkillId;
-            this.minCurrentLevel = minCurrentLevel;
-            this.minTotalLevels = minTotalLevels;
-            this.minSkillLevels = minSkillLevels;
-            this.requiredAdvancements = requiredAdvancements;
-        }
-
-        boolean matchesTarget(String skillId) {
-            return targetSkillId.equals(Configuration.canonicalSkillId(skillId));
-        }
-
-        static GateUiRule parse(String line) {
-            if (line == null) return null;
-            line = line.trim();
-            if (line.isEmpty() || line.startsWith("#")) return null;
-
-            String[] parts = line.split(":", 3);
-            if (parts.length < 3) return null;
-
-            String rawTargetSkillId = normalizeSkillId(parts[0]);
-
-            boolean validBuiltIn = isBuiltInSkill(rawTargetSkillId);
-            boolean validCustom = Configuration.getCustomSkill(rawTargetSkillId) != null;
-            if (!validBuiltIn && !validCustom) {
-                return null;
-            }
-            String targetSkillId = Configuration.canonicalSkillId(rawTargetSkillId);
-
-            int minLevel;
-            try {
-                minLevel = Integer.parseInt(parts[1].trim());
-            } catch (NumberFormatException ex) {
-                return null;
-            }
-
-            Integer totalReq = null;
-            Map<String, Integer> skillReqs = new LinkedHashMap<>();
-            List<ResourceLocation> advReqs = new ArrayList<>();
-
-            String reqs = parts[2].trim();
-            if (!reqs.isEmpty()) {
-                for (String raw : reqs.split(",")) {
-                    String tok = raw.trim();
-                    if (tok.isEmpty()) continue;
-
-                    String[] kv = tok.split("=", 2);
-                    if (kv.length != 2) continue;
-
-                    String key = normalizeSkillId(kv[0]);
-                    String value = kv[1].trim();
-
-                    if (key.equals("total")) {
-                        try {
-                            totalReq = Integer.parseInt(value);
-                        } catch (NumberFormatException ignored) {
-                        }
-                        continue;
-                    }
-
-                    if (key.equals("adv") || key.equals("advancement")) {
-                        try {
-                            advReqs.add(ResourceLocation.parse(value));
-                        } catch (Exception ignored) {
-                        }
-                        continue;
-                    }
-
-                    try {
-                        int val = Integer.parseInt(value);
-                        if (isBuiltInSkill(key) || Configuration.getCustomSkill(key) != null) {
-                            skillReqs.put(Configuration.canonicalSkillId(key), val);
-                        }
-                    } catch (Exception ignored) {
-                    }
-                }
-            }
-
-            return new GateUiRule(targetSkillId, Math.max(0, minLevel), totalReq, skillReqs, advReqs);
-        }
-    }
-
-    private static final class GateUiResult {
-        final boolean allowed;
-        final List<MissingUiReq> missing;
-
-        private GateUiResult(boolean allowed, List<MissingUiReq> missing) {
-            this.allowed = allowed;
-            this.missing = missing;
-        }
-
-        static GateUiResult allowed() {
-            return new GateUiResult(true, List.of());
-        }
-
-        static GateUiResult blocked(List<MissingUiReq> missing) {
-            return new GateUiResult(false, missing);
-        }
-
-        MutableComponent missingListComponent() {
-            if (missing == null || missing.isEmpty()) {
-                return Component.translatable("message.reskillable.gate_missing_unknown");
-            }
-
-            MutableComponent out = Component.empty();
-            for (int i = 0; i < missing.size(); i++) {
-                if (i > 0) out.append(Component.literal(", ").withStyle(ChatFormatting.GRAY));
-                out.append(missing.get(i).toComponent());
-            }
-            return out;
-        }
-    }
-
-    private static final class MissingUiReq {
-        final String skillId;
-        final int required;
-        final ResourceLocation advId;
-
-        private MissingUiReq(String skillId, int required, ResourceLocation advId) {
-            this.skillId = skillId;
-            this.required = required;
-            this.advId = advId;
-        }
-
-        static MissingUiReq total(int required) {
-            return new MissingUiReq(null, required, null);
-        }
-
-        static MissingUiReq skill(String skillId, int required) {
-            return new MissingUiReq(skillId, required, null);
-        }
-
-        static MissingUiReq advancement(ResourceLocation id) {
-            return new MissingUiReq(null, 0, id);
-        }
-
-        String key() {
-            if (advId != null) return "ADV:" + advId;
-            return (skillId == null) ? "TOTAL" : skillId;
-        }
-
-        Component toComponent() {
-            if (advId != null) {
-                return Component.literal("Advancement: ")
-                        .append(getAdvancementDescription(advId))
-                        .withStyle(ChatFormatting.YELLOW);
-            }
-
-            if (skillId == null) {
-                return Component.translatable("message.reskillable.req_total", required)
-                        .withStyle(ChatFormatting.YELLOW);
-            }
-
-            Skill builtIn = getVanillaSkillOrNull(skillId);
-            if (builtIn != null) {
-                String configuredName = Configuration.getBuiltInSkillDisplayName(builtIn);
-                Component display = configuredName.isBlank()
-                        ? Component.translatable(builtIn.getDisplayName())
-                        : Component.literal(configuredName);
-                return Component.translatable(
-                        "message.reskillable.req_skill",
-                        display,
-                        required
-                ).withStyle(ChatFormatting.YELLOW);
-            }
-
-            Configuration.CustomSkillSlot slot = Configuration.getCustomSkill(skillId);
-            String display = slot != null ? slot.displayName : skillId;
-            return Component.literal(display + " level " + required).withStyle(ChatFormatting.YELLOW);
-        }
-    }
-
-    private static Component getAdvancementDescription(ResourceLocation id) {
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null || mc.player.connection == null) {
-            return prettyAdvancement(id);
-        }
-
-        try {
-            AdvancementHolder holder = mc.player.connection.getAdvancements().get(id);
-            if (holder == null) {
-                return prettyAdvancement(id);
-            }
-
-            DisplayInfo display = holder.value().display().orElse(null);
-            if (display != null) {
-                return display.getDescription().copy();
-            }
-        } catch (Throwable ignored) {
-        }
-
-        return prettyAdvancement(id);
-    }
-
-    private static Component prettyAdvancement(ResourceLocation id) {
-        String path = id.getPath();
-        String name = path.substring(path.lastIndexOf('/') + 1)
-                .replace('_', ' ');
-
-        String pretty = Arrays.stream(name.split(" "))
-                .filter(s -> !s.isEmpty())
-                .map(w -> w.substring(0, 1).toUpperCase(Locale.ROOT) + w.substring(1))
-                .reduce((a, b) -> a + " " + b)
-                .orElse(name);
-
-        return Component.literal(pretty);
-    }
-
-    private static boolean isBuiltInSkill(String skillId) {
-        return getVanillaSkillOrNull(skillId) != null;
     }
 
     private static Skill getVanillaSkillOrNull(String skillId) {
