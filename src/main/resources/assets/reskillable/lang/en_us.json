@@ -64,6 +64,6 @@
   "gui.reskillable.builtin_perks": "Built-In Perks",
   "gui.reskillable.custom_perks": "Custom Perks",
   "attribute.name.reskillable.health_regeneration": "Health Regeneration",
-  "reskillable.requirement.not_met": "Requirement not met."
-
+  "reskillable.requirement.not_met": "Requirement not met.",
+  "message.reskillable.req_adv": "Advancement: %s"
 }
