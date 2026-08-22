@@ -608,9 +608,6 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
                 player.setHealth((float) max);
             }
 
-            if (player.getHealth() == 20.0 && max > 20.0) {
-                player.setHealth((float) max);
-            }
         }
     }
 

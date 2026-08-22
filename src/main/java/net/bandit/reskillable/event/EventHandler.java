@@ -45,12 +45,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class EventHandler {
     private static final Map<UUID, SkillModel> lastDiedPlayerSkillsMap = new ConcurrentHashMap<>();
+    private static final java.util.Set<UUID> pendingRespawnFullHeal = ConcurrentHashMap.newKeySet();
 
-    /**
-     * Automation mods such as Create use Forge FakePlayer instances to perform
-     * block and item interactions. Fake players cannot earn Reskillable levels,
-     * so they must not be blocked by normal player skill requirements.
-     */
     private static boolean bypassSkillRequirements(Player player) {
         return player instanceof FakePlayer;
     }
@@ -239,6 +235,7 @@ public class EventHandler {
         if (model != null) {
             SyncToClient.send(player);
             model.updateSkillAttributeBonuses(player);
+            pendingRespawnFullHeal.add(player.getUUID());
         }
     }
 
@@ -338,13 +335,19 @@ public class EventHandler {
     public void onPlayerTick(TickEvent.PlayerTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
         if (event.player.level().isClientSide()) return;
-        if (event.player.tickCount % 20 != 0) return;
 
         Player player = event.player;
         if (bypassSkillRequirements(player)) return;
 
         SkillModel model = SkillModel.get(player);
         if (model == null) return;
+
+        if (pendingRespawnFullHeal.remove(player.getUUID())) {
+            model.updateSkillAttributeBonuses(player);
+            player.setHealth(player.getMaxHealth());
+        }
+
+        if (player.tickCount % 20 != 0) return;
 
         ItemStack offhand = player.getOffhandItem();
 
