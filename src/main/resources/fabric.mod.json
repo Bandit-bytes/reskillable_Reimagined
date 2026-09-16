@@ -31,6 +31,7 @@
   },
   "suggests": {
     "emi": "*",
-    "jade": "*"
+    "jade": "*",
+    "spell_engine": "*"
   }
 }
