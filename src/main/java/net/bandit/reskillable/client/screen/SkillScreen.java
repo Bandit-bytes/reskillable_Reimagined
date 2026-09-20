@@ -748,33 +748,21 @@ public class SkillScreen extends Screen {
     }
 
     private class SubPageButton extends Button {
-        private final String arrow;
+        private final boolean next;
 
         public SubPageButton(int x, int y, String arrow, OnPress onPress) {
             super(x, y, SUBPAGE_BUTTON_WIDTH, SUBPAGE_BUTTON_HEIGHT, Component.literal(arrow), onPress, DEFAULT_NARRATION);
-            this.arrow = arrow;
+            this.next = ">".equals(arrow);
         }
 
         @Override
         protected void renderWidget(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
-            boolean hovered = this.isMouseOver(mouseX, mouseY);
-
-            int color;
-            if (!this.active) {
-                color = 0x666666;
-            } else if (hovered) {
-                color = 0xFFFFFF;
-            } else {
-                color = 0xD8C79A;
-            }
-
-            Font font = Minecraft.getInstance().font;
-            int textX = getX() + (width / 2) - (font.width(arrow) / 2);
-            int textY = getY() + (height / 2) - 4;
-
-            guiGraphics.drawString(font, Component.literal(arrow), textX, textY, color, false);
+            int state = !this.active ? 2 : (this.isHoveredOrFocused() ? 1 : 0);
+            int u = (next ? 112 : 64) + state * 16;
+            guiGraphics.blit(SkillScreen.RESOURCES, getX(), getY(), u, 170, 16, 14);
         }
     }
+
 
     private class CustomSkillButton extends Button {
         private final Configuration.CustomSkillSlot skillSlot;
