@@ -129,10 +129,10 @@ public class SkillScreen extends Screen {
             );
 
             case BOTTOM -> new SubPageLayout(
-                    guiLeft + 122,
-                    guiTop + 168,
-                    guiLeft + 142,
-                    guiTop + 168
+                    guiLeft + 70,
+                    guiTop + 160,
+                    guiLeft + 91,
+                    guiTop + 160
             );
 
             case LEFT -> new SubPageLayout(
