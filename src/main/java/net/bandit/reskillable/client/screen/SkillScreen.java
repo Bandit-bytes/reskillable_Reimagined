@@ -47,7 +47,6 @@ public class SkillScreen extends Screen {
     private static final int PERK_TEXT_OFFSET_X = 15;
     private static final int PERK_ICON_OFFSET_X = -2;
     private static final int PERK_ICON_OFFSET_Y = 0;
-    private static final int PERK_ICON_SIZE = 13;
 
     private static final int SUBPAGE_TITLE_Y = -6;
     private static final int SUBPAGE_BUTTON_WIDTH = 16;
@@ -107,28 +106,22 @@ public class SkillScreen extends Screen {
         }
     }
 
-    private Component getSubPageTitle() {
-        if (page == 0) {
-            return Component.literal(skillSubPage == 0 ? "Built-In Skills" : "Custom Skills");
-        }
-        return Component.literal(perkSubPage == 0 ? "Built-In Perks" : "Custom Perks");
-    }
 
     private record SubPageLayout(int prevX, int prevY, int nextX, int nextY) {}
 
     private SubPageLayout getSubPageLayout(int guiLeft, int guiTop) {
         return switch (Configuration.getSubpageNavPosition()) {
             case TOP -> new SubPageLayout(
-                    guiLeft + 62,
+                    guiLeft + 32,
                     guiTop - 12,
-                    guiLeft + 98,
+                    guiLeft + 126,
                     guiTop - 12
             );
             case BOTTOM -> new SubPageLayout(
-                    guiLeft + 122,
-                    guiTop + 168,
-                    guiLeft + 142,
-                    guiTop + 168
+                    guiLeft + 70,
+                    guiTop + 160,
+                    guiLeft + 91,
+                    guiTop + 160
             );
             case LEFT -> new SubPageLayout(
                     guiLeft - 20,
@@ -295,12 +288,6 @@ public class SkillScreen extends Screen {
             }
         }
 
-        if (Configuration.isSecondSkillPageEnabled()) {
-            Component subPageTitle = getSubPageTitle();
-            int titleX = left + 88 - (font.width(subPageTitle) / 2);
-            int titleY = top + SUBPAGE_TITLE_Y;
-            guiGraphics.drawString(font, subPageTitle, titleX, titleY, TITLE_COLOR, false);
-        }
 
         super.render(guiGraphics, mouseX, mouseY, partialTicks);
 
@@ -360,7 +347,7 @@ public class SkillScreen extends Screen {
 
             if (icon != null) {
                 RenderSystem.setShaderTexture(0, icon);
-                gui.blit(icon, boxX + PERK_ICON_OFFSET_X, boxY + PERK_ICON_OFFSET_Y, 0, 0, PERK_ICON_SIZE, PERK_ICON_SIZE, PERK_ICON_SIZE, PERK_ICON_SIZE);
+                gui.blit(icon, boxX + PERK_ICON_OFFSET_X, boxY + PERK_ICON_OFFSET_Y, 0, 0, 12, 12, 12, 12);
                 RenderSystem.setShaderTexture(0, SkillScreen.PERKS_ADDITIONAL_TEXTURE);
             }
 
@@ -443,12 +430,12 @@ public class SkillScreen extends Screen {
             ResourceLocation configuredIcon = Configuration.getBuiltInSkillIcon(skill);
             if (configuredIcon != null) {
                 RenderSystem.setShaderTexture(0, configuredIcon);
-                gui.blit(configuredIcon, boxX + PERK_ICON_OFFSET_X, boxY + PERK_ICON_OFFSET_Y, 0, 0, PERK_ICON_SIZE, PERK_ICON_SIZE, PERK_ICON_SIZE, PERK_ICON_SIZE);
+                gui.blit(configuredIcon, boxX + PERK_ICON_OFFSET_X, boxY + PERK_ICON_OFFSET_Y, 0, 0, 12, 12, 12, 12);
             } else {
                 // Preserve the original built-in art by copying the corresponding
-                // 13x13 icon out of the legacy perks texture.
+                // 12x12 icon out of the legacy perks texture.
                 RenderSystem.setShaderTexture(0, PERKS_TEXTURE);
-                gui.blit(PERKS_TEXTURE, boxX + PERK_ICON_OFFSET_X, boxY + PERK_ICON_OFFSET_Y, 10, 29 + (skill.index * PERK_ROW_HEIGHT), PERK_ICON_SIZE, PERK_ICON_SIZE);
+                gui.blit(PERKS_TEXTURE, boxX + PERK_ICON_OFFSET_X, boxY + PERK_ICON_OFFSET_Y, 10, 29 + (skill.index * PERK_ROW_HEIGHT), 12, 12);
             }
             RenderSystem.setShaderTexture(0, PERKS_ADDITIONAL_TEXTURE);
 
@@ -754,31 +741,20 @@ public class SkillScreen extends Screen {
         }
     }
     private class SubPageButton extends Button {
-        private final String arrow;
+        private final boolean next;
 
         public SubPageButton(int x, int y, String arrow, OnPress onPress) {
-            super(x, y, SUBPAGE_BUTTON_WIDTH, SUBPAGE_BUTTON_HEIGHT, Component.literal(arrow), onPress, DEFAULT_NARRATION);
-            this.arrow = arrow;
+            super(x, y, SUBPAGE_BUTTON_WIDTH, SUBPAGE_BUTTON_HEIGHT,
+                    Component.literal(arrow), onPress, DEFAULT_NARRATION);
+            this.next = ">".equals(arrow);
         }
 
         @Override
         protected void renderWidget(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
-            boolean hovered = this.isMouseOver(mouseX, mouseY);
-
-            int color;
-            if (!this.active) {
-                color = 0x666666;
-            } else if (hovered) {
-                color = 0xFFFFFF;
-            } else {
-                color = 0xD8C79A;
-            }
-
-            Font font = Minecraft.getInstance().font;
-            int textX = getX() + (width / 2) - (font.width(arrow) / 2);
-            int textY = getY() + (height / 2) - 4;
-
-            guiGraphics.drawString(font, Component.literal(arrow), textX, textY, color, false);
+            // Same directional sprite layout/state selection as NeoForge 1.21.1.
+            int state = !this.active ? 2 : (this.isHoveredOrFocused() ? 1 : 0);
+            int u = (next ? 112 : 64) + state * 16;
+            guiGraphics.blit(SkillScreen.RESOURCES, getX(), getY(), u, 170, 16, 14);
         }
     }
 

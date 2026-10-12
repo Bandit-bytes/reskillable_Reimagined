@@ -482,8 +482,6 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
                     bonus.getAttribute(), bonus.getOperation(), bonus.getBonusPerStep(), bonus.getPerkStep());
         }
 
-        // Custom perks. perkAttributes, when present, replaces the legacy
-        // single custom perk and can grant multiple attributes.
         for (CustomSkillSlot slot : Configuration.getCustomSkills()) {
             if (slot == null || !slot.isEnabled() || !isCustomPerkEnabled(slot.getId())) {
                 continue;
@@ -517,12 +515,18 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
         appliedBuiltInPerkAttributes.clear();
     }
 
+
+    private static int getEarnedPerkSteps(int level, int perkStep) {
+        int step = Math.max(1, perkStep);
+        return step == 1 ? Math.max(0, level - 1) : Math.max(0, level) / step;
+    }
+
     private void applyBuiltInAttributeModifier(Player player, Skill skill, int index, Attribute attribute,
                                                AttributeModifier.Operation operation, double amountPerStep, int perkStep) {
         if (attribute == null || amountPerStep <= 0.0) return;
         var instance = player.getAttribute(attribute);
         if (instance == null) return;
-        int steps = getSkillLevel(skill) / Math.max(1, perkStep);
+        int steps = getEarnedPerkSteps(getSkillLevel(skill), perkStep);
         double totalBonus = steps * amountPerStep;
         if (totalBonus <= 0.0) return;
         UUID modifierId = index < 0
@@ -551,7 +555,7 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
         if (attribute == null || amountPerStep <= 0.0) return;
         var instance = player.getAttribute(attribute);
         if (instance == null) return;
-        int steps = getCustomSkillLevel(skillId) / Math.max(1, perkStep);
+        int steps = getEarnedPerkSteps(getCustomSkillLevel(skillId), perkStep);
         double totalBonus = steps * amountPerStep;
         if (totalBonus <= 0.0) return;
         UUID modifierId = index < 0
@@ -568,46 +572,29 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
     }
 
     private void handleHealthBonus(Player player) {
-        if (!Configuration.HEALTH_BONUS.get()) {
-            return;
-        }
-
-        int totalSkillLevels = 0;
-        for (Skill skill : Configuration.getEnabledBuiltInSkills()) {
-            totalSkillLevels += getSkillLevel(skill);
-        }
-
-        for (CustomSkillSlot slot : Configuration.getCustomSkills()) {
-            if (slot != null && slot.isEnabled()) {
-                totalSkillLevels += getCustomSkillLevel(slot.getId());
-            }
-        }
-
-        int levelsPerHeart = Configuration.LEVELS_PER_HEART.get();
-        double healthPerHeart = Configuration.HEALTH_PER_HEART.get();
-
-        int hearts = totalSkillLevels / levelsPerHeart;
-        double newBonus = hearts * healthPerHeart;
 
         var healthAttr = player.getAttribute(Attributes.MAX_HEALTH);
-        if (healthAttr != null) {
-            healthAttr.removeModifier(GLOBAL_HEALTH_BONUS_ID);
+        if (healthAttr == null) return;
+        healthAttr.removeModifier(GLOBAL_HEALTH_BONUS_ID);
 
-            if (newBonus > 0) {
-                AttributeModifier healthModifier = new AttributeModifier(
+        if (Configuration.HEALTH_BONUS.get()) {
+            int investedLevels = getTotalSpentLevels();
+            int levelsPerHeart = Math.max(1, Configuration.LEVELS_PER_HEART.get());
+            double healthPerHeart = Configuration.HEALTH_PER_HEART.get();
+            double newBonus = (investedLevels / levelsPerHeart) * healthPerHeart;
+            if (newBonus > 0.0) {
+                healthAttr.addTransientModifier(new AttributeModifier(
                         GLOBAL_HEALTH_BONUS_ID,
                         "Reskillable Total Level Bonus",
                         newBonus,
                         AttributeModifier.Operation.ADDITION
-                );
-                healthAttr.addTransientModifier(healthModifier);
+                ));
             }
+        }
 
-            double max = player.getMaxHealth();
-            if (player.getHealth() > max) {
-                player.setHealth((float) max);
-            }
-
+        // When max health decreases, avoid leaving current health above max.
+        if (player.getHealth() > player.getMaxHealth()) {
+            player.setHealth(player.getMaxHealth());
         }
     }
 
@@ -649,13 +636,10 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
     public int getTotalSpentLevels() {
         int total = 0;
 
-        // Enabled built-in skills. Disabled skills keep their saved data for compatibility,
-        // but do not count toward caps/health/progression totals.
         for (Skill skill : Configuration.getEnabledBuiltInSkills()) {
             total += Math.max(0, getSkillLevel(skill) - 1);
         }
 
-        // Custom skills
         for (CustomSkillSlot slot : Configuration.getCustomSkills()) {
             if (slot != null && slot.isEnabled()) {
                 total += Math.max(0, getCustomSkillLevel(slot.getId()) - 1);
