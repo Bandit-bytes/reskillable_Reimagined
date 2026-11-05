@@ -1891,6 +1891,18 @@ public class Configuration {
         return MAX_TOTAL_SPENT_LEVELS.get();
     }
 
+    /** Leveling settings from the server, so the client's costs and level-up checks match it. */
+    public static void applySyncedLevelingSettings(int syncedMaxLevel, double syncedXpScaling,
+                                                   int syncedMaxSpentLevels, boolean syncedLevelingEnabled) {
+        MAXIMUM_LEVEL.set(syncedMaxLevel);
+        maximumLevel = syncedMaxLevel;
+        XP_SCALING_MULTIPLIER.set(syncedXpScaling);
+        xpScalingMultiplier = syncedXpScaling;
+        MAX_TOTAL_SPENT_LEVELS.set(syncedMaxSpentLevels);
+        ENABLE_SKILL_LEVELING.set(syncedLevelingEnabled);
+        enableSkillLeveling = syncedLevelingEnabled;
+    }
+
     private static class ArmorStats {
         int totalDefense;
         double toughness;
