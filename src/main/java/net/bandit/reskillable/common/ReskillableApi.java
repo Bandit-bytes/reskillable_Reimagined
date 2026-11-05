@@ -29,7 +29,8 @@ import java.util.List;
 
 /**
  * Reskillable's API for other mods. Methods work on the server and the client unless they say otherwise.
- * For level changes, listen to {@link net.bandit.reskillable.event.SkillLevelChangedEvent}.
+ * For level changes, listen to {@link net.bandit.reskillable.event.SkillLevelChangedEvent}. To refuse a level-up,
+ * cancel {@link net.bandit.reskillable.event.AllowLevelUpEvent}.
  *
  * <p>Skill ids are the {@code id} values in {@code built_in_skills.json} and {@code custom_skills.json}.
  * Built-in skills also accept their original names ({@code mining}, {@code attack} and so on).
@@ -64,7 +65,9 @@ public final class ReskillableApi {
         /** A {@code skill_level_gates} rule is not met. {@link #getGateMissing} lists what is missing. */
         GATE_BLOCKED,
         /** The player has less XP than {@link #getLevelUpCost}. Never returned for creative players. */
-        NOT_ENOUGH_XP
+        NOT_ENOUGH_XP,
+        /** An {@link net.bandit.reskillable.event.AllowLevelUpEvent} listener canceled it. Only {@link #levelUp} returns this. */
+        REFUSED
     }
 
     /**
@@ -202,7 +205,10 @@ public final class ReskillableApi {
         return Configuration.calculateCostForLevel(getLevel(player, skillId));
     }
 
-    /** The same checks a level-up runs, in the same order. */
+    /**
+     * The same checks a level-up runs, in the same order. {@link net.bandit.reskillable.event.AllowLevelUpEvent} is
+     * not one of them, so {@code ALLOWED} does not promise the level-up: a listener can still cancel it.
+     */
     public static LevelUpStatus canLevelUp(Player player, String skillId) {
         return RequestLevelUp.check(player, skillId);
     }
@@ -244,7 +250,8 @@ public final class ReskillableApi {
     /**
      * Server only. Levels up the skill if {@link #canLevelUp} allows it, as the level-up packet does: takes the XP,
      * plays the sounds, syncs the client and posts {@code SkillLevelChangedEvent}. Otherwise tells the player
-     * why not.
+     * why not. An {@link net.bandit.reskillable.event.AllowLevelUpEvent} listener can still cancel it; then nothing
+     * changes, no message is sent and this returns {@link LevelUpStatus#REFUSED}.
      */
     public static LevelUpStatus levelUp(ServerPlayer player, String skillId) {
         return RequestLevelUp.levelUp(player, skillId);

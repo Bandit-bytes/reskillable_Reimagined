@@ -353,6 +353,8 @@ On the client, the API reads what the server syncs: skill definitions, requireme
 
 `SkillLevelChangedEvent` is posted on `NeoForge.EVENT_BUS` on the server after a skill's level changes, with the player, skill id, old level and new level.
 
+`AllowLevelUpEvent` is posted on `NeoForge.EVENT_BUS` on the server when a level-up from the level-up packet or `ReskillableApi.levelUp` has passed Reskillable's checks, before the XP is taken, with the player and skill id. Cancel it to refuse the level-up: nothing changes, Reskillable sends no message and `levelUp` returns `REFUSED`. `canLevelUp` does not post it.
+
 ```java
 int mining = ReskillableApi.getLevel(player, "mining");
 
@@ -365,6 +367,13 @@ public void onSkillLevelChanged(SkillLevelChangedEvent event) {
     if (event.getNewLevel() > event.getOldLevel()) {
         grantPoints(event.getEntity(), event.getNewLevel() - event.getOldLevel());
     }
+}
+
+@SubscribeEvent
+public void onAllowLevelUp(AllowLevelUpEvent event) {
+    if (isAtTrainer(event.getEntity())) return;
+    event.getEntity().displayClientMessage(Component.literal("Talk to a trainer to level up."), true);
+    event.setCanceled(true);
 }
 ```
 

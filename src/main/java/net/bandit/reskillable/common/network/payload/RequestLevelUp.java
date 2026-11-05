@@ -7,6 +7,7 @@ import net.bandit.reskillable.common.gating.GateClientCache;
 import net.bandit.reskillable.common.gating.SkillLevelGate;
 import net.bandit.reskillable.common.skills.Skill;
 import net.bandit.reskillable.common.skills.SkillAttributeBonus;
+import net.bandit.reskillable.event.AllowLevelUpEvent;
 import net.bandit.reskillable.event.SoundRegistry;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
@@ -17,6 +18,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.player.Player;
+import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.Locale;
@@ -87,12 +89,20 @@ public record RequestLevelUp(String skillId) implements CustomPacketPayload {
     }
 
     /**
-     * Levels up {@code skillId} when {@link #check} allows it: takes the XP, plays the sounds and syncs the
-     * client. Otherwise tells the player why not.
+     * Levels up {@code skillId} when {@link #check} allows it and no {@link AllowLevelUpEvent} listener cancels it:
+     * takes the XP, plays the sounds and syncs the client. When {@link #check} does not, tells the player why not.
      */
     public static LevelUpStatus levelUp(ServerPlayer player, String requestedSkillId) {
         String skillId = normalize(requestedSkillId);
         LevelUpStatus status = check(player, skillId);
+        if (status == LevelUpStatus.ALLOWED && NeoForge.EVENT_BUS.post(
+                new AllowLevelUpEvent(player, Configuration.canonicalSkillId(skillId))).isCanceled()) {
+            return LevelUpStatus.REFUSED;
+        }
+        // A listener may have spent XP or changed levels, so what check() saw may no longer hold.
+        if (status == LevelUpStatus.ALLOWED) {
+            status = check(player, skillId);
+        }
         SkillModel model = SkillModel.get(player);
 
         switch (status) {
