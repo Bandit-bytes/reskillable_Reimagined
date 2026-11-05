@@ -30,7 +30,7 @@ public final class Tooltip {
 
     private static void appendRequirements(ItemStack stack, net.minecraft.world.item.Item.TooltipContext context,
                                            net.minecraft.world.item.TooltipFlag tooltipType, List<Component> tooltips) {
-        if (Minecraft.getInstance().player == null) return;
+        if (Minecraft.getInstance().player == null || Configuration.areRequirementTooltipsHidden()) return;
 
         ResourceLocation baseKey = BuiltInRegistries.ITEM.getKey(stack.getItem());
         ResourceLocation effectiveKey = baseKey;
