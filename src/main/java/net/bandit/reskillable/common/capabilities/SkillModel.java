@@ -274,10 +274,11 @@ public class SkillModel {
         return checkRequirements(player, resource, RequirementType.USE);
     }
 
-    private boolean checkRequirements(Player player, ResourceLocation resource, RequirementType type) {
+    /** The requirements of {@code resource} for {@code type} that these levels do not meet. Sends no message. */
+    public List<Requirement> getUnmetRequirements(ResourceLocation resource, RequirementType type) {
         Requirement[] requirements = type.getRequirements(resource);
         if (requirements == null || requirements.length == 0) {
-            return true;
+            return List.of();
         }
 
         List<Requirement> unmetRequirements = new ArrayList<>();
@@ -286,6 +287,11 @@ public class SkillModel {
                 unmetRequirements.add(requirement);
             }
         }
+        return unmetRequirements;
+    }
+
+    private boolean checkRequirements(Player player, ResourceLocation resource, RequirementType type) {
+        List<Requirement> unmetRequirements = getUnmetRequirements(resource, type);
 
         if (!unmetRequirements.isEmpty()) {
             sendSkillRequirementMessage(player, type, unmetRequirements);
