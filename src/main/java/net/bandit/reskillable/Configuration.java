@@ -26,6 +26,7 @@ import java.util.*;
 public class Configuration {
     private static final ConfigValue<Boolean> DISABLE_WOOL;
     private static final ConfigValue<Boolean> SHOW_TAB_BUTTONS;
+    private static final ConfigValue<Boolean> HIDE_SKILL_SCREEN;
     private static final ConfigValue<Boolean> SHOW_SUBPAGE_TITLES;
     private static final ConfigValue<Boolean> DEATH_RESET;
     public static final ConfigValue<Boolean> HEALTH_BONUS;
@@ -312,6 +313,7 @@ public class Configuration {
         DEATH_RESET = new ConfigValue<>(false);
         HEALTH_BONUS = new ConfigValue<>(true);
         SHOW_TAB_BUTTONS = new ConfigValue<>(true);
+        HIDE_SKILL_SCREEN = new ConfigValue<>(false);
         XP_SCALING_MULTIPLIER = new ConfigValue<>(1.0);
         MAXIMUM_LEVEL = new ConfigValue<>(32);
         ENABLE_SKILL_LEVELING = new ConfigValue<>(true);
@@ -1482,6 +1484,7 @@ public class Configuration {
                 case "deathSkillReset" -> DEATH_RESET.set(parseBoolean(raw));
                 case "HealthBonus" -> HEALTH_BONUS.set(parseBoolean(raw));
                 case "showTabButtons" -> SHOW_TAB_BUTTONS.set(parseBoolean(raw));
+                case "hideSkillScreen" -> HIDE_SKILL_SCREEN.set(parseBoolean(raw));
                 case "xpScalingMultiplier" -> XP_SCALING_MULTIPLIER.set(clamp(parseDouble(raw), 0.1, 10.0));
                 case "maximumLevel" -> MAXIMUM_LEVEL.set((int) clamp(parseInt(raw), 2, 100));
                 case "enableSkillLeveling" -> ENABLE_SKILL_LEVELING.set(parseBoolean(raw));
@@ -1562,6 +1565,8 @@ public class Configuration {
                     deathSkillReset = false
                     HealthBonus = true
                     showTabButtons = true
+                    # true removes the skills screen, its inventory tab and its key, for mods that draw their own. Needs a restart.
+                    hideSkillScreen = false
                     xpScalingMultiplier = 1.0
                     maximumLevel = 32
                     enableSkillLeveling = true
@@ -1605,7 +1610,12 @@ public class Configuration {
     }
 
     public static boolean shouldShowTabButtons() {
-        return showTabButtons;
+        return showTabButtons && !isSkillScreenHidden();
+    }
+
+    /** True when another mod replaces the skills screen: no screen, inventory tab or key. */
+    public static boolean isSkillScreenHidden() {
+        return HIDE_SKILL_SCREEN.get();
     }
 
     public static boolean getDeathReset() {

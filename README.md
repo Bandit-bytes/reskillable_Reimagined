@@ -249,6 +249,7 @@ The main config controls mod behavior.
 | `miningSpeedMultiplier` | Mining efficiency scaling |
 | `cropGrowthChancePer5Levels` | Farming growth bonus |
 | `gatheringXpBonus` | Extra XP from gathering |
+| `hideSkillScreen` | `true` removes the skills screen, its inventory tab and its key, so another mod's screen can replace them. Default `false`. Needs a restart |
 
 ---
 
