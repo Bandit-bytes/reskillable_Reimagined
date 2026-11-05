@@ -23,7 +23,11 @@ public record SyncSkillConfig(Map<String, Requirement[]> skillLocks,
                               Map<String, Requirement[]> attackSkillLocks,
                               List<Configuration.BuiltInSkillSlot> builtInSkills,
                               List<Configuration.CustomSkillSlot> customSkills,
-                              boolean isFinalChunk) implements CustomPacketPayload {
+                              boolean isFinalChunk,
+                              int maxLevel,
+                              double xpScalingMultiplier,
+                              int maxSpentLevels,
+                              boolean levelingEnabled) implements CustomPacketPayload {
 
     public static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath("reskillable", "sync_config");
     public static final Type<SyncSkillConfig> TYPE = new Type<>(ID);
@@ -42,6 +46,10 @@ public record SyncSkillConfig(Map<String, Requirement[]> skillLocks,
                         buf.writeByteArray(compress(GSON.toJson(msg.builtInSkills)));
                         buf.writeByteArray(compress(GSON.toJson(msg.customSkills)));
                         buf.writeBoolean(msg.isFinalChunk);
+                        buf.writeInt(msg.maxLevel);
+                        buf.writeDouble(msg.xpScalingMultiplier);
+                        buf.writeInt(msg.maxSpentLevels);
+                        buf.writeBoolean(msg.levelingEnabled);
                     } catch (IOException e) {
                         throw new RuntimeException("Failed to compress SyncSkillConfig", e);
                     }
@@ -54,7 +62,12 @@ public record SyncSkillConfig(Map<String, Requirement[]> skillLocks,
                         List<Configuration.BuiltInSkillSlot> builtIns = GSON.fromJson(decompress(buf.readByteArray()), BUILT_IN_SKILL_LIST_TYPE);
                         List<Configuration.CustomSkillSlot> customs = GSON.fromJson(decompress(buf.readByteArray()), CUSTOM_SKILL_LIST_TYPE);
                         boolean isFinal = buf.readBoolean();
-                        return new SyncSkillConfig(skillLocks, craftLocks, attackLocks, builtIns, customs, isFinal);
+                        int maxLevel = buf.readInt();
+                        double xpScaling = buf.readDouble();
+                        int maxSpent = buf.readInt();
+                        boolean leveling = buf.readBoolean();
+                        return new SyncSkillConfig(skillLocks, craftLocks, attackLocks, builtIns, customs, isFinal,
+                                maxLevel, xpScaling, maxSpent, leveling);
                     } catch (IOException e) {
                         throw new RuntimeException("Failed to decompress SyncSkillConfig", e);
                     }
@@ -94,7 +107,11 @@ public record SyncSkillConfig(Map<String, Requirement[]> skillLocks,
                 Configuration.getAttackSkillLocks(),
                 Configuration.getBuiltInSkills(),
                 Configuration.getCustomSkills(),
-                true
+                true,
+                Configuration.getMaxLevel(),
+                Configuration.getXpScalingMultiplier(),
+                Configuration.getMaxSpendableLevels(),
+                Configuration.isSkillLevelingEnabled()
         ));
     }
 
