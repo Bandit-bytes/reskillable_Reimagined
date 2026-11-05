@@ -32,6 +32,9 @@ import net.minecraft.world.level.GameRules;
 import net.bandit.reskillable.registry.AttributeRegistry;
 import net.minecraft.world.level.block.state.BlockState;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public final class EventHandler {
     private EventHandler() {}
 
@@ -96,7 +99,10 @@ public final class EventHandler {
         ServerEntityWorldChangeEvents.AFTER_PLAYER_CHANGE_WORLD.register((player, origin, destination) -> syncPlayer(player));
         ServerPlayerEvents.ALLOW_DEATH.register((player, source, amount) -> {
             if (Configuration.getDeathReset()) {
-                SkillModel.get(player).resetSkills();
+                SkillModel model = SkillModel.get(player);
+                Map<String, Integer> before = new HashMap<>(model.getAllSkillLevels());
+                model.resetSkills();
+                model.fireLevelChanges(player, before);
             }
             return true;
         });

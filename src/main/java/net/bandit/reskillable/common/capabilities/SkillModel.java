@@ -7,6 +7,7 @@ import net.bandit.reskillable.common.skills.Skill;
 import net.bandit.reskillable.common.skills.SkillAttributeBonus;
 import net.bandit.reskillable.common.network.payload.SyncToClient;
 import net.bandit.reskillable.event.SkillAttachments;
+import net.bandit.reskillable.event.SkillLevelChangedCallback;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -182,11 +183,13 @@ public class SkillModel {
 
         int currentLevel = getSkillLevel(storageId);
         if (currentLevel < Configuration.getMaxLevel()) {
+            Map<String, Integer> before = new HashMap<>(skillLevels);
             skillLevels.put(storageId, currentLevel + 1);
             skillExperience.put(storageId, 0);
 
             updateSkillAttributeBonuses(player);
             syncSkills(player);
+            fireLevelChanges(player, before);
         }
     }
 
@@ -629,12 +632,33 @@ public class SkillModel {
 
     public int resetAllSkillsAndReturnRefund(Player player) {
         int refund = getTotalRespecRefund();
+        Map<String, Integer> before = new HashMap<>(skillLevels);
 
         resetSkills();
 
         updateSkillAttributeBonuses(player);
         syncSkills(player);
+        fireLevelChanges(player, before);
 
         return refund;
+    }
+
+    /**
+     * Fires {@link SkillLevelChangedCallback} for each skill whose level differs from {@code before},
+     * a copy of {@link #getAllSkillLevels()} taken before the change. Does nothing on the client.
+     */
+    public void fireLevelChanges(Player player, Map<String, Integer> before) {
+        if (!(player instanceof ServerPlayer serverPlayer)) return;
+
+        Set<String> storageIds = new LinkedHashSet<>(before.keySet());
+        storageIds.addAll(skillLevels.keySet());
+        for (String storageId : storageIds) {
+            int oldLevel = before.getOrDefault(storageId, 1);
+            int newLevel = skillLevels.getOrDefault(storageId, 1);
+            if (oldLevel != newLevel) {
+                SkillLevelChangedCallback.EVENT.invoker().onLevelChanged(
+                        serverPlayer, Configuration.canonicalSkillId(storageId), oldLevel, newLevel);
+            }
+        }
     }
 }
