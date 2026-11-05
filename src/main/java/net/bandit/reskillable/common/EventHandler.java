@@ -34,10 +34,8 @@ import net.neoforged.neoforge.event.level.block.CropGrowEvent;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class EventHandler {
-    private static final Map<UUID, SkillModel> lastDiedPlayerSkillsMap = new ConcurrentHashMap<>();
     private static final java.util.Set<UUID> rejectingArmorEquip = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
 
@@ -176,13 +174,11 @@ public class EventHandler {
             SkillModel model = SkillModel.get(player);
             if (model == null) return;
 
-            if (Configuration.getDeathReset() && !lastDiedPlayerSkillsMap.containsKey(player.getUUID())) {
+            if (Configuration.getDeathReset()) {
                 Map<String, Integer> before = new HashMap<>(model.getAllSkillLevels());
                 model.resetSkills();
                 model.fireLevelChanges(player, before);
             }
-            lastDiedPlayerSkillsMap.put(player.getUUID(), model);
-
         }
     }
 
