@@ -249,6 +249,7 @@ The main config controls mod behavior.
 | `miningSpeedMultiplier` | Mining efficiency scaling |
 | `cropGrowthChancePer5Levels` | Farming growth bonus |
 | `gatheringXpBonus` | Extra XP from gathering |
+| `hideSkillScreen` | `true` removes the skills screen, its inventory tab and its key, so another mod's screen can replace them. Default `false`. Needs a restart |
 
 ---
 
@@ -338,6 +339,32 @@ It supports:
 - Easy integration with other mods
 - Custom attribute linking
 - Datapack-style progression
+
+### API
+
+Other mods use `net.bandit.reskillable.common.ReskillableApi`. It works on the server and the client:
+
+- Skills: `getSkillIds`, `getDisplayName`, `getIcon`, `getPerks`, `isSkillEnabled`, `getMaxLevel`, `getMaxSpentLevels`
+- Levels: `getLevel`, `getTotalLevel`, `getSpentLevels`, `isPerkEnabled`, `getXp`, `getLevelUpCost`
+- Level-ups: `canLevelUp` returns a `LevelUpStatus`, `getGateMissing` lists what a gate still needs, `levelUp` (server), `requestLevelUp` (client)
+- Requirements: `getRequirements`, `getMissingRequirements` and `meetsRequirements` for an item stack, block or entity
+- Client requests: `requestLevelUp`, `requestTogglePerk`, `requestGateStatus`
+
+On the client, the API reads what the server syncs: skill definitions, requirements and leveling settings on join, respawn, dimension change and `/skills reload`; levels after every change; gate status after level-ups and on `requestGateStatus`. A screen that replaces Reskillable's calls `requestGateStatus` when it opens and about once a second while open.
+
+`SkillLevelChangedCallback.EVENT` fires on the server after a skill's level changes, with the player, skill id, old level and new level.
+
+```java
+int mining = ReskillableApi.getLevel(player, "mining");
+
+if (ReskillableApi.canLevelUp(player, "mining") == ReskillableApi.LevelUpStatus.ALLOWED) {
+    ReskillableApi.requestLevelUp("mining");
+}
+
+SkillLevelChangedCallback.EVENT.register((player, skillId, oldLevel, newLevel) -> {
+    if (newLevel > oldLevel) grantPoints(player, newLevel - oldLevel);
+});
+```
 
 ---
 

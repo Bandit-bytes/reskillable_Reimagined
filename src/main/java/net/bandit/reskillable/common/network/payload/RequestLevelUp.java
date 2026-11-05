@@ -1,7 +1,9 @@
 package net.bandit.reskillable.common.network.payload;
 
 import net.bandit.reskillable.Configuration;
+import net.bandit.reskillable.common.ReskillableApi.LevelUpStatus;
 import net.bandit.reskillable.common.capabilities.SkillModel;
+import net.bandit.reskillable.common.gating.GateClientCache;
 import net.bandit.reskillable.common.gating.SkillLevelGate;
 import net.bandit.reskillable.common.skills.Skill;
 import net.bandit.reskillable.common.skills.SkillAttributeBonus;
@@ -14,6 +16,7 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.entity.player.Player;
 
 import java.util.Locale;
 
@@ -35,55 +38,83 @@ public record RequestLevelUp(String skillId) implements CustomPacketPayload {
     }
 
     public static void handle(RequestLevelUp msg, ServerPlayer player) {
+        levelUp(player, msg.skillId());
+    }
+
+    /**
+     * Whether {@code player} can level up {@code skillId} now. On the server the gate check includes
+     * advancements. On the client it uses the gate status the server last sent.
+     */
+    public static LevelUpStatus check(Player player, String requestedSkillId) {
         if (!Configuration.isSkillLevelingEnabled()) {
-            player.sendSystemMessage(Component.translatable("reskillable.server.disabled"));
-            return;
+            return LevelUpStatus.LEVELING_DISABLED;
         }
 
-        String skillId = normalize(msg.skillId());
+        String skillId = normalize(requestedSkillId);
         if (skillId.isBlank() || !Configuration.isKnownSkill(skillId)) {
-            return;
+            return LevelUpStatus.UNKNOWN_SKILL;
         }
 
         SkillModel model = SkillModel.get(player);
-        if (model == null) {
-            return;
-        }
-
         int currentLevel = model.getSkillLevel(skillId);
 
         if (currentLevel >= Configuration.getMaxLevel()) {
-            player.sendSystemMessage(Component.translatable("reskillable.maxlevel"));
-            return;
+            return LevelUpStatus.MAX_LEVEL;
         }
 
-        int maxSpendable = Configuration.getMaxSpendableLevels();
-        int spentLevels = model.getTotalSpentLevels();
-
-        if (maxSpendable >= 0 && spentLevels >= maxSpendable) {
-            player.sendSystemMessage(Component.translatable(
-                    "message.reskillable.spent_level_cap",
-                    spentLevels,
-                    maxSpendable
-            ));
-            return;
+        if (!model.canSpendAnotherLevel()) {
+            return LevelUpStatus.SPENT_LEVEL_CAP;
         }
 
-        SkillLevelGate.GateResult gate = SkillLevelGate.check(player, model, skillId, currentLevel);
-
-        if (!gate.allowed()) {
-            player.sendSystemMessage(
-                    Component.translatable("message.reskillable.gate_blocked_short")
-                            .append(Component.literal(" "))
-                            .append(gate.missingListComponent(player))
-            );
-            return;
+        if (player instanceof ServerPlayer serverPlayer) {
+            if (!SkillLevelGate.check(serverPlayer, model, skillId, currentLevel).allowed()) {
+                return LevelUpStatus.GATE_BLOCKED;
+            }
+        } else {
+            GateClientCache.Entry gate = GateClientCache.get(skillId);
+            if (gate != null && gate.blocked()) {
+                return LevelUpStatus.GATE_BLOCKED;
+            }
         }
 
         int cost = Configuration.calculateCostForLevel(currentLevel);
-        int totalXp = getTotalXp(player);
+        if (!player.isCreative() && getTotalXp(player) < cost) {
+            return LevelUpStatus.NOT_ENOUGH_XP;
+        }
 
-        if (player.isCreative() || totalXp >= cost) {
+        return LevelUpStatus.ALLOWED;
+    }
+
+    /**
+     * Levels up {@code skillId} when {@link #check} allows it: takes the XP, plays the sounds and syncs the
+     * client. Otherwise tells the player why not.
+     */
+    public static LevelUpStatus levelUp(ServerPlayer player, String requestedSkillId) {
+        String skillId = normalize(requestedSkillId);
+        LevelUpStatus status = check(player, skillId);
+        SkillModel model = SkillModel.get(player);
+
+        switch (status) {
+            case LEVELING_DISABLED -> player.sendSystemMessage(Component.translatable("reskillable.server.disabled"));
+            case MAX_LEVEL -> player.sendSystemMessage(Component.translatable("reskillable.maxlevel"));
+            case SPENT_LEVEL_CAP -> player.sendSystemMessage(Component.translatable(
+                    "message.reskillable.spent_level_cap",
+                    model.getTotalSpentLevels(),
+                    Configuration.getMaxSpendableLevels()
+            ));
+            case GATE_BLOCKED -> player.sendSystemMessage(
+                    Component.translatable("message.reskillable.gate_blocked_short")
+                            .append(Component.literal(" "))
+                            .append(SkillLevelGate.check(player, model, skillId, model.getSkillLevel(skillId))
+                                    .missingListComponent(player))
+            );
+            case NOT_ENOUGH_XP -> player.sendSystemMessage(Component.translatable("reskillable.not_enough"));
+            default -> {
+            }
+        }
+
+        if (status == LevelUpStatus.ALLOWED) {
+            int cost = Configuration.calculateCostForLevel(model.getSkillLevel(skillId));
             if (!player.isCreative()) {
                 deductXp(player, cost);
             }
@@ -117,9 +148,8 @@ public record RequestLevelUp(String skillId) implements CustomPacketPayload {
 
             SyncToClient.send(player);
             SyncGateStatus.sendAll(player);
-        } else {
-            player.sendSystemMessage(Component.translatable("reskillable.not_enough"));
         }
+        return status;
     }
 
     private static String normalize(String skillId) {
@@ -137,7 +167,8 @@ public record RequestLevelUp(String skillId) implements CustomPacketPayload {
         return Math.max(1, custom != null ? custom.getPerkStep() : 5);
     }
 
-    private static int getTotalXp(ServerPlayer player) {
+    /** The player's XP in points, from their XP level and progress. */
+    public static int getTotalXp(Player player) {
         int level = player.experienceLevel;
         float progress = player.experienceProgress;
         int base = getXpForLevel(level);
