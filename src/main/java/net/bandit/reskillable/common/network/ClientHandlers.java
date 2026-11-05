@@ -36,7 +36,7 @@ public class ClientHandlers {
             net.bandit.reskillable.Configuration.applySyncedLevelingSettings(
                     msg.maxLevel(), msg.xpScalingMultiplier(), msg.maxSpentLevels(), msg.levelingEnabled());
 
-            if (msg.isFinalChunk()) {
+            if (msg.isFinalChunk() && net.bandit.reskillable.Configuration.shouldShowConfigSyncMessage()) {
                 player.sendSystemMessage(Component.literal("Skill configuration updated!"));
             }
         }

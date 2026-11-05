@@ -35,7 +35,7 @@ public class Tooltip {
 
     @SubscribeEvent
     public void onTooltipDisplay(ItemTooltipEvent event) {
-        if (Minecraft.getInstance().player == null) return;
+        if (Minecraft.getInstance().player == null || Configuration.areRequirementTooltipsHidden()) return;
 
         ItemStack stack = event.getItemStack();
         ResourceLocation baseKey = BuiltInRegistries.ITEM.getKey(stack.getItem());

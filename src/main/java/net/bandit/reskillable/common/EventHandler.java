@@ -39,6 +39,14 @@ public class EventHandler {
     private static final java.util.Set<UUID> rejectingArmorEquip = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
 
+    // canUseItem already put the skills needed in the action bar. Sending this there too would replace them,
+    // so in action bar mode the chat line is just left out. The totem message always stays in chat.
+    private static void sendRequirementMessage(Player player, String message) {
+        if (!Configuration.areRequirementMessagesInActionBar()) {
+            player.sendSystemMessage(Component.literal(message).withStyle(ChatFormatting.RED));
+        }
+    }
+
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public void onLeftClickBlock(PlayerInteractEvent.LeftClickBlock event) {
         Player player = event.getEntity();
@@ -62,7 +70,7 @@ public class EventHandler {
         ItemStack item = event.getItem();
         if (!model.canUseItem(player, item)) {
             event.setCanceled(true);
-            player.sendSystemMessage(Component.literal("You lack the skill to use this item.").withStyle(ChatFormatting.RED));
+            sendRequirementMessage(player, "You lack the skill to use this item.");
         }
     }
 
@@ -150,10 +158,7 @@ public class EventHandler {
                 }
 
                 player.containerMenu.broadcastChanges();
-                player.sendSystemMessage(
-                        Component.literal("You lack the skill to equip this armor.")
-                                .withStyle(ChatFormatting.RED)
-                );
+                sendRequirementMessage(player, "You lack the skill to equip this armor.");
             }
         } finally {
             rejectingArmorEquip.remove(uuid);
@@ -231,7 +236,7 @@ public class EventHandler {
         ItemStack tool = player.getMainHandItem();
         if (!model.canUseItem(player, tool)) {
             event.setCanceled(true);
-            player.sendSystemMessage(Component.literal("You lack the skill to use this tool.").withStyle(ChatFormatting.RED));
+            sendRequirementMessage(player, "You lack the skill to use this tool.");
         }
     }
 

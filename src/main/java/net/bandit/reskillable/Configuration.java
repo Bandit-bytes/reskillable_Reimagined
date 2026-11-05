@@ -33,6 +33,9 @@ public class Configuration {
     private static final ModConfigSpec.BooleanValue DISABLE_WOOL;
     private static final ModConfigSpec.BooleanValue SHOW_TAB_BUTTONS;
     private static final ModConfigSpec.BooleanValue HIDE_SKILL_SCREEN;
+    private static final ModConfigSpec.BooleanValue HIDE_REQUIREMENT_TOOLTIPS;
+    private static final ModConfigSpec.BooleanValue REQUIREMENT_MESSAGES_IN_ACTION_BAR;
+    private static final ModConfigSpec.BooleanValue SHOW_CONFIG_SYNC_MESSAGE;
     private static final ModConfigSpec.BooleanValue SHOW_SUBPAGE_TITLES;
     private static final ModConfigSpec.BooleanValue DEATH_RESET;
     public static final ModConfigSpec.BooleanValue HEALTH_BONUS;
@@ -332,6 +335,15 @@ public class Configuration {
 
         builder.comment("True removes the skills screen, its inventory tab and its key, for mods that draw their own. Needs a restart.");
         HIDE_SKILL_SCREEN = builder.define("hideSkillScreen", false);
+
+        builder.comment("True hides the Skill Requirements lines in item tooltips and in Jade, for mods that draw their own. Read on the client.");
+        HIDE_REQUIREMENT_TOOLTIPS = builder.define("hideRequirementTooltips", false);
+
+        builder.comment("True leaves out the \"You lack the skill to ...\" chat lines for items, tools and armor. The action bar already shows which skill is needed. Read on the server.");
+        REQUIREMENT_MESSAGES_IN_ACTION_BAR = builder.define("requirementMessagesInActionBar", false);
+
+        builder.comment("False stops the \"Skill configuration updated!\" chat line when joining a world or server. Read on the client.");
+        SHOW_CONFIG_SYNC_MESSAGE = builder.define("showConfigSyncMessage", true);
 
         builder.comment("Global scaling multiplier for XP costs.");
         XP_SCALING_MULTIPLIER = builder.defineInRange("xpScalingMultiplier", 1.0, 0.1, 10.0);
@@ -1643,6 +1655,21 @@ public class Configuration {
     public static boolean isSkillScreenHidden() {
         // Not loaded yet when mod loading has already failed; don't hide that error behind a second crash.
         return CONFIG_SPEC.isLoaded() && HIDE_SKILL_SCREEN.get();
+    }
+
+    /** True when the Skill Requirements lines are left out of item tooltips and Jade. */
+    public static boolean areRequirementTooltipsHidden() {
+        return HIDE_REQUIREMENT_TOOLTIPS.get();
+    }
+
+    /** True when the action bar's requirement message replaces the "You lack the skill to ..." chat lines. */
+    public static boolean areRequirementMessagesInActionBar() {
+        return REQUIREMENT_MESSAGES_IN_ACTION_BAR.get();
+    }
+
+    /** True when the client shows "Skill configuration updated!" in chat after a config sync. */
+    public static boolean shouldShowConfigSyncMessage() {
+        return SHOW_CONFIG_SYNC_MESSAGE.get();
     }
 
     public static boolean getDeathReset() {
