@@ -32,6 +32,7 @@ public class Configuration {
 
     private static final ModConfigSpec.BooleanValue DISABLE_WOOL;
     private static final ModConfigSpec.BooleanValue SHOW_TAB_BUTTONS;
+    private static final ModConfigSpec.BooleanValue HIDE_SKILL_SCREEN;
     private static final ModConfigSpec.BooleanValue SHOW_SUBPAGE_TITLES;
     private static final ModConfigSpec.BooleanValue DEATH_RESET;
     public static final ModConfigSpec.BooleanValue HEALTH_BONUS;
@@ -80,6 +81,7 @@ public class Configuration {
     private static int maximumLevel;
     private static double xpScalingMultiplier;
     private static boolean enableSkillLeveling;
+    private static int maxTotalSpentLevels = -1;
 
     private static Map<String, Requirement[]> skillLocks = new HashMap<>();
     private static Map<String, Requirement[]> craftSkillLocks = new HashMap<>();
@@ -328,6 +330,9 @@ public class Configuration {
         builder.comment("Toggle the visibility of the tab buttons in the inventory.");
         SHOW_TAB_BUTTONS = builder.define("showTabButtons", true);
 
+        builder.comment("True removes the skills screen, its inventory tab and its key, for mods that draw their own. Needs a restart.");
+        HIDE_SKILL_SCREEN = builder.define("hideSkillScreen", false);
+
         builder.comment("Global scaling multiplier for XP costs.");
         XP_SCALING_MULTIPLIER = builder.defineInRange("xpScalingMultiplier", 1.0, 0.1, 10.0);
 
@@ -450,6 +455,7 @@ public class Configuration {
         xpScalingMultiplier = XP_SCALING_MULTIPLIER.get();
         maximumLevel = MAXIMUM_LEVEL.get();
         enableSkillLeveling = ENABLE_SKILL_LEVELING.get();
+        maxTotalSpentLevels = MAX_TOTAL_SPENT_LEVELS.get();
 
         Map<String, Map<String, List<String>>> skillData = loadJsonConfig(
                 FMLPaths.CONFIGDIR.get().resolve("reskillable/skill_locks.json").toString(),
@@ -1630,7 +1636,13 @@ public class Configuration {
     }
 
     public static boolean shouldShowTabButtons() {
-        return showTabButtons;
+        return showTabButtons && !isSkillScreenHidden();
+    }
+
+    /** True when another mod replaces the skills screen: no screen, inventory tab or key. */
+    public static boolean isSkillScreenHidden() {
+        // Not loaded yet when mod loading has already failed; don't hide that error behind a second crash.
+        return CONFIG_SPEC.isLoaded() && HIDE_SKILL_SCREEN.get();
     }
 
     public static boolean getDeathReset() {
@@ -1638,7 +1650,7 @@ public class Configuration {
     }
 
     public static double getXpScalingMultiplier() {
-        return XP_SCALING_MULTIPLIER.get();
+        return xpScalingMultiplier;
     }
 
     public static int calculateCostForLevel(int level) {
@@ -1925,7 +1937,20 @@ public class Configuration {
         return 30;
     }
     public static int getMaxSpendableLevels() {
-        return MAX_TOTAL_SPENT_LEVELS.get();
+        return maxTotalSpentLevels;
+    }
+
+    /**
+     * Leveling settings from the server, so the client's costs and level-up checks match it. These only
+     * touch the cached fields, never the config spec, so a server's values can't reach the player's own
+     * config. load() restores the local values when a singleplayer world starts.
+     */
+    public static void applySyncedLevelingSettings(int syncedMaxLevel, double syncedXpScaling,
+                                                   int syncedMaxSpentLevels, boolean syncedLevelingEnabled) {
+        maximumLevel = syncedMaxLevel;
+        xpScalingMultiplier = syncedXpScaling;
+        maxTotalSpentLevels = syncedMaxSpentLevels;
+        enableSkillLeveling = syncedLevelingEnabled;
     }
 
     private static class ArmorStats {

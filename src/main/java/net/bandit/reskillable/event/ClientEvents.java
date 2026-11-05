@@ -1,5 +1,6 @@
 package net.bandit.reskillable.event;
 
+import net.bandit.reskillable.Configuration;
 import net.bandit.reskillable.Reskillable;
 import net.bandit.reskillable.client.screen.SkillScreen;
 import net.bandit.reskillable.client.screen.buttons.KeyBinding;
@@ -13,6 +14,9 @@ import net.neoforged.neoforge.client.event.InputEvent;
 public class ClientEvents {
     @SubscribeEvent
     public static void onKeyInput(InputEvent.Key event) {
+        // Return before touching KeyBinding: loading that class creates the key mapping.
+        if (Configuration.isSkillScreenHidden()) return;
+
         Minecraft minecraft = Minecraft.getInstance();
         if (KeyBinding.SKILLS_KEY.consumeClick()) {
             minecraft.setScreen(new SkillScreen());

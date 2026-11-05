@@ -19,7 +19,9 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 
 @EventBusSubscriber
 public class SetCommand {
@@ -55,6 +57,7 @@ public class SetCommand {
             for (ServerPlayer target : targets) {
                 SkillModel model = SkillModel.get(target);
                 if (model == null) continue;
+                Map<String, Integer> before = new HashMap<>(model.getAllSkillLevels());
 
                 for (Skill builtIn : Configuration.getEnabledBuiltInSkills()) {
                     int currentLevel = model.getSkillLevel(builtIn);
@@ -73,6 +76,7 @@ public class SetCommand {
 
                 model.updateSkillAttributeBonuses(target);
                 SyncToClient.send(target);
+                model.fireLevelChanges(target, before);
                 changed++;
             }
 
@@ -92,6 +96,7 @@ public class SetCommand {
         for (ServerPlayer target : targets) {
             SkillModel model = SkillModel.get(target);
             if (model == null) continue;
+            Map<String, Integer> before = new HashMap<>(model.getAllSkillLevels());
 
             int currentLevel = model.getSkillLevel(skillId);
             int newLevel = Math.min(currentLevel + amount, Configuration.getMaxLevel());
@@ -99,6 +104,7 @@ public class SetCommand {
             model.setSkillLevel(skillId, newLevel);
             model.updateSkillAttributeBonuses(target);
             SyncToClient.send(target);
+            model.fireLevelChanges(target, before);
 
             changed++;
         }
@@ -128,6 +134,7 @@ public class SetCommand {
             for (ServerPlayer target : targets) {
                 SkillModel model = SkillModel.get(target);
                 if (model == null) continue;
+                Map<String, Integer> before = new HashMap<>(model.getAllSkillLevels());
 
                 for (Skill builtIn : Configuration.getEnabledBuiltInSkills()) {
                     model.setSkillLevel(builtIn, level);
@@ -140,6 +147,7 @@ public class SetCommand {
 
                 model.updateSkillAttributeBonuses(target);
                 SyncToClient.send(target);
+                model.fireLevelChanges(target, before);
                 changed++;
             }
 
@@ -160,10 +168,12 @@ public class SetCommand {
         for (ServerPlayer target : targets) {
             SkillModel model = SkillModel.get(target);
             if (model == null) continue;
+            Map<String, Integer> before = new HashMap<>(model.getAllSkillLevels());
 
             model.setSkillLevel(skillId, level);
             model.updateSkillAttributeBonuses(target);
             SyncToClient.send(target);
+            model.fireLevelChanges(target, before);
 
             changed++;
         }

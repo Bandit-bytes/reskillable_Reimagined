@@ -5,6 +5,7 @@ import net.bandit.reskillable.common.capabilities.SkillModel;
 import net.bandit.reskillable.common.skills.Requirement;
 import net.bandit.reskillable.common.skills.Skill;
 import net.bandit.reskillable.common.skills.SkillAttributeBonus;
+import net.bandit.reskillable.common.network.payload.SyncGateStatus;
 import net.bandit.reskillable.common.network.payload.SyncToClient;
 import net.bandit.reskillable.common.network.payload.SyncSkillConfig;
 import net.minecraft.ChatFormatting;
@@ -30,6 +31,7 @@ import net.neoforged.neoforge.event.entity.player.PlayerXpEvent;
 import net.neoforged.neoforge.event.level.BlockEvent;
 import net.neoforged.neoforge.event.level.block.CropGrowEvent;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -175,7 +177,9 @@ public class EventHandler {
             if (model == null) return;
 
             if (Configuration.getDeathReset() && !lastDiedPlayerSkillsMap.containsKey(player.getUUID())) {
+                Map<String, Integer> before = new HashMap<>(model.getAllSkillLevels());
                 model.resetSkills();
+                model.fireLevelChanges(player, before);
             }
             lastDiedPlayerSkillsMap.put(player.getUUID(), model);
 
@@ -202,6 +206,7 @@ public class EventHandler {
         if (model != null) {
             SyncSkillConfig.send(player);
             SyncToClient.send(player);
+            SyncGateStatus.sendAll(player);
             model.updateSkillAttributeBonuses(player);
         }
     }

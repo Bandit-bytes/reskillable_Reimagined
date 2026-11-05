@@ -7,6 +7,7 @@ import net.bandit.reskillable.common.skills.Skill;
 import net.bandit.reskillable.common.skills.SkillAttributeBonus;
 import net.bandit.reskillable.common.network.payload.SyncToClient;
 import net.bandit.reskillable.event.SkillAttachments;
+import net.bandit.reskillable.event.SkillLevelChangedEvent;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -22,6 +23,7 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
+import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.common.util.INBTSerializable;
 import org.jetbrains.annotations.UnknownNullability;
 
@@ -159,11 +161,13 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
 
         int currentLevel = getSkillLevel(storageId);
         if (currentLevel < Configuration.getMaxLevel()) {
+            Map<String, Integer> before = new HashMap<>(skillLevels);
             skillLevels.put(storageId, currentLevel + 1);
             skillExperience.put(storageId, 0);
 
             updateSkillAttributeBonuses(player);
             syncSkills(player);
+            fireLevelChanges(player, before);
         }
     }
 
@@ -248,10 +252,11 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
         return checkRequirements(player, resource, RequirementType.USE);
     }
 
-    private boolean checkRequirements(Player player, ResourceLocation resource, RequirementType type) {
+    /** The requirements of {@code resource} for {@code type} that these levels do not meet. Sends no message. */
+    public List<Requirement> getUnmetRequirements(ResourceLocation resource, RequirementType type) {
         Requirement[] requirements = type.getRequirements(resource);
         if (requirements == null || requirements.length == 0) {
-            return true;
+            return List.of();
         }
 
         List<Requirement> unmetRequirements = new ArrayList<>();
@@ -260,6 +265,11 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
                 unmetRequirements.add(requirement);
             }
         }
+        return unmetRequirements;
+    }
+
+    private boolean checkRequirements(Player player, ResourceLocation resource, RequirementType type) {
+        List<Requirement> unmetRequirements = getUnmetRequirements(resource, type);
 
         if (!unmetRequirements.isEmpty()) {
             sendSkillRequirementMessage(player, type, unmetRequirements);
@@ -708,12 +718,33 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
 
     public int resetAllSkillsAndReturnRefund(Player player) {
         int refund = getTotalRespecRefund();
+        Map<String, Integer> before = new HashMap<>(skillLevels);
 
         resetSkills();
 
         updateSkillAttributeBonuses(player);
         syncSkills(player);
+        fireLevelChanges(player, before);
 
         return refund;
+    }
+
+    /**
+     * Posts {@link SkillLevelChangedEvent} for each skill whose level differs from {@code before},
+     * a copy of {@link #getAllSkillLevels()} taken before the change. Does nothing on the client.
+     */
+    public void fireLevelChanges(Player player, Map<String, Integer> before) {
+        if (!(player instanceof ServerPlayer serverPlayer)) return;
+
+        Set<String> storageIds = new LinkedHashSet<>(before.keySet());
+        storageIds.addAll(skillLevels.keySet());
+        for (String storageId : storageIds) {
+            int oldLevel = before.getOrDefault(storageId, 1);
+            int newLevel = skillLevels.getOrDefault(storageId, 1);
+            if (oldLevel != newLevel) {
+                NeoForge.EVENT_BUS.post(new SkillLevelChangedEvent(
+                        serverPlayer, Configuration.canonicalSkillId(storageId), oldLevel, newLevel));
+            }
+        }
     }
 }
