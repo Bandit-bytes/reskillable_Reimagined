@@ -205,7 +205,10 @@ public final class ReskillableApi {
         return Configuration.calculateCostForLevel(getLevel(player, skillId));
     }
 
-    /** The same checks a level-up runs, in the same order. */
+    /**
+     * The same checks a level-up runs, in the same order. {@link AllowLevelUpCallback} is not one of them, so
+     * {@code ALLOWED} does not promise the level-up: a listener can still refuse it.
+     */
     public static LevelUpStatus canLevelUp(Player player, String skillId) {
         return RequestLevelUp.check(player, skillId);
     }

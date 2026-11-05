@@ -5,6 +5,7 @@ import net.bandit.reskillable.client.Overlay;
 import net.bandit.reskillable.common.capabilities.SkillModel;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.network.chat.Component;
 
 public class ClientHandlers {
 
@@ -34,6 +35,10 @@ public class ClientHandlers {
             net.bandit.reskillable.Configuration.applySyncedSkillDefinitions(msg.builtInSkills(), msg.customSkills());
             net.bandit.reskillable.Configuration.applySyncedLevelingSettings(
                     msg.maxLevel(), msg.xpScalingMultiplier(), msg.maxSpentLevels(), msg.levelingEnabled());
+
+            if (msg.isFinalChunk() && net.bandit.reskillable.Configuration.shouldShowConfigSyncMessage()) {
+                player.sendSystemMessage(Component.literal("Skill configuration updated!"));
+            }
         }
     }
 }

@@ -29,6 +29,7 @@ public class Configuration {
     private static final ConfigValue<Boolean> HIDE_SKILL_SCREEN;
     private static final ConfigValue<Boolean> HIDE_REQUIREMENT_TOOLTIPS;
     private static final ConfigValue<Boolean> REQUIREMENT_MESSAGES_IN_ACTION_BAR;
+    private static final ConfigValue<Boolean> SHOW_CONFIG_SYNC_MESSAGE;
     private static final ConfigValue<Boolean> SHOW_SUBPAGE_TITLES;
     private static final ConfigValue<Boolean> DEATH_RESET;
     public static final ConfigValue<Boolean> HEALTH_BONUS;
@@ -318,6 +319,7 @@ public class Configuration {
         HIDE_SKILL_SCREEN = new ConfigValue<>(false);
         HIDE_REQUIREMENT_TOOLTIPS = new ConfigValue<>(false);
         REQUIREMENT_MESSAGES_IN_ACTION_BAR = new ConfigValue<>(false);
+        SHOW_CONFIG_SYNC_MESSAGE = new ConfigValue<>(true);
         XP_SCALING_MULTIPLIER = new ConfigValue<>(1.0);
         MAXIMUM_LEVEL = new ConfigValue<>(32);
         ENABLE_SKILL_LEVELING = new ConfigValue<>(true);
@@ -1491,6 +1493,7 @@ public class Configuration {
                 case "hideSkillScreen" -> HIDE_SKILL_SCREEN.set(parseBoolean(raw));
                 case "hideRequirementTooltips" -> HIDE_REQUIREMENT_TOOLTIPS.set(parseBoolean(raw));
                 case "requirementMessagesInActionBar" -> REQUIREMENT_MESSAGES_IN_ACTION_BAR.set(parseBoolean(raw));
+                case "showConfigSyncMessage" -> SHOW_CONFIG_SYNC_MESSAGE.set(parseBoolean(raw));
                 case "xpScalingMultiplier" -> XP_SCALING_MULTIPLIER.set(clamp(parseDouble(raw), 0.1, 10.0));
                 case "maximumLevel" -> MAXIMUM_LEVEL.set((int) clamp(parseInt(raw), 2, 100));
                 case "enableSkillLeveling" -> ENABLE_SKILL_LEVELING.set(parseBoolean(raw));
@@ -1575,8 +1578,10 @@ public class Configuration {
                     hideSkillScreen = false
                     # true hides the Skill Requirements lines in item tooltips and in Jade, for mods that draw their own.
                     hideRequirementTooltips = false
-                    # true sends the "You lack the skill to ..." messages to the action bar instead of chat.
+                    # true leaves out the "You lack the skill to ..." chat lines for tools and armor. The action bar already shows which skill is needed.
                     requirementMessagesInActionBar = false
+                    # false stops the "Skill configuration updated!" chat line on join, respawn and dimension change.
+                    showConfigSyncMessage = true
                     xpScalingMultiplier = 1.0
                     maximumLevel = 32
                     enableSkillLeveling = true
@@ -1633,9 +1638,14 @@ public class Configuration {
         return HIDE_REQUIREMENT_TOOLTIPS.get();
     }
 
-    /** True when the "You lack the skill to ..." messages go to the action bar instead of chat. */
+    /** True when the action bar's requirement message replaces the "You lack the skill to ..." chat lines for tools and armor. */
     public static boolean areRequirementMessagesInActionBar() {
         return REQUIREMENT_MESSAGES_IN_ACTION_BAR.get();
+    }
+
+    /** True when the client shows "Skill configuration updated!" in chat after a config sync. */
+    public static boolean shouldShowConfigSyncMessage() {
+        return SHOW_CONFIG_SYNC_MESSAGE.get();
     }
 
     public static boolean getDeathReset() {
