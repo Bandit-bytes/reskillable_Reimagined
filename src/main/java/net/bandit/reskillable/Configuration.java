@@ -28,6 +28,7 @@ public class Configuration {
     private static final ConfigValue<Boolean> SHOW_TAB_BUTTONS;
     private static final ConfigValue<Boolean> HIDE_SKILL_SCREEN;
     private static final ConfigValue<Boolean> HIDE_REQUIREMENT_TOOLTIPS;
+    private static final ConfigValue<Boolean> REQUIREMENT_MESSAGES_IN_ACTION_BAR;
     private static final ConfigValue<Boolean> SHOW_SUBPAGE_TITLES;
     private static final ConfigValue<Boolean> DEATH_RESET;
     public static final ConfigValue<Boolean> HEALTH_BONUS;
@@ -316,6 +317,7 @@ public class Configuration {
         SHOW_TAB_BUTTONS = new ConfigValue<>(true);
         HIDE_SKILL_SCREEN = new ConfigValue<>(false);
         HIDE_REQUIREMENT_TOOLTIPS = new ConfigValue<>(false);
+        REQUIREMENT_MESSAGES_IN_ACTION_BAR = new ConfigValue<>(false);
         XP_SCALING_MULTIPLIER = new ConfigValue<>(1.0);
         MAXIMUM_LEVEL = new ConfigValue<>(32);
         ENABLE_SKILL_LEVELING = new ConfigValue<>(true);
@@ -1488,6 +1490,7 @@ public class Configuration {
                 case "showTabButtons" -> SHOW_TAB_BUTTONS.set(parseBoolean(raw));
                 case "hideSkillScreen" -> HIDE_SKILL_SCREEN.set(parseBoolean(raw));
                 case "hideRequirementTooltips" -> HIDE_REQUIREMENT_TOOLTIPS.set(parseBoolean(raw));
+                case "requirementMessagesInActionBar" -> REQUIREMENT_MESSAGES_IN_ACTION_BAR.set(parseBoolean(raw));
                 case "xpScalingMultiplier" -> XP_SCALING_MULTIPLIER.set(clamp(parseDouble(raw), 0.1, 10.0));
                 case "maximumLevel" -> MAXIMUM_LEVEL.set((int) clamp(parseInt(raw), 2, 100));
                 case "enableSkillLeveling" -> ENABLE_SKILL_LEVELING.set(parseBoolean(raw));
@@ -1572,6 +1575,8 @@ public class Configuration {
                     hideSkillScreen = false
                     # true hides the Skill Requirements lines in item tooltips and in Jade, for mods that draw their own.
                     hideRequirementTooltips = false
+                    # true sends the "You lack the skill to ..." messages to the action bar instead of chat.
+                    requirementMessagesInActionBar = false
                     xpScalingMultiplier = 1.0
                     maximumLevel = 32
                     enableSkillLeveling = true
@@ -1626,6 +1631,11 @@ public class Configuration {
     /** True when the Skill Requirements lines are left out of item tooltips and Jade. */
     public static boolean areRequirementTooltipsHidden() {
         return HIDE_REQUIREMENT_TOOLTIPS.get();
+    }
+
+    /** True when the "You lack the skill to ..." messages go to the action bar instead of chat. */
+    public static boolean areRequirementMessagesInActionBar() {
+        return REQUIREMENT_MESSAGES_IN_ACTION_BAR.get();
     }
 
     public static boolean getDeathReset() {

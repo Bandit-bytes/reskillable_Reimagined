@@ -251,6 +251,7 @@ The main config controls mod behavior.
 | `gatheringXpBonus` | Extra XP from gathering |
 | `hideSkillScreen` | `true` removes the skills screen, its inventory tab and its key, so another mod's screen can replace them. Default `false`. Needs a restart |
 | `hideRequirementTooltips` | `true` hides the Skill Requirements lines in item tooltips and in Jade, so another mod can draw its own from the API. Default `false`. Read on the client |
+| `requirementMessagesInActionBar` | `true` sends the "You lack the skill to ..." messages (tools, armor, Totem of Undying) to the action bar instead of chat. Default `false`. Read on the server |
 
 ---
 

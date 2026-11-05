@@ -95,7 +95,7 @@ public final class EventHandler {
             SkillModel model = SkillModel.get(player);
             boolean allowed = model.canUseItem(player, player.getMainHandItem()) && model.canUseBlock(player, state.getBlock());
             if (!allowed && !level.isClientSide()) {
-                player.sendSystemMessage(Component.literal("You lack the skill to use this tool.").withStyle(ChatFormatting.RED));
+                sendRequirementMessage(player, "You lack the skill to use this tool.");
             }
             return allowed;
         });
@@ -148,6 +148,11 @@ public final class EventHandler {
         SyncSkillConfig.send(player);
     }
 
+    private static void sendRequirementMessage(Player player, String message) {
+        player.displayClientMessage(Component.literal(message).withStyle(ChatFormatting.RED),
+                Configuration.areRequirementMessagesInActionBar());
+    }
+
     private static void validateArmor(ServerPlayer player) {
         SkillModel model = SkillModel.get(player);
         for (EquipmentSlot slot : new EquipmentSlot[]{EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET}) {
@@ -158,7 +163,7 @@ public final class EventHandler {
             player.setItemSlot(slot, ItemStack.EMPTY);
             if (!player.getInventory().add(rejected)) player.drop(rejected, false);
             player.containerMenu.broadcastChanges();
-            player.sendSystemMessage(Component.literal("You lack the skill to equip this armor.").withStyle(ChatFormatting.RED));
+            sendRequirementMessage(player, "You lack the skill to equip this armor.");
         }
     }
 
@@ -203,7 +208,7 @@ public final class EventHandler {
         SkillModel model = SkillModel.get(player);
         for (Requirement req : requirements) {
             if (req != null && model.getSkillLevel(req.skill) < req.level) {
-                player.sendSystemMessage(Component.literal("You lack the skill to use the Totem of Undying.").withStyle(ChatFormatting.RED));
+                sendRequirementMessage(player, "You lack the skill to use the Totem of Undying.");
                 return false;
             }
         }
