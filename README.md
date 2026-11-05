@@ -250,6 +250,9 @@ The main config controls mod behavior.
 | `cropGrowthChancePer5Levels` | Farming growth bonus |
 | `gatheringXpBonus` | Extra XP from gathering |
 | `hideSkillScreen` | `true` removes the skills screen, its inventory tab and its key, so another mod's screen can replace them. Default `false`. Needs a restart |
+| `hideRequirementTooltips` | `true` hides the Skill Requirements lines in item tooltips and in Jade, so another mod can draw its own from the API. Default `false`. Read on the client |
+| `requirementMessagesInActionBar` | `true` leaves out the "You lack the skill to ..." chat lines for tools and armor, because the action bar already shows which skill is needed. The Totem of Undying message stays in chat. Default `false`. Read on the server |
+| `showConfigSyncMessage` | `false` stops the "Skill configuration updated!" chat line on join, respawn and dimension change. Default `true`. Read on the client |
 
 ---
 
@@ -354,6 +357,8 @@ On the client, the API reads what the server syncs: skill definitions, requireme
 
 `SkillLevelChangedCallback.EVENT` fires on the server after a skill's level changes, with the player, skill id, old level and new level.
 
+`AllowLevelUpCallback.EVENT` fires on the server when a level-up from the level-up packet or `ReskillableApi.levelUp` has passed Reskillable's checks, before the XP is taken, with the player and skill id. Return `false` to refuse it: nothing changes, Reskillable sends no message and `levelUp` returns `REFUSED`. `canLevelUp` does not fire it.
+
 ```java
 int mining = ReskillableApi.getLevel(player, "mining");
 
@@ -363,6 +368,12 @@ if (ReskillableApi.canLevelUp(player, "mining") == ReskillableApi.LevelUpStatus.
 
 SkillLevelChangedCallback.EVENT.register((player, skillId, oldLevel, newLevel) -> {
     if (newLevel > oldLevel) grantPoints(player, newLevel - oldLevel);
+});
+
+AllowLevelUpCallback.EVENT.register((player, skillId) -> {
+    if (isAtTrainer(player)) return true;
+    player.displayClientMessage(Component.literal("Talk to a trainer to level up."), true);
+    return false;
 });
 ```
 

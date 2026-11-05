@@ -27,6 +27,9 @@ public class Configuration {
     private static final ConfigValue<Boolean> DISABLE_WOOL;
     private static final ConfigValue<Boolean> SHOW_TAB_BUTTONS;
     private static final ConfigValue<Boolean> HIDE_SKILL_SCREEN;
+    private static final ConfigValue<Boolean> HIDE_REQUIREMENT_TOOLTIPS;
+    private static final ConfigValue<Boolean> REQUIREMENT_MESSAGES_IN_ACTION_BAR;
+    private static final ConfigValue<Boolean> SHOW_CONFIG_SYNC_MESSAGE;
     private static final ConfigValue<Boolean> SHOW_SUBPAGE_TITLES;
     private static final ConfigValue<Boolean> DEATH_RESET;
     public static final ConfigValue<Boolean> HEALTH_BONUS;
@@ -314,6 +317,9 @@ public class Configuration {
         HEALTH_BONUS = new ConfigValue<>(true);
         SHOW_TAB_BUTTONS = new ConfigValue<>(true);
         HIDE_SKILL_SCREEN = new ConfigValue<>(false);
+        HIDE_REQUIREMENT_TOOLTIPS = new ConfigValue<>(false);
+        REQUIREMENT_MESSAGES_IN_ACTION_BAR = new ConfigValue<>(false);
+        SHOW_CONFIG_SYNC_MESSAGE = new ConfigValue<>(true);
         XP_SCALING_MULTIPLIER = new ConfigValue<>(1.0);
         MAXIMUM_LEVEL = new ConfigValue<>(32);
         ENABLE_SKILL_LEVELING = new ConfigValue<>(true);
@@ -1485,6 +1491,9 @@ public class Configuration {
                 case "HealthBonus" -> HEALTH_BONUS.set(parseBoolean(raw));
                 case "showTabButtons" -> SHOW_TAB_BUTTONS.set(parseBoolean(raw));
                 case "hideSkillScreen" -> HIDE_SKILL_SCREEN.set(parseBoolean(raw));
+                case "hideRequirementTooltips" -> HIDE_REQUIREMENT_TOOLTIPS.set(parseBoolean(raw));
+                case "requirementMessagesInActionBar" -> REQUIREMENT_MESSAGES_IN_ACTION_BAR.set(parseBoolean(raw));
+                case "showConfigSyncMessage" -> SHOW_CONFIG_SYNC_MESSAGE.set(parseBoolean(raw));
                 case "xpScalingMultiplier" -> XP_SCALING_MULTIPLIER.set(clamp(parseDouble(raw), 0.1, 10.0));
                 case "maximumLevel" -> MAXIMUM_LEVEL.set((int) clamp(parseInt(raw), 2, 100));
                 case "enableSkillLeveling" -> ENABLE_SKILL_LEVELING.set(parseBoolean(raw));
@@ -1567,6 +1576,12 @@ public class Configuration {
                     showTabButtons = true
                     # true removes the skills screen, its inventory tab and its key, for mods that draw their own. Needs a restart.
                     hideSkillScreen = false
+                    # true hides the Skill Requirements lines in item tooltips and in Jade, for mods that draw their own.
+                    hideRequirementTooltips = false
+                    # true leaves out the "You lack the skill to ..." chat lines for tools and armor. The action bar already shows which skill is needed.
+                    requirementMessagesInActionBar = false
+                    # false stops the "Skill configuration updated!" chat line on join, respawn and dimension change.
+                    showConfigSyncMessage = true
                     xpScalingMultiplier = 1.0
                     maximumLevel = 32
                     enableSkillLeveling = true
@@ -1616,6 +1631,21 @@ public class Configuration {
     /** True when another mod replaces the skills screen: no screen, inventory tab or key. */
     public static boolean isSkillScreenHidden() {
         return HIDE_SKILL_SCREEN.get();
+    }
+
+    /** True when the Skill Requirements lines are left out of item tooltips and Jade. */
+    public static boolean areRequirementTooltipsHidden() {
+        return HIDE_REQUIREMENT_TOOLTIPS.get();
+    }
+
+    /** True when the action bar's requirement message replaces the "You lack the skill to ..." chat lines for tools and armor. */
+    public static boolean areRequirementMessagesInActionBar() {
+        return REQUIREMENT_MESSAGES_IN_ACTION_BAR.get();
+    }
+
+    /** True when the client shows "Skill configuration updated!" in chat after a config sync. */
+    public static boolean shouldShowConfigSyncMessage() {
+        return SHOW_CONFIG_SYNC_MESSAGE.get();
     }
 
     public static boolean getDeathReset() {

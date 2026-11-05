@@ -16,7 +16,7 @@ public class RequirementTooltipHelper {
     public static void appendRequirements(ITooltip tooltip,
                                           Player player,
                                           ResourceLocation key) {
-        if (player == null || key == null) {
+        if (player == null || key == null || Configuration.areRequirementTooltipsHidden()) {
             return;
         }
 

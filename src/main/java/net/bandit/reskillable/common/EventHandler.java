@@ -1,6 +1,7 @@
 package net.bandit.reskillable.common;
 
 import net.bandit.reskillable.Configuration;
+import net.bandit.reskillable.Reskillable;
 import net.bandit.reskillable.common.capabilities.SkillModel;
 import net.bandit.reskillable.common.network.payload.SyncGateStatus;
 import net.bandit.reskillable.common.network.payload.SyncSkillConfig;
@@ -10,6 +11,7 @@ import net.bandit.reskillable.common.skills.Skill;
 import net.bandit.reskillable.common.skills.SkillAttributeBonus;
 import net.fabricmc.fabric.api.entity.event.v1.ServerEntityWorldChangeEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
+import net.fabricmc.fabric.api.event.Event;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.AttackBlockCallback;
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
@@ -20,6 +22,7 @@ import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.InteractionResultHolder;
@@ -36,6 +39,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 public final class EventHandler {
+    private static final ResourceLocation AFTER_ATTACHMENT_COPY =
+            ResourceLocation.fromNamespaceAndPath(Reskillable.MOD_ID, "after_attachment_copy");
+
     private EventHandler() {}
 
     public static void register() {
@@ -89,13 +95,16 @@ public final class EventHandler {
             SkillModel model = SkillModel.get(player);
             boolean allowed = model.canUseItem(player, player.getMainHandItem()) && model.canUseBlock(player, state.getBlock());
             if (!allowed && !level.isClientSide()) {
-                player.sendSystemMessage(Component.literal("You lack the skill to use this tool.").withStyle(ChatFormatting.RED));
+                sendRequirementMessage(player, "You lack the skill to use this tool.");
             }
             return allowed;
         });
 
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> syncPlayer(handler.player));
-        ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> syncPlayer(newPlayer));
+        // Fabric's attachment API copies the skill model to the new player in AFTER_RESPAWN's default phase.
+        // Before that copy, SkillModel.get would attach a new model with every skill at level 1.
+        ServerPlayerEvents.AFTER_RESPAWN.addPhaseOrdering(Event.DEFAULT_PHASE, AFTER_ATTACHMENT_COPY);
+        ServerPlayerEvents.AFTER_RESPAWN.register(AFTER_ATTACHMENT_COPY, (oldPlayer, newPlayer, alive) -> syncPlayer(newPlayer));
         ServerEntityWorldChangeEvents.AFTER_PLAYER_CHANGE_WORLD.register((player, origin, destination) -> syncPlayer(player));
         ServerPlayerEvents.ALLOW_DEATH.register((player, source, amount) -> {
             if (Configuration.getDeathReset()) {
@@ -139,6 +148,14 @@ public final class EventHandler {
         SyncSkillConfig.send(player);
     }
 
+    // canUseItem and canUseBlock already put the skills needed in the action bar. Sending this there too
+    // would replace them, so in action bar mode the chat line is just left out.
+    private static void sendRequirementMessage(Player player, String message) {
+        if (!Configuration.areRequirementMessagesInActionBar()) {
+            player.sendSystemMessage(Component.literal(message).withStyle(ChatFormatting.RED));
+        }
+    }
+
     private static void validateArmor(ServerPlayer player) {
         SkillModel model = SkillModel.get(player);
         for (EquipmentSlot slot : new EquipmentSlot[]{EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET}) {
@@ -149,7 +166,7 @@ public final class EventHandler {
             player.setItemSlot(slot, ItemStack.EMPTY);
             if (!player.getInventory().add(rejected)) player.drop(rejected, false);
             player.containerMenu.broadcastChanges();
-            player.sendSystemMessage(Component.literal("You lack the skill to equip this armor.").withStyle(ChatFormatting.RED));
+            sendRequirementMessage(player, "You lack the skill to equip this armor.");
         }
     }
 
@@ -194,6 +211,7 @@ public final class EventHandler {
         SkillModel model = SkillModel.get(player);
         for (Requirement req : requirements) {
             if (req != null && model.getSkillLevel(req.skill) < req.level) {
+                // Always chat: the action bar would be hidden behind the death screen.
                 player.sendSystemMessage(Component.literal("You lack the skill to use the Totem of Undying.").withStyle(ChatFormatting.RED));
                 return false;
             }
