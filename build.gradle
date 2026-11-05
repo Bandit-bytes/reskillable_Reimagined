@@ -38,7 +38,7 @@ dependencies {
     modCompileOnly "curse.maven:jade-324717:6494189"
 
 
-    modCompileOnly "maven.modrinth:spell-engine:1.8.15+1.21.1-fabric"
+    modCompileOnly "maven.modrinth:spell-engine:1.10.9+1.21.1-fabric"
 }
 
 processResources {
