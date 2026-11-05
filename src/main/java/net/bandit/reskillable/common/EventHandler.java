@@ -148,9 +148,12 @@ public final class EventHandler {
         SyncSkillConfig.send(player);
     }
 
+    // canUseItem and canUseBlock already put the skills needed in the action bar. Sending this there too
+    // would replace them, so in action bar mode the chat line is just left out.
     private static void sendRequirementMessage(Player player, String message) {
-        player.displayClientMessage(Component.literal(message).withStyle(ChatFormatting.RED),
-                Configuration.areRequirementMessagesInActionBar());
+        if (!Configuration.areRequirementMessagesInActionBar()) {
+            player.sendSystemMessage(Component.literal(message).withStyle(ChatFormatting.RED));
+        }
     }
 
     private static void validateArmor(ServerPlayer player) {
@@ -208,7 +211,8 @@ public final class EventHandler {
         SkillModel model = SkillModel.get(player);
         for (Requirement req : requirements) {
             if (req != null && model.getSkillLevel(req.skill) < req.level) {
-                sendRequirementMessage(player, "You lack the skill to use the Totem of Undying.");
+                // Always chat: the action bar would be hidden behind the death screen.
+                player.sendSystemMessage(Component.literal("You lack the skill to use the Totem of Undying.").withStyle(ChatFormatting.RED));
                 return false;
             }
         }

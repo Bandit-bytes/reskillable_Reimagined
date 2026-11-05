@@ -97,6 +97,10 @@ public record RequestLevelUp(String skillId) implements CustomPacketPayload {
                 && !AllowLevelUpCallback.EVENT.invoker().allowLevelUp(player, Configuration.canonicalSkillId(skillId))) {
             return LevelUpStatus.REFUSED;
         }
+        // A listener may have spent XP or changed levels, so what check() saw may no longer hold.
+        if (status == LevelUpStatus.ALLOWED) {
+            status = check(player, skillId);
+        }
         SkillModel model = SkillModel.get(player);
 
         switch (status) {
