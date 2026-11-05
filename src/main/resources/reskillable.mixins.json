@@ -9,8 +9,7 @@
     "ExperienceOrbMixin",
     "LivingEntityMixin",
     "PlayerMixin",
-    "SheepWoolDropMixin",
-    "SpellHelperMixin"
+    "SheepWoolDropMixin"
   ],
   "injectors": {
     "defaultRequire": 1
