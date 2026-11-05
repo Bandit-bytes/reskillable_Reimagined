@@ -7,6 +7,7 @@ import net.bandit.reskillable.common.gating.GateClientCache;
 import net.bandit.reskillable.common.gating.SkillLevelGate;
 import net.bandit.reskillable.common.skills.Skill;
 import net.bandit.reskillable.common.skills.SkillAttributeBonus;
+import net.bandit.reskillable.event.AllowLevelUpCallback;
 import net.bandit.reskillable.event.SoundRegistry;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
@@ -86,12 +87,16 @@ public record RequestLevelUp(String skillId) implements CustomPacketPayload {
     }
 
     /**
-     * Levels up {@code skillId} when {@link #check} allows it: takes the XP, plays the sounds and syncs the
-     * client. Otherwise tells the player why not.
+     * Levels up {@code skillId} when {@link #check} and {@link AllowLevelUpCallback} allow it: takes the XP, plays
+     * the sounds and syncs the client. When {@link #check} does not, tells the player why not.
      */
     public static LevelUpStatus levelUp(ServerPlayer player, String requestedSkillId) {
         String skillId = normalize(requestedSkillId);
         LevelUpStatus status = check(player, skillId);
+        if (status == LevelUpStatus.ALLOWED
+                && !AllowLevelUpCallback.EVENT.invoker().allowLevelUp(player, Configuration.canonicalSkillId(skillId))) {
+            return LevelUpStatus.REFUSED;
+        }
         SkillModel model = SkillModel.get(player);
 
         switch (status) {

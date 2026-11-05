@@ -356,6 +356,8 @@ On the client, the API reads what the server syncs: skill definitions, requireme
 
 `SkillLevelChangedCallback.EVENT` fires on the server after a skill's level changes, with the player, skill id, old level and new level.
 
+`AllowLevelUpCallback.EVENT` fires on the server when a level-up from the level-up packet or `ReskillableApi.levelUp` has passed Reskillable's checks, before the XP is taken, with the player and skill id. Return `false` to refuse it: nothing changes, Reskillable sends no message and `levelUp` returns `REFUSED`. `canLevelUp` does not fire it.
+
 ```java
 int mining = ReskillableApi.getLevel(player, "mining");
 
@@ -365,6 +367,12 @@ if (ReskillableApi.canLevelUp(player, "mining") == ReskillableApi.LevelUpStatus.
 
 SkillLevelChangedCallback.EVENT.register((player, skillId, oldLevel, newLevel) -> {
     if (newLevel > oldLevel) grantPoints(player, newLevel - oldLevel);
+});
+
+AllowLevelUpCallback.EVENT.register((player, skillId) -> {
+    if (isAtTrainer(player)) return true;
+    player.displayClientMessage(Component.literal("Talk to a trainer to level up."), true);
+    return false;
 });
 ```
 

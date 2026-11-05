@@ -10,6 +10,7 @@ import net.bandit.reskillable.common.skills.Requirement;
 import net.bandit.reskillable.common.skills.RequirementType;
 import net.bandit.reskillable.common.skills.Skill;
 import net.bandit.reskillable.common.skills.SkillAttributeBonus;
+import net.bandit.reskillable.event.AllowLevelUpCallback;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
@@ -28,7 +29,8 @@ import java.util.List;
 
 /**
  * Reskillable's API for other mods. Methods work on the server and the client unless they say otherwise.
- * For level changes, listen to {@link net.bandit.reskillable.event.SkillLevelChangedCallback}.
+ * For level changes, listen to {@link net.bandit.reskillable.event.SkillLevelChangedCallback}. To allow or refuse
+ * a level-up, listen to {@link AllowLevelUpCallback}.
  *
  * <p>Skill ids are the {@code id} values in {@code built_in_skills.json} and {@code custom_skills.json}.
  * Built-in skills also accept their original names ({@code mining}, {@code attack} and so on).
@@ -63,7 +65,9 @@ public final class ReskillableApi {
         /** A {@code skill_level_gates} rule is not met. {@link #getGateMissing} lists what is missing. */
         GATE_BLOCKED,
         /** The player has less XP than {@link #getLevelUpCost}. Never returned for creative players. */
-        NOT_ENOUGH_XP
+        NOT_ENOUGH_XP,
+        /** An {@link AllowLevelUpCallback} listener refused it. Only {@link #levelUp} returns this. */
+        REFUSED
     }
 
     /**
@@ -243,7 +247,8 @@ public final class ReskillableApi {
     /**
      * Server only. Levels up the skill if {@link #canLevelUp} allows it, as the level-up packet does: takes the XP,
      * plays the sounds, syncs the client and fires {@code SkillLevelChangedCallback}. Otherwise tells the player
-     * why not.
+     * why not. An {@link AllowLevelUpCallback} listener can still refuse it; then nothing changes, no message is
+     * sent and this returns {@link LevelUpStatus#REFUSED}.
      */
     public static LevelUpStatus levelUp(ServerPlayer player, String skillId) {
         return RequestLevelUp.levelUp(player, skillId);
