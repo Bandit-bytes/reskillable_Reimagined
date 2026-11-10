@@ -1,0 +1,32 @@
+name: Feature request
+description: Suggest a new skill, perk, requirement type, config option, or mod compatibility.
+title: "[Suggestion] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your idea
+      description: What would you like to see added or changed?
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why?
+      description: What problem does it solve for players, servers, or modpack makers?
+  - type: dropdown
+    id: version
+    attributes:
+      label: Minecraft version & loader you play on
+      multiple: true
+      options:
+        - "1.20.1 Forge"
+        - "1.21.1 NeoForge"
+        - "1.21.1 Fabric"
+        - "26.1.2 NeoForge"
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Examples, config ideas, or related mods.
