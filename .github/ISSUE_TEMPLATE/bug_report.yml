@@ -1,0 +1,74 @@
+name: Bug report
+description: Something isn't working, crashes, or behaves wrong.
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill in as much as you can — it makes fixing it a lot faster.
+  - type: dropdown
+    id: version
+    attributes:
+      label: Minecraft version & loader
+      options:
+        - "1.20.1 Forge"
+        - "1.21.1 NeoForge"
+        - "1.21.1 Fabric"
+        - "26.1.2 NeoForge"
+    validations:
+      required: true
+  - type: input
+    id: mod-version
+    attributes:
+      label: Reskillable Reimagined version
+      description: The exact file/version you have installed.
+      placeholder: "4.1.4-1.21.1"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A clear description of the bug. Which skill, perk, requirement, or screen is affected?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Set a requirement of ...
+        2. Try to use ...
+        3. See ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+  - type: textarea
+    id: config
+    attributes:
+      label: Relevant config
+      description: If it involves requirements, gates, perks, or custom skills, paste the relevant part of your `config/reskillable/` files.
+      render: json
+  - type: textarea
+    id: logs
+    attributes:
+      label: Crash report / latest.log
+      description: Upload to https://mclo.gs or https://pastebin.com and paste the link. Please don't paste whole logs here.
+  - type: textarea
+    id: mods
+    attributes:
+      label: Other mods / modpack
+      description: Modpack name and version, or a list of other mods installed (especially RPG, spell, or accessory mods).
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I'm using the latest version of Reskillable Reimagined for my Minecraft version.
+          required: true
+        - label: I searched existing issues and this hasn't been reported yet.
+          required: true

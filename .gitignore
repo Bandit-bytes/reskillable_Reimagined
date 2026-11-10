@@ -1,0 +1,49 @@
+# Gradle
+.gradle/
+build/
+out/
+bin/
+classes/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Run directories (dev worlds, logs, configs, etc.)
+run/
+runs/
+**/run/
+**/runs/
+
+# Architectury / Loom caches
+.architectury-transformer/
+**/.architectury-transformer/
+remappedSrc/
+**/src/generated/resources/.cache/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Eclipse / VS Code
+.classpath
+.project
+.settings/
+.vscode/
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs / crash reports
+*.log
+logs/
+crash-reports/
+hs_err_pid*
+
+# ForgeGradle / Eclipse extras
+eclipse/
+*.launch
+.metadata
+/run-data/
+forge*changelog.txt
