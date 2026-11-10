@@ -1,0 +1,11 @@
+# Keep the Gradle wrapper scripts runnable on every OS
+gradlew text eol=lf
+*.sh text eol=lf
+*.bat text eol=crlf
+
+# Binary assets
+*.jar binary
+*.png binary
+*.ogg binary
+*.nbt binary
+*.blockbench binary

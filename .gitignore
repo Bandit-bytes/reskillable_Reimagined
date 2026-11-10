@@ -1,35 +1,49 @@
-# Project exclude paths
-/.gradle/
-/build/
+# Gradle
+.gradle/
+build/
+out/
+bin/
+classes/
+!gradle/wrapper/gradle-wrapper.jar
 
-# eclipse
-bin
-*.launch
-.settings
-.metadata
-.classpath
-.project
+# Run directories (dev worlds, logs, configs, etc.)
+run/
+runs/
+**/run/
+**/runs/
 
-# idea
-out
+# Architectury / Loom caches
+.architectury-transformer/
+**/.architectury-transformer/
+remappedSrc/
+**/src/generated/resources/.cache/
+
+# IntelliJ IDEA
+.idea/
+*.iml
 *.ipr
 *.iws
-*.iml
-.idea
 
-# gradle
-build
-.gradle
+# Eclipse / VS Code
+.classpath
+.project
+.settings/
+.vscode/
 
-# other
-eclipse
-run
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
 
-# Files from Forge MDK
-forge*changelog.txt
-so_changelog.txt
-src/generated/resources/.cache/cache
+# Logs / crash reports
+*.log
+logs/
+crash-reports/
+hs_err_pid*
+
+# ForgeGradle / Eclipse extras
+eclipse/
+*.launch
+.metadata
 /run-data/
-/src/generated/resources/.cache/
-/run/
-/.idea/
+forge*changelog.txt
