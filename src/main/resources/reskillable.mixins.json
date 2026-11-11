@@ -4,6 +4,7 @@
   "package": "net.bandit.reskillable.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "ArmorSlotMixin",
     "CraftingContainerMixin",
     "CropBlockMixin",
     "ExperienceOrbMixin",
