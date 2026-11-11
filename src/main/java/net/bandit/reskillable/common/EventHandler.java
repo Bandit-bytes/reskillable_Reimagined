@@ -141,6 +141,7 @@ public class EventHandler {
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public void onChangeEquipment(LivingEquipmentChangeEvent event) {
         if (!(event.getEntity() instanceof Player player)) return;
+        if (shouldBypassSkillChecks(player)) return;
         if (player.level().isClientSide()) return;
         if (event.getSlot().getType() != EquipmentSlot.Type.HUMANOID_ARMOR) return;
 
@@ -425,24 +426,9 @@ public class EventHandler {
         }
     }
 
-    // Just Dire Things fake player helper
-
+    // Machines and mods act through fake players (Ars Nouveau spells, Create deployers, Just Dire Things
+    // clickers). They have no skill levels of their own, so checking them just breaks those mods (issue #61).
     private static boolean shouldBypassSkillChecks(Player player) {
-        return isJustDireThingsFakePlayer(player);
-    }
-
-    private static boolean isJustDireThingsFakePlayer(Player player) {
-        if (!(player instanceof FakePlayer)) return false;
-
-        String className = player.getClass().getName();
-        String playerName = player.getScoreboardName();
-
-        // JDT clickers use this fake player class.
-        if ("com.direwolf20.justdirethings.util.UsefulFakePlayer".equals(className)) {
-            return true;
-        }
-
-        // JDT machine fake player profile name.
-        return "[JustDiresFakePlayer]".equals(playerName);
+        return player instanceof FakePlayer;
     }
 }

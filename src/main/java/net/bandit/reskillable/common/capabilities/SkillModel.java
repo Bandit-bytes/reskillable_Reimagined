@@ -223,6 +223,20 @@ public class SkillModel implements ValueIOSerializable {
         return canUse(player, item.getItem().builtInRegistryHolder().key().identifier());
     }
 
+    /**
+     * Same check as canUseItem but never sends the requirement message.
+     * For checks that run from inventory slots, where a message would spam.
+     */
+    public boolean meetsItemUseRequirements(ItemStack item) {
+        if (item == null || item.isEmpty()) return true;
+        Requirement[] requirements = RequirementType.USE.getRequirements(item.getItem().builtInRegistryHolder().key().identifier());
+        if (requirements == null) return true;
+        for (Requirement requirement : requirements) {
+            if (requirement != null && getSkillLevel(requirement.skill) < requirement.level) return false;
+        }
+        return true;
+    }
+
     public boolean canUseBlock(Player player, Block block) {
         return canUse(player, block.builtInRegistryHolder().key().identifier());
     }
@@ -416,12 +430,12 @@ public class SkillModel implements ValueIOSerializable {
 
     private void applyBuiltInAttributeModifier(Player player, Skill skill, int index, Attribute attribute,
                                                AttributeModifier.Operation operation, double amountPerStep, int perkStep) {
-        if (attribute == null || amountPerStep <= 0.0) return;
+        if (attribute == null || amountPerStep == 0.0) return;
         var instance = player.getAttributes().getInstance(BuiltInRegistries.ATTRIBUTE.wrapAsHolder(attribute));
         if (instance == null) return;
         int steps = getSkillLevel(skill) / Math.max(1, perkStep);
         double totalBonus = steps * amountPerStep;
-        if (totalBonus <= 0.0) return;
+        if (totalBonus == 0.0) return;
         String path = index < 0 ? skill.name().toLowerCase(Locale.ROOT)
                 : "built_in_" + skill.name().toLowerCase(Locale.ROOT) + "_" + index;
         Identifier modifierId = Identifier.fromNamespaceAndPath("reskillable", path);
@@ -440,12 +454,12 @@ public class SkillModel implements ValueIOSerializable {
 
     private void applyCustomAttributeModifier(Player player, String skillId, int index, Attribute attribute,
                                               AttributeModifier.Operation operation, double amountPerStep, int perkStep) {
-        if (attribute == null || amountPerStep <= 0.0) return;
+        if (attribute == null || amountPerStep == 0.0) return;
         var instance = player.getAttributes().getInstance(BuiltInRegistries.ATTRIBUTE.wrapAsHolder(attribute));
         if (instance == null) return;
         int steps = getSkillLevel(skillId) / Math.max(1, perkStep);
         double totalBonus = steps * amountPerStep;
-        if (totalBonus <= 0.0) return;
+        if (totalBonus == 0.0) return;
         String path = index < 0 ? "custom_" + skillId : "custom_" + skillId + "_" + index;
         Identifier modifierId = Identifier.fromNamespaceAndPath("reskillable", path);
         instance.removeModifier(modifierId);
