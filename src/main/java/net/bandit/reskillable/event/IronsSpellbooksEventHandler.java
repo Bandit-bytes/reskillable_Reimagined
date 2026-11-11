@@ -1,8 +1,12 @@
 package net.bandit.reskillable.event;
 
 import io.redspace.ironsspellbooks.api.events.SpellPreCastEvent;
+import io.redspace.ironsspellbooks.api.spells.CastSource;
+import io.redspace.ironsspellbooks.api.spells.ISpellContainer;
 import net.bandit.reskillable.common.capabilities.SkillModel;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -18,6 +22,19 @@ public class IronsSpellbooksEventHandler extends AbsEventHandler {
 
         SkillModel model = SkillModel.get(player);
         if (model == null) return;
+
+        // An imbued weapon casts its spell itself, so the weapon's own requirement has to be
+        // met as well as the spell's (issue #63).
+        if (event.getCastSource() == CastSource.SWORD) {
+            for (InteractionHand hand : InteractionHand.values()) {
+                ItemStack held = player.getItemInHand(hand);
+                if (!held.isEmpty() && ISpellContainer.isSpellContainer(held)
+                        && !model.canUseItem(player, held)) {
+                    event.setCanceled(true);
+                    return;
+                }
+            }
+        }
 
         String spellId = event.getSpellId();
         String[] split = spellId.split(":");

@@ -203,6 +203,20 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
         return canUse(player, item.getItem().builtInRegistryHolder().key().location());
     }
 
+    /**
+     * Same check as {@link #canUseItem} but never sends the requirement message.
+     * For checks that run every tick or from inventory slots, where a message would spam.
+     */
+    public boolean meetsItemUseRequirements(ItemStack item) {
+        if (item == null || item.isEmpty()) return true;
+        Requirement[] requirements = RequirementType.USE.getRequirements(item.getItem().builtInRegistryHolder().key().location());
+        if (requirements == null) return true;
+        for (Requirement requirement : requirements) {
+            if (!meetsRequirement(requirement)) return false;
+        }
+        return true;
+    }
+
     public boolean canUseBlock(Player player, Block block) {
         return canUse(player, block.builtInRegistryHolder().key().location());
     }
@@ -523,12 +537,12 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
 
     private void applyBuiltInAttributeModifier(Player player, Skill skill, int index, Attribute attribute,
                                                AttributeModifier.Operation operation, double amountPerStep, int perkStep) {
-        if (attribute == null || amountPerStep <= 0.0) return;
+        if (attribute == null || amountPerStep == 0.0) return;
         var instance = player.getAttribute(attribute);
         if (instance == null) return;
         int steps = getEarnedPerkSteps(getSkillLevel(skill), perkStep);
         double totalBonus = steps * amountPerStep;
-        if (totalBonus <= 0.0) return;
+        if (totalBonus == 0.0) return;
         UUID modifierId = index < 0
                 ? UUID.nameUUIDFromBytes(("reskillable:" + skill.name().toLowerCase(Locale.ROOT)).getBytes())
                 : UUID.nameUUIDFromBytes(("reskillable:built_in:" + skill.name().toLowerCase(Locale.ROOT) + ":" + index).getBytes());
@@ -552,12 +566,12 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
 
     private void applyCustomAttributeModifier(Player player, String skillId, int index, Attribute attribute,
                                               AttributeModifier.Operation operation, double amountPerStep, int perkStep) {
-        if (attribute == null || amountPerStep <= 0.0) return;
+        if (attribute == null || amountPerStep == 0.0) return;
         var instance = player.getAttribute(attribute);
         if (instance == null) return;
         int steps = getEarnedPerkSteps(getCustomSkillLevel(skillId), perkStep);
         double totalBonus = steps * amountPerStep;
-        if (totalBonus <= 0.0) return;
+        if (totalBonus == 0.0) return;
         UUID modifierId = index < 0
                 ? getCustomPerkModifierId(skillId)
                 : UUID.nameUUIDFromBytes(("reskillable:custom_skill_bonus:" + skillId + ":" + index).getBytes());

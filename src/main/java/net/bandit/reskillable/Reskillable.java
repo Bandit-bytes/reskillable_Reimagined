@@ -9,6 +9,7 @@ import net.bandit.reskillable.common.network.SyncSkillConfigPacket;
 import net.bandit.reskillable.common.network.SyncToClient;
 import net.bandit.reskillable.common.network.ToggleCustomPerkPacket;
 import net.bandit.reskillable.common.network.TogglePerkPacket;
+import net.bandit.reskillable.event.AttributeLockHandler;
 import net.bandit.reskillable.event.CuriosCompat;
 import net.bandit.reskillable.event.EventHandler;
 import net.bandit.reskillable.event.IronsSpellbooksEventHandler;
@@ -60,6 +61,7 @@ public class Reskillable {
         );
 
         MinecraftForge.EVENT_BUS.register(new EventHandler());
+        MinecraftForge.EVENT_BUS.register(new AttributeLockHandler());
         MinecraftForge.EVENT_BUS.register(new Commands());
 
         if (ModList.get().isLoaded("tacz")) {

@@ -126,8 +126,11 @@ public class EventHandler {
         if (model == null || player.isCreative()) return;
 
         ItemStack mainHand = player.getMainHandItem();
+        ItemStack offHand = player.getOffhandItem();
 
+        // Dual-wield mods hit with the offhand item too, so it has to pass as well (issue #64).
         if (!model.canUseItem(player, mainHand)
+                || !model.canUseItem(player, offHand)
                 || !model.canAttackEntity(player, event.getTarget())) {
             event.setCanceled(true);
         }
@@ -141,12 +144,21 @@ public class EventHandler {
         SkillModel model = SkillModel.get(player);
         if (model == null) return;
 
-        if (!player.isCreative() && event.getSlot().getType() == EquipmentSlot.Type.ARMOR) {
+        // Most armor is now refused by the armor slot itself (ArmorSlotMixin). This catches the
+        // routes that don't go through the inventory slot, like dispensers or other mods.
+        if (!player.isCreative() && !player.level().isClientSide()
+                && event.getSlot().getType() == EquipmentSlot.Type.ARMOR) {
             ItemStack item = event.getTo();
 
-            if (!model.canUseItem(player, item)) {
-                player.drop(item.copy(), false);
-                item.setCount(0);
+            if (!item.isEmpty() && !model.canUseItem(player, item)) {
+                ItemStack rejected = item.copy();
+                // Empty the slot rather than shrinking the stack, so vanilla sees the change
+                // next tick and takes the armor's modifiers off again.
+                player.setItemSlot(event.getSlot(), ItemStack.EMPTY);
+                if (!player.getInventory().add(rejected)) {
+                    player.drop(rejected, false);
+                }
+                player.containerMenu.broadcastChanges();
             }
         }
     }
