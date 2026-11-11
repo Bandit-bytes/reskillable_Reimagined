@@ -604,8 +604,8 @@ public class Configuration {
             perkOperation = null;
         }
 
-        if (perkAmountPerStep != null && perkAmountPerStep < 0.0) {
-            System.err.println("[Reskillable] Negative built-in perk amount for skill '" + id + "'. Falling back to the legacy amount.");
+        if (perkAmountPerStep != null && !Double.isFinite(perkAmountPerStep)) {
+            System.err.println("[Reskillable] Invalid built-in perk amount for skill '" + id + "'. Falling back to the legacy amount.");
             perkAmountPerStep = null;
         }
 
@@ -667,7 +667,7 @@ public class Configuration {
                 operation = "ADDITION";
             }
 
-            double amountPerStep = Math.max(0.0, definition.amountPerStep);
+            double amountPerStep = finiteOrZero(definition.amountPerStep);
             int step = definition.perkStep == null ? Math.max(1, defaultStep) : Math.max(1, definition.perkStep);
             normalized.add(new PerkAttributeDefinition(attribute, operation, amountPerStep, step));
         }
@@ -730,7 +730,7 @@ public class Configuration {
         String perkAttribute = slot.perkAttribute == null ? "" : slot.perkAttribute.trim();
         String icon = slot.icon == null ? "" : slot.icon.trim();
         String perkOperation = slot.perkOperation == null ? "ADDITION" : slot.perkOperation.trim().toUpperCase(Locale.ROOT);
-        double perkAmountPerStep = Math.max(0.0, slot.perkAmountPerStep);
+        double perkAmountPerStep = finiteOrZero(slot.perkAmountPerStep);
         int perkStep = Math.max(1, slot.perkStep);
 
         if (!id.isEmpty() && !id.matches("[a-z0-9_]+")) {
@@ -874,7 +874,7 @@ public class Configuration {
     public static double getBuiltInPerkAmountPerStep(Skill skill, double fallback) {
         BuiltInSkillSlot slot = getBuiltInSkill(skill);
         if (slot == null || slot.getPerkAmountPerStepOverride() == null) return fallback;
-        return Math.max(0.0, slot.getPerkAmountPerStepOverride());
+        return finiteOrZero(slot.getPerkAmountPerStepOverride());
     }
 
     public static int getBuiltInPerkStep(Skill skill) {
@@ -888,7 +888,7 @@ public class Configuration {
         if (slot != null && slot.hasPerkOverride()) {
             if (slot.perkAttributes != null) {
                 for (PerkAttributeDefinition definition : slot.perkAttributes) {
-                    if (definition != null && definition.getAmountPerStep() > 0.0
+                    if (definition != null && definition.getAmountPerStep() != 0.0
                             && level % Math.max(1, definition.getPerkStep()) == 0) {
                         return true;
                     }
@@ -968,7 +968,7 @@ public class Configuration {
         if (slot.perkAttributes != null) {
             for (PerkAttributeDefinition definition : slot.perkAttributes) {
                 if (definition != null && definition.getResolvedAttribute() != null
-                        && definition.getAmountPerStep() > 0.0
+                        && definition.getAmountPerStep() != 0.0
                         && level % Math.max(1, definition.getPerkStep()) == 0) {
                     return true;
                 }
@@ -1133,7 +1133,7 @@ public class Configuration {
         public PerkAttributeDefinition(String attribute, String operation, double amountPerStep, Integer perkStep) {
             this.attribute = attribute == null ? "" : attribute;
             this.operation = operation == null ? "ADDITION" : operation;
-            this.amountPerStep = Math.max(0.0, amountPerStep);
+            this.amountPerStep = finiteOrZero(amountPerStep);
             this.perkStep = perkStep == null ? 5 : Math.max(1, perkStep);
         }
 
@@ -1151,7 +1151,7 @@ public class Configuration {
         }
 
         public double getAmountPerStep() {
-            return Math.max(0.0, amountPerStep);
+            return finiteOrZero(amountPerStep);
         }
 
         public int getPerkStep() {
@@ -1291,7 +1291,7 @@ public class Configuration {
             this.perkAttribute = perkAttribute == null ? "" : perkAttribute;
             this.icon = icon == null ? "" : icon;
             this.perkOperation = perkOperation == null ? "ADDITION" : perkOperation;
-            this.perkAmountPerStep = Math.max(0.0, perkAmountPerStep);
+            this.perkAmountPerStep = finiteOrZero(perkAmountPerStep);
             this.perkStep = Math.max(1, perkStep);
         }
 
@@ -1330,13 +1330,13 @@ public class Configuration {
         public boolean hasPerk() {
             if (perkAttributes != null) {
                 for (PerkAttributeDefinition definition : perkAttributes) {
-                    if (definition != null && definition.getResolvedAttribute() != null && definition.getAmountPerStep() > 0.0) {
+                    if (definition != null && definition.getResolvedAttribute() != null && definition.getAmountPerStep() != 0.0) {
                         return true;
                     }
                 }
                 return false;
             }
-            return !getPerkAttribute().isBlank() && perkAmountPerStep > 0.0;
+            return !getPerkAttribute().isBlank() && perkAmountPerStep != 0.0;
         }
 
         public Attribute getResolvedPerkAttribute() {
@@ -1988,5 +1988,10 @@ public class Configuration {
             this.totalDefense = totalDefense;
             this.toughness = toughness;
         }
+    }
+
+    // Negative amounts are allowed so a perk can lower an attribute. NaN/Infinity would break the attribute map.
+    static double finiteOrZero(double value) {
+        return Double.isFinite(value) ? value : 0.0;
     }
 }

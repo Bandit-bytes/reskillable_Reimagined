@@ -5,6 +5,7 @@
   "compatibilityLevel": "JAVA_21",
   "refmap": "reskillable.refmap.json",
   "mixins": [
+    "ArmorSlotMixin",
     "CraftingContainerMixin",
     "SpellHelperMixin"
   ],

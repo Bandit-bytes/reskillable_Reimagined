@@ -24,6 +24,7 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.entity.living.*;
+import net.neoforged.neoforge.common.util.FakePlayer;
 import net.neoforged.neoforge.event.entity.player.AttackEntityEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
@@ -39,6 +40,12 @@ public class EventHandler {
     private static final java.util.Set<UUID> rejectingArmorEquip = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
 
+    // Machines and mods act through fake players (Ars Nouveau spells, Create deployers, Just Dire Things
+    // clickers). They have no skill levels of their own, so checking them just breaks those mods (issue #61).
+    private static boolean shouldBypassSkillChecks(Player player) {
+        return player instanceof FakePlayer;
+    }
+
     // canUseItem already put the skills needed in the action bar. Sending this there too would replace them,
     // so in action bar mode the chat line is just left out. The totem message always stays in chat.
     private static void sendRequirementMessage(Player player, String message) {
@@ -50,6 +57,7 @@ public class EventHandler {
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public void onLeftClickBlock(PlayerInteractEvent.LeftClickBlock event) {
         Player player = event.getEntity();
+        if (shouldBypassSkillChecks(player)) return;
         SkillModel model = SkillModel.get(player);
         if (model == null) return;
 
@@ -63,6 +71,7 @@ public class EventHandler {
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public void onStartUsingItem(LivingEntityUseItemEvent.Start event) {
         if (!(event.getEntity() instanceof Player player)) return;
+        if (shouldBypassSkillChecks(player)) return;
 
         SkillModel model = SkillModel.get(player);
         if (model == null || player.isCreative()) return;
@@ -78,6 +87,7 @@ public class EventHandler {
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
         Player player = event.getEntity();
+        if (shouldBypassSkillChecks(player)) return;
         SkillModel model = SkillModel.get(player);
         if (model == null) return;
 
@@ -92,6 +102,7 @@ public class EventHandler {
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public void onRightClickItem(PlayerInteractEvent.RightClickItem event) {
         Player player = event.getEntity();
+        if (shouldBypassSkillChecks(player)) return;
         SkillModel model = SkillModel.get(player);
         if (model == null) return;
 
@@ -105,6 +116,7 @@ public class EventHandler {
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public void onRightClickEntity(PlayerInteractEvent.EntityInteract event) {
         Player player = event.getEntity();
+        if (shouldBypassSkillChecks(player)) return;
         SkillModel model = SkillModel.get(player);
         if (model == null) return;
 
@@ -119,6 +131,7 @@ public class EventHandler {
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public void onAttackEntity(AttackEntityEvent event) {
         Player player = event.getEntity();
+        if (shouldBypassSkillChecks(player)) return;
         SkillModel model = SkillModel.get(player);
         if (model == null || player.isCreative()) return;
 
@@ -136,6 +149,7 @@ public class EventHandler {
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public void onChangeEquipment(LivingEquipmentChangeEvent event) {
         if (!(event.getEntity() instanceof Player player)) return;
+        if (shouldBypassSkillChecks(player)) return;
         if (player.level().isClientSide()) return;
         if (event.getSlot().getType() != EquipmentSlot.Type.HUMANOID_ARMOR) return;
 
@@ -230,6 +244,7 @@ public class EventHandler {
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public void onBlockBreak(BlockEvent.BreakEvent event) {
         Player player = event.getPlayer();
+        if (shouldBypassSkillChecks(player)) return;
         SkillModel model = SkillModel.get(player);
         if (model == null || player.isCreative()) return;
 

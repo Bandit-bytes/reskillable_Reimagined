@@ -476,7 +476,7 @@ public class SkillScreen extends Screen {
             for (Configuration.PerkAttributeDefinition definition : slot.perkAttributes) {
                 if (definition == null) continue;
                 Attribute attr = definition.getResolvedAttribute();
-                if (attr == null || definition.getAmountPerStep() <= 0.0) continue;
+                if (attr == null || definition.getAmountPerStep() == 0.0) continue;
                 int steps = skillLevel / Math.max(1, definition.getPerkStep());
                 double totalBonus = steps * definition.getAmountPerStep();
                 if (added) effects.append(Component.literal(", ").withStyle(ChatFormatting.DARK_GRAY));
@@ -487,7 +487,7 @@ public class SkillScreen extends Screen {
             }
         } else {
             Attribute attr = slot.getResolvedPerkAttribute();
-            if (attr != null && slot.getPerkAmountPerStep() > 0.0) {
+            if (attr != null && slot.getPerkAmountPerStep() != 0.0) {
                 int steps = skillLevel / Math.max(1, slot.getPerkStep());
                 double totalBonus = steps * slot.getPerkAmountPerStep();
                 effects.append(formatPerkAmount(totalBonus, slot.getResolvedPerkOperation()))
@@ -607,10 +607,11 @@ public class SkillScreen extends Screen {
     }
 
     private Component formatPerkAmount(double totalBonus, AttributeModifier.Operation operation) {
+        ChatFormatting color = totalBonus < 0.0 ? ChatFormatting.RED : ChatFormatting.AQUA;
         if (operation == AttributeModifier.Operation.ADD_VALUE) {
-            return Component.literal(String.format("+%.2f", totalBonus)).withStyle(ChatFormatting.AQUA);
+            return Component.literal(String.format("%+.2f", totalBonus)).withStyle(color);
         }
-        return Component.literal(String.format("+%.0f%%", totalBonus * 100.0)).withStyle(ChatFormatting.AQUA);
+        return Component.literal(String.format("%+.0f%%", totalBonus * 100.0)).withStyle(color);
     }
 
     private int calculateTotalXP(Player player) {

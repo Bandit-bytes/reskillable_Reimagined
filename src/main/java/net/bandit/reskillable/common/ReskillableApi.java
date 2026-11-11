@@ -326,7 +326,7 @@ public final class ReskillableApi {
 
     private static void addPerk(List<Perk> perks, @Nullable Component name, @Nullable Attribute attribute,
                                 AttributeModifier.Operation operation, double amountPerStep, int perkStep) {
-        if (amountPerStep <= 0.0 || (attribute == null && name == null)) return;
+        if (amountPerStep == 0.0 || (attribute == null && name == null)) return;
         Component perkName = name != null ? name : Component.translatable(attribute.getDescriptionId());
         perks.add(new Perk(perkName, attribute, operation, amountPerStep, Math.max(1, perkStep)));
     }

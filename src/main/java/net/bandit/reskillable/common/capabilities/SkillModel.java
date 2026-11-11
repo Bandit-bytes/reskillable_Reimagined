@@ -230,6 +230,15 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
         return canUse(player, item.getItem().builtInRegistryHolder().key().location());
     }
 
+    /**
+     * Same check as canUseItem but never sends the requirement message.
+     * For checks that run from inventory slots, where a message would spam.
+     */
+    public boolean meetsItemUseRequirements(ItemStack item) {
+        if (item == null || item.isEmpty()) return true;
+        return getUnmetRequirements(item.getItem().builtInRegistryHolder().key().location(), RequirementType.USE).isEmpty();
+    }
+
     public boolean canUseBlock(Player player, Block block) {
         return canUse(player, block.builtInRegistryHolder().key().location());
     }
@@ -471,7 +480,7 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
                                                AttributeModifier.Operation operation,
                                                double amountPerStep,
                                                int perkStep) {
-        if (attribute == null || amountPerStep <= 0.0) return;
+        if (attribute == null || amountPerStep == 0.0) return;
 
         Holder.Reference<Attribute> holder = BuiltInRegistries.ATTRIBUTE
                 .getResourceKey(attribute)
@@ -484,7 +493,7 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
 
         int steps = getSkillLevel(skill) / Math.max(1, perkStep);
         double totalBonus = steps * amountPerStep;
-        if (totalBonus <= 0.0) return;
+        if (totalBonus == 0.0) return;
 
         String path = index < 0
                 ? skill.name().toLowerCase(Locale.ROOT)
@@ -511,7 +520,7 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
 
     private void applyCustomAttributeModifier(Player player, String skillId, int index, Attribute attribute,
                                               AttributeModifier.Operation operation, double amountPerStep, int perkStep) {
-        if (attribute == null || amountPerStep <= 0.0) return;
+        if (attribute == null || amountPerStep == 0.0) return;
         Holder.Reference<Attribute> holder = BuiltInRegistries.ATTRIBUTE
                 .getResourceKey(attribute)
                 .flatMap(BuiltInRegistries.ATTRIBUTE::getHolder)
@@ -522,7 +531,7 @@ public class SkillModel implements INBTSerializable<CompoundTag> {
 
         int steps = getSkillLevel(skillId) / Math.max(1, perkStep);
         double totalBonus = steps * amountPerStep;
-        if (totalBonus <= 0.0) return;
+        if (totalBonus == 0.0) return;
 
         String path = index < 0 ? "custom_" + skillId : "custom_" + skillId + "_" + index;
         ResourceLocation modifierId = ResourceLocation.fromNamespaceAndPath("reskillable", path);
