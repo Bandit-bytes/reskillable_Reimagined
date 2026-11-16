@@ -52,6 +52,10 @@ public class Reskillable {
         if (ModList.get().isLoaded("irons_spellbooks")) {
             NeoForge.EVENT_BUS.register(new IronsSpellbooksEventHandler());
         }
+        // Iron's Arms 'n Artifice
+        if (ModList.get().isLoaded("irons_artifice")) {
+            NeoForge.EVENT_BUS.register(new IronsArtificeEventHandler());
+        }
         // Spell Engine compat
         if (ModList.get().isLoaded("spell_engine")) {
             NeoForge.EVENT_BUS.register(new SpellEngineEventHandler());
