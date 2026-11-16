@@ -12,6 +12,7 @@ import net.bandit.reskillable.common.network.TogglePerkPacket;
 import net.bandit.reskillable.event.AttributeLockHandler;
 import net.bandit.reskillable.event.CuriosCompat;
 import net.bandit.reskillable.event.EventHandler;
+import net.bandit.reskillable.event.IronsArtificeEventHandler;
 import net.bandit.reskillable.event.IronsSpellbooksEventHandler;
 import net.bandit.reskillable.event.SoundRegistry;
 import net.bandit.reskillable.event.TaczEventHandler;
@@ -70,6 +71,10 @@ public class Reskillable {
 
         if (ModList.get().isLoaded("irons_spellbooks")) {
             MinecraftForge.EVENT_BUS.register(new IronsSpellbooksEventHandler());
+        }
+
+        if (ModList.get().isLoaded("irons_artifice")) {
+            MinecraftForge.EVENT_BUS.register(new IronsArtificeEventHandler());
         }
 
         if (ModList.get().isLoaded("tconstruct")) {
