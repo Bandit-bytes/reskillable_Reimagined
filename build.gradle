@@ -21,12 +21,17 @@ repositories {
         url = uri("https://maven.parchmentmc.org")
     }
     maven {url = "https://maven.theillusivec4.top/"}
+    maven {
+        name = "Iron's Maven"
+        url = "https://code.redspace.io/releases"
+    }
 
     mavenCentral()
 }
 
 dependencies {
     implementation "top.theillusivec4.curios:curios-neoforge:${curios_version}"
+    compileOnly("io.redspace:irons_artifice:26.1.2-1.2.0") { transitive = false }
 }
 
 base {

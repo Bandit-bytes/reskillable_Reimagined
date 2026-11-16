@@ -2,6 +2,7 @@ package net.bandit.reskillable;
 
 import com.mojang.logging.LogUtils;
 import net.bandit.reskillable.common.EventHandler;
+import net.bandit.reskillable.common.IronsArtificeEventHandler;
 import net.bandit.reskillable.common.network.NetworkInit;
 import net.bandit.reskillable.event.RegenAttributeHandler;
 import net.bandit.reskillable.event.SkillAttachments;
@@ -9,6 +10,7 @@ import net.bandit.reskillable.event.SoundRegistry;
 import net.bandit.reskillable.registry.AttributeRegistry;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
@@ -33,6 +35,10 @@ public class Reskillable {
 
         NeoForge.EVENT_BUS.register(new EventHandler());
         NeoForge.EVENT_BUS.register(new RegenAttributeHandler());
+        // Iron's Arms 'n Artifice
+        if (ModList.get().isLoaded("irons_artifice")) {
+            NeoForge.EVENT_BUS.register(new IronsArtificeEventHandler());
+        }
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
