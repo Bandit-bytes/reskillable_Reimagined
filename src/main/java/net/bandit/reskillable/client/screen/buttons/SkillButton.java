@@ -73,7 +73,7 @@ public class SkillButton extends Button {
         int v = skill.index * 16 + 128;
 
         guiGraphics.blit(SkillScreen.RESOURCES, getX(), getY(), 176, (level == maxLevel ? 64 : 0) + (isMouseOver(mouseX, mouseY) ? 32 : 0), width, height);
-        ResourceLocation configuredIcon = Configuration.getBuiltInSkillIcon(skill);
+        ResourceLocation configuredIcon = Configuration.getBuiltInSkillIcon(skill, level);
         if (configuredIcon != null) {
             RenderSystem.setShaderTexture(0, configuredIcon);
             guiGraphics.blit(configuredIcon, getX() + 6, getY() + 8, 0, 0, 16, 16, 16, 16);

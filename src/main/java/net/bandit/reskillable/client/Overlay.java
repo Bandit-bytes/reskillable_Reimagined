@@ -81,7 +81,7 @@ public class Overlay implements IGuiOverlay {
                 int u = Math.min(requirement.level, maxLevel - 1) / Math.max(1, (maxLevel / 4)) * 16 + 176;
                 int v = requirement.skill.index * 16 + 128;
 
-                ResourceLocation configuredIcon = Configuration.getBuiltInSkillIcon(requirement.skill);
+                ResourceLocation configuredIcon = Configuration.getBuiltInSkillIcon(requirement.skill, requirement.level);
                 if (configuredIcon != null) {
                     RenderSystem.setShaderTexture(0, configuredIcon);
                     guiGraphics.blit(configuredIcon, x, y, 0, 0, 16, 16, 16, 16);

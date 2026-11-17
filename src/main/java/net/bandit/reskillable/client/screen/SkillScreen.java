@@ -343,7 +343,7 @@ public class SkillScreen extends Screen {
             int boxX = left + PERK_BOX_X;
             int boxY = top + PERK_BOX_Y + (row * PERK_ROW_HEIGHT);
 
-            ResourceLocation icon = slot.getResolvedIcon();
+            ResourceLocation icon = slot.getResolvedPerkIcon();
 
             if (icon != null) {
                 RenderSystem.setShaderTexture(0, icon);
@@ -427,7 +427,7 @@ public class SkillScreen extends Screen {
             int boxX = left + PERK_BOX_X;
             int boxY = top + PERK_BOX_Y + (row * PERK_ROW_HEIGHT);
 
-            ResourceLocation configuredIcon = Configuration.getBuiltInSkillIcon(skill);
+            ResourceLocation configuredIcon = Configuration.getBuiltInPerkIcon(skill);
             if (configuredIcon != null) {
                 RenderSystem.setShaderTexture(0, configuredIcon);
                 gui.blit(configuredIcon, boxX + PERK_ICON_OFFSET_X, boxY + PERK_ICON_OFFSET_Y, 0, 0, 12, 12, 12, 12);
@@ -1124,7 +1124,7 @@ public class SkillScreen extends Screen {
             int level = model.getCustomSkillLevel(skillSlot.getId());
             int maxLevel = Configuration.getMaxLevel();
 
-            ResourceLocation customIcon = skillSlot.getResolvedIcon();
+            ResourceLocation customIcon = skillSlot.getResolvedIcon(level);
 
             if (customIcon != null) {
                 RenderSystem.setShaderTexture(0, customIcon);

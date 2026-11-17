@@ -65,10 +65,59 @@ config/reskillable/custom_skills.json
 | `id` | Internal skill ID used by the mod, commands, locks, and gates |
 | `displayName` | Name shown in the skill screen |
 | `perkAttribute` | Attribute granted by this skill's perk |
-| `icon` | Texture path used for the skill icon |
+| `icon` | Texture path for the skill's icon on the perk page (and on the skill page if `iconStages` isn't set) |
+| `iconStages` | Optional list of skill-page icons that change as the skill levels up (see below) |
 | `perkOperation` | Attribute modifier operation, such as `ADDITION` |
 | `perkAmountPerStep` | How much bonus is granted each milestone |
 | `perkStep` | How many levels are required per perk milestone |
+
+### Skill Icons
+
+Icons are loaded from a resource pack (or a mod's assets). The `icon` value is a normal Minecraft
+resource location, so `reskillable:textures/gui/custom_skills/swimming.png` points to this file
+inside your resource pack:
+
+```
+my_resource_pack/
+├── pack.mcmeta
+└── assets/
+    └── reskillable/
+        └── textures/
+            └── gui/
+                └── custom_skills/
+                    └── swimming.png
+```
+
+- The part before the `:` is the folder under `assets/`, and the rest is the path inside it.
+- `pack.mcmeta` must be at the top of the pack, and the pack must be enabled in **Options → Resource Packs**.
+- Icons are drawn at 16x16. Larger square images (32x32, 64x64) work and are scaled down. Non-square images will be stretched.
+- If the path is wrong, the icon shows the purple and black missing texture.
+
+### Icons That Change With Level
+
+The original skills swap between 4 icons on the skill page as they level up. Custom skills can do
+the same with `iconStages`, a list of icons from first to last:
+
+```json
+{
+  "id": "swimming",
+  "displayName": "Swimming",
+  "icon": "reskillable:textures/gui/custom_skills/swimming.png",
+  "iconStages": [
+    "reskillable:textures/gui/custom_skills/swimming_1.png",
+    "reskillable:textures/gui/custom_skills/swimming_2.png",
+    "reskillable:textures/gui/custom_skills/swimming_3.png",
+    "reskillable:textures/gui/custom_skills/swimming_4.png"
+  ]
+}
+```
+
+- The stages are spread evenly up to `maximumLevel`. With 4 stages and a max level of 32, levels
+  1-8 show `swimming_1`, 9-16 `swimming_2`, 17-24 `swimming_3` and 25-32 `swimming_4`.
+- You can use any number of stages, not just 4. With 10 stages and a max level of 99, the icon changes about every 10 levels.
+- `iconStages` only changes the skill page. The perk page always shows `icon`.
+- If `iconStages` is left out, the skill page shows `icon` at every level.
+- Built-in skills in `built_in_skills.json` accept `iconStages` too, to replace their original icons.
 
 ### Notes
 
@@ -79,7 +128,7 @@ config/reskillable/custom_skills.json
   - commands
 - Custom skills start at **level 1**, just like built-in skills.
 - If a custom skill has a valid perk setup, it can also appear in the **custom perks** page.
-- Custom skill icons should point to a valid texture path.
+- Custom skill icons should point to a valid texture path (see **Skill Icons** above).
 
 ### Using Custom Skills in Locks or Gates
 

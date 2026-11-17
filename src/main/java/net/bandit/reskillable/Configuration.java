@@ -2,6 +2,8 @@ package net.bandit.reskillable;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
@@ -145,6 +147,12 @@ public class Configuration {
       "displayName": "Swimming",
       "enabled": true,
       "icon": "reskillable:textures/gui/custom_skills/swimming.png",
+      "iconStages": [
+        "reskillable:textures/gui/custom_skills/swimming_1.png",
+        "reskillable:textures/gui/custom_skills/swimming_2.png",
+        "reskillable:textures/gui/custom_skills/swimming_3.png",
+        "reskillable:textures/gui/custom_skills/swimming_4.png"
+      ],
       "perkAttributes": [
         {
           "attribute": "forge:swim_speed",
@@ -630,9 +638,20 @@ public class Configuration {
         }
         List<PerkAttributeDefinition> perkAttributes = normalizePerkAttributeDefinitions(
                 slot.perkAttributes, id, perkStep == null ? 5 : perkStep);
-        return new BuiltInSkillSlot(baseSkill.getSerializedName(), id, displayName,
+        BuiltInSkillSlot normalized = new BuiltInSkillSlot(baseSkill.getSerializedName(), id, displayName,
                 slot.enabled && !id.isBlank(), icon, perkAttribute, perkOperation,
                 perkAmountPerStep, perkStep, perkAttributes);
+        normalized.iconStages = normalizeIconStages(slot.iconStages);
+        return normalized;
+    }
+
+    private static List<String> normalizeIconStages(List<String> stages) {
+        if (stages == null) return null;
+        List<String> normalized = new ArrayList<>();
+        for (String stage : stages) {
+            if (stage != null && !stage.isBlank()) normalized.add(stage.trim());
+        }
+        return normalized.isEmpty() ? null : normalized;
     }
 
     private static List<PerkAttributeDefinition> normalizePerkAttributeDefinitions(
@@ -690,6 +709,10 @@ public class Configuration {
                 return createEmptyCustomSkillSlots();
             }
 
+            if (jsonObject.get("customSkills").isJsonArray()) {
+                upgradeLegacyPerkAttributes(jsonObject.getAsJsonArray("customSkills"));
+            }
+
             Type listType = new TypeToken<List<CustomSkillSlot>>() {}.getType();
             List<CustomSkillSlot> loaded = new Gson().fromJson(jsonObject.get("customSkills"), listType);
 
@@ -710,6 +733,49 @@ public class Configuration {
             System.err.println("Error loading custom skills from file: " + filename);
             e.printStackTrace();
             return createEmptyCustomSkillSlots();
+        }
+    }
+
+    /**
+     * Releases from April to August 2026 wrote perkAttributes as a plain list of attribute ids that shared the
+     * skill's perkOperation, perkAmountPerStep and perkStep. Gson can't read those as objects, which used to throw
+     * and blank every custom skill, so turn them into the current object form before parsing.
+     */
+    private static void upgradeLegacyPerkAttributes(JsonArray skills) {
+        for (JsonElement element : skills) {
+            if (!element.isJsonObject()) continue;
+            JsonObject skill = element.getAsJsonObject();
+            JsonElement attributes = skill.get("perkAttributes");
+            if (attributes == null || !attributes.isJsonArray()) continue;
+
+            JsonArray upgraded = new JsonArray();
+            boolean changed = false;
+            for (JsonElement attribute : attributes.getAsJsonArray()) {
+                if (attribute.isJsonPrimitive() && attribute.getAsJsonPrimitive().isString()) {
+                    JsonObject definition = new JsonObject();
+                    definition.addProperty("attribute", attribute.getAsString());
+                    copyLegacyPerkField(skill, "perkOperation", definition, "operation");
+                    copyLegacyPerkField(skill, "perkAmountPerStep", definition, "amountPerStep");
+                    copyLegacyPerkField(skill, "perkStep", definition, "perkStep");
+                    upgraded.add(definition);
+                    changed = true;
+                } else {
+                    upgraded.add(attribute);
+                }
+            }
+
+            if (changed) {
+                skill.add("perkAttributes", upgraded);
+                System.out.println("[Reskillable] Read old perkAttributes format for custom skill '"
+                        + (skill.has("id") ? skill.get("id").getAsString() : "?") + "'");
+            }
+        }
+    }
+
+    private static void copyLegacyPerkField(JsonObject from, String fromKey, JsonObject to, String toKey) {
+        JsonElement value = from.get(fromKey);
+        if (value != null && value.isJsonPrimitive()) {
+            to.add(toKey, value);
         }
     }
 
@@ -764,6 +830,7 @@ public class Configuration {
         CustomSkillSlot normalized = new CustomSkillSlot(id, displayName, perkAttribute, icon, perkOperation, perkAmountPerStep, perkStep);
         normalized.enabled = slot.enabled == null || slot.enabled;
         normalized.perkAttributes = normalizePerkAttributeDefinitions(slot.perkAttributes, id, perkStep);
+        normalized.iconStages = id.isEmpty() ? null : normalizeIconStages(slot.iconStages);
         return normalized;
 
     }
@@ -812,9 +879,54 @@ public class Configuration {
         return slot == null ? "" : slot.getDisplayName();
     }
 
-    public static ResourceLocation getBuiltInSkillIcon(Skill skill) {
+    public static ResourceLocation getBuiltInSkillIcon(Skill skill, int level) {
         BuiltInSkillSlot slot = getBuiltInSkill(skill);
-        return slot == null ? null : slot.getResolvedIcon();
+        return slot == null ? null : slot.getResolvedIcon(level);
+    }
+
+    public static ResourceLocation getBuiltInPerkIcon(Skill skill) {
+        BuiltInSkillSlot slot = getBuiltInSkill(skill);
+        return slot == null ? null : slot.getResolvedPerkIcon();
+    }
+
+    /**
+     * Picks the skill-page icon for a skill at {@code level}. With {@code iconStages} set, the stages are
+     * spread over the max level the same way the built-in skills step through their 4 icons; otherwise the
+     * single {@code icon} is used. Returns null when neither is set or valid. The perk page always uses
+     * {@code icon} (see {@link #resolvePerkIcon}).
+     */
+    static ResourceLocation resolveSkillIcon(String skillId, String icon, List<String> iconStages, int level) {
+        if (iconStages != null && !iconStages.isEmpty()) {
+            List<ResourceLocation> stages = new ArrayList<>();
+            for (String stage : iconStages) {
+                ResourceLocation parsed = parseIcon(skillId, stage);
+                if (parsed != null) stages.add(parsed);
+            }
+            if (!stages.isEmpty()) {
+                int count = stages.size();
+                int index = (int) Math.ceil((double) level * count / Math.max(1, getMaxLevel())) - 1;
+                return stages.get(Math.max(0, Math.min(count - 1, index)));
+            }
+        }
+        return parseIcon(skillId, icon);
+    }
+
+    /** The perk page shows the fixed {@code icon}, falling back to the first stage when only stages are set. */
+    static ResourceLocation resolvePerkIcon(String skillId, String icon, List<String> iconStages) {
+        ResourceLocation parsed = parseIcon(skillId, icon);
+        if (parsed == null && iconStages != null && !iconStages.isEmpty()) {
+            parsed = parseIcon(skillId, iconStages.get(0));
+        }
+        return parsed;
+    }
+
+    private static ResourceLocation parseIcon(String skillId, String icon) {
+        if (icon == null || icon.isBlank()) return null;
+        ResourceLocation parsed = ResourceLocation.tryParse(icon.trim());
+        if (parsed == null) {
+            System.err.println("[Reskillable] Invalid icon for skill '" + skillId + "': " + icon);
+        }
+        return parsed;
     }
 
     public static boolean hasBuiltInPerkOverride(Skill skill) {
@@ -1059,6 +1171,7 @@ public class Configuration {
         public Double perkAmountPerStep;
         public Integer perkStep;
         public List<PerkAttributeDefinition> perkAttributes;
+        public List<String> iconStages;
 
         public BuiltInSkillSlot() { this("", "", "", true, "", null, null, null, null, null); }
         public BuiltInSkillSlot(String skill, String id, String displayName, boolean enabled, String icon,
@@ -1090,10 +1203,8 @@ public class Configuration {
         public String getId() { return id == null ? "" : id.trim().toLowerCase(Locale.ROOT); }
         public String getDisplayName() { return displayName == null ? "" : displayName.trim(); }
         public String getIcon() { return icon == null ? "" : icon.trim(); }
-        public ResourceLocation getResolvedIcon() {
-            if (getIcon().isBlank()) return null;
-            try { return new ResourceLocation(getIcon()); } catch (Exception e) { return null; }
-        }
+        public ResourceLocation getResolvedIcon(int level) { return resolveSkillIcon(getId(), icon, iconStages, level); }
+        public ResourceLocation getResolvedPerkIcon() { return resolvePerkIcon(getId(), icon, iconStages); }
         public String getPerkAttributeOverride() { return perkAttribute == null ? null : perkAttribute.trim(); }
         public String getPerkOperationOverride() { return perkOperation == null ? null : perkOperation.trim().toUpperCase(Locale.ROOT); }
         public Double getPerkAmountPerStepOverride() { return perkAmountPerStep; }
@@ -1121,6 +1232,7 @@ public class Configuration {
         public double perkAmountPerStep;
         public int perkStep;
         public List<PerkAttributeDefinition> perkAttributes;
+        public List<String> iconStages;
 
         public CustomSkillSlot() {
             this("", "", "", "", "ADDITION", 0.0, 5);
@@ -1206,17 +1318,12 @@ public class Configuration {
             }
         }
 
-        public ResourceLocation getResolvedIcon() {
-            if (getIcon().isBlank()) {
-                return null;
-            }
+        public ResourceLocation getResolvedIcon(int level) {
+            return resolveSkillIcon(id, icon, iconStages, level);
+        }
 
-            try {
-                return new ResourceLocation(getIcon());
-            } catch (Exception e) {
-                System.err.println("[Reskillable] Invalid custom icon for skill '" + id + "': " + icon);
-                return null;
-            }
+        public ResourceLocation getResolvedPerkIcon() {
+            return resolvePerkIcon(id, icon, iconStages);
         }
     }
 
